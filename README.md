@@ -1,9 +1,6 @@
 > [!WARNING]  
-> **This repository is no longer maintained.**  
-> After [Nekogram situation](https://github.com/RomashkaTea/nekogram-proof-of-logging) I've switched to trusted open-source apps mostly.  
-> Since exteraGram remains closed source (ref: https://t.me/aniship/2215), I'm not using it anymore.  
-> 
-> **Feel free to fork this repository.** I wrote a minimal, but detailed [Contribution guide](CONTRIBUTING.md)
+> похуй, едем дальше  
+> ридмишку не буду менять, больно нраица
 
 # LegacyGram Plugin
 ![Build Status](https://github.com/repinek/LegacyGram/actions/workflows/build.yml/badge.svg)  
