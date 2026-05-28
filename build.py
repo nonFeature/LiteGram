@@ -141,6 +141,13 @@ def parse_import_line(line: str):
         _ = captured_imports[module]
 
 
+def normalize_import_block(import_lines: list[str]) -> str:
+    block = " ".join(line.strip() for line in import_lines)
+    block = re.sub(r"\s+", " ", block)
+    block = block.replace("( ", "").replace("(", "").replace(" )", "").replace(")", "")
+    return block.strip()
+
+
 def generate_imports_block() -> str:
     lines = []
 
@@ -163,7 +170,9 @@ def process_file_content(file_path: Path) -> list[str]:
     in_docstring = False
     docstring_char = None
 
-    for line in lines:
+    i = 0
+    while i < len(lines):
+        line = lines[i]
         stripped = line.strip()
 
         # Check for docstring delimiters (both """ and ''')
@@ -179,21 +188,26 @@ def process_file_content(file_path: Path) -> list[str]:
             count = stripped.count(docstring_char)
             if count == 1:
                 in_docstring = not in_docstring
+                i += 1
                 continue
             elif count >= 2:
                 if not in_docstring:
+                    i += 1
                     continue
                 else:
                     in_docstring = False
                     docstring_char = None
+                    i += 1
                     continue
 
         # Skip if in docstrings
         if in_docstring:
+            i += 1
             continue
 
         # Skip comment-only lines
         if stripped.startswith("#"):
+            i += 1
             continue
 
         # Skip import lines (but parse them first)
@@ -201,11 +215,21 @@ def process_file_content(file_path: Path) -> list[str]:
         is_internal = stripped.startswith(("import LegacyGram", "from LegacyGram"))
 
         if is_import:
+            import_lines = [line]
+            open_parens = line.count("(") - line.count(")")
+            while open_parens > 0 and i + 1 < len(lines):
+                i += 1
+                next_line = lines[i]
+                import_lines.append(next_line)
+                open_parens += next_line.count("(") - next_line.count(")")
+
             if not is_internal:
-                parse_import_line(stripped)
+                parse_import_line(normalize_import_block(import_lines))
+            i += 1
             continue
 
         processed_lines.append(line)
+        i += 1
 
     file_code = "".join(processed_lines)
     cleaned_code = file_code.strip()

@@ -37,21 +37,20 @@ def is_not_12_1_1_version(version: str) -> bool:
     return True
 
 
-def switch_rows(view: View) -> None:
+def toggle_settings_options(_: View | None = None) -> None:
     plugin_instance = LegacyGramPlugin.get_instance()
     row_keys = [
         Keys.hide_premium_row,
         Keys.hide_stars_row,
         Keys.hide_ton_row,
+        Keys.hide_wallet_row,
         Keys.hide_business_row,
         Keys.hide_send_a_gift_row,
+        Keys.hide_help_section,
     ]
 
-    any_disabled = any(not plugin_instance.get_setting(key, False) for key in row_keys)
-    new_state = True if any_disabled else False
-
-    for key in row_keys:
-        plugin_instance.set_setting(key, new_state, reload_settings=True)
+    new_state = any(not bool(plugin_instance.get_setting(key, False)) for key in row_keys)
+    plugin_instance.import_settings(dict.fromkeys(row_keys, new_state), reload_settings=True)
 
 
 def open_version_info(version: str) -> Callable[[View], None]:

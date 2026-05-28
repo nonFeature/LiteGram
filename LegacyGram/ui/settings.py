@@ -4,8 +4,34 @@ from ui.settings import Divider, Header, Text
 
 from LegacyGram.data.constants import GITHUB_URL, Keys
 from LegacyGram.i18n.i18n import t
-from LegacyGram.utils.settings_utils import Switch, is_not_12_1_1_version, open_extera_tab, open_url_view, open_version_info, show_restart_bulletin, switch_rows
+from LegacyGram.utils.settings_utils import (
+    Switch,
+    is_not_12_1_1_version,
+    open_extera_tab,
+    open_url_view,
+    open_version_info,
+    show_restart_bulletin,
+    toggle_settings_options,
+)
 from LegacyGram.utils.utils import get_client_version, parse_version
+
+SETTINGS_OPTION_ROWS = [
+    (Keys.hide_premium_row, "hide_premium_row"),
+    (Keys.hide_stars_row, "hide_stars_row"),
+    (Keys.hide_ton_row, "hide_ton_row"),
+    (Keys.hide_wallet_row, "hide_wallet_row"),
+    (Keys.hide_business_row, "hide_business_row"),
+    (Keys.hide_send_a_gift_row, "hide_send_a_gift_row"),
+    (Keys.hide_help_section, "hide_help_section"),
+]
+
+
+def get_settings_options_list() -> list[Any]:
+    return [
+        Header(text=t("settings_options")),
+        Text(text=t("switch_all"), link_alias=Keys.switch_all, on_click=toggle_settings_options),
+        *[Switch(text=t(text_key), key=key) for key, text_key in SETTINGS_OPTION_ROWS],
+    ]
 
 
 def get_main_settings_list() -> list[Any]:
@@ -17,18 +43,11 @@ def get_main_settings_list() -> list[Any]:
     else:
         extera_icon = "etg_settings"
 
-    if client_version >= (12, 4, 1):  # New UI
-        settings_options = [Header(text=t("settings_options")), Divider(text=t("feature_unavailable"))]
-    else:
-        settings_options = [
-            Header(text=t("settings_options")),
-            Text(text=t("switch_all"), link_alias=Keys.switch_all, on_click=switch_rows),
-            Switch(text=t("hide_premium_row"), key=Keys.hide_premium_row),
-            Switch(text=t("hide_stars_row"), key=Keys.hide_stars_row),
-            Switch(text=t("hide_ton_row"), key=Keys.hide_ton_row),
-            Switch(text=t("hide_business_row"), key=Keys.hide_business_row),
-            Switch(text=t("hide_send_a_gift_row"), key=Keys.hide_send_a_gift_row),
-        ]
+    settings_options = [
+        Header(text=t("settings_options")),
+        Text(text=t("switch_all"), link_alias=Keys.switch_all, on_click=toggle_settings_options),
+        *[Switch(text=t(text_key), key=key) for key, text_key in SETTINGS_OPTION_ROWS],
+    ]
 
     drawer_options = [
         Header(text=t("drawer_options")),

@@ -1,16 +1,13 @@
 __name__ = "LegacyGram"
-__description__ = "A highly customizable plugin to **remove paid and bloated features** from Telegram.\n**Recommended version:** 12.1.1"
-__version__ = "1.2.0"
+__description__ = "A highly customizable plugin to **remove paid and bloated features** from Telegram."
+__version__ = "1.3.0"
 __id__ = "legacygram"
-__author__ = "@wepinek"
+__author__ = "@wepinek (fork by @feature_plugins)"
 __icon__ = "LegacyGram/0"
 __min_version__ = "12.1.1"
 
 """
 TODO:
-Remove posts and archived posts from My profile tab
-Remove tags from Saved Messages
 suggestion: remove premium Emojis from selection
 Update checking
-Settings menu on newer versions (with new "liquid glass" design)
 """

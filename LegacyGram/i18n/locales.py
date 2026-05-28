@@ -3,12 +3,15 @@ STRINGS = {
     "ru": {
         # --- Settings Options ---
         "settings_options": "Меню настроек",
+        "manage_settings_options": "Настройка меню настроек",
         "switch_all": "Переключить все",
         "hide_premium_row": "Скрыть \"Telegram Premium\"",
         "hide_stars_row": "Скрыть \"Мои Звёзды\"",
         "hide_ton_row": "Скрыть \"Мои TON\"",
+        "hide_wallet_row": "Скрыть \"Wallet\"",
         "hide_business_row": "Скрыть \"Telegram для бизнеса\"",
         "hide_send_a_gift_row": "Скрыть \"Отправить подарок\"",
+        "hide_help_section": "Скрыть раздел \"Помощь\"",
 
         # --- Drawer Options ---
         "drawer_options": "Боковое меню",
@@ -30,7 +33,7 @@ STRINGS = {
         # --- Profile Tabs ---
         "profile_tabs": "Вкладки в профиле",
         "hide_stories_tab": "Скрыть Истории",
-        "hide_stories_tab_sub": "Не убирает вкладку историй из ВАШЕГО профиля!",
+        "hide_stories_tab_sub": "Также скрывает Posts и Archived Posts в вашем профиле",
         "hide_gifts_tab": "Скрыть Подарки",
 
         # --- Profile Appearance ---
@@ -83,12 +86,15 @@ STRINGS = {
     "en": {
         # --- Settings Options ---
         "settings_options": "Settings Options",
+        "manage_settings_options": "Manage Settings Options",
         "switch_all": "Switch All",
         "hide_premium_row": "Hide \"Telegram Premium\"",
         "hide_stars_row": "Hide \"My Stars\"",
         "hide_ton_row": "Hide \"My TON\"",
+        "hide_wallet_row": "Hide \"Wallet\"",
         "hide_business_row": "Hide \"Telegram Business\"",
         "hide_send_a_gift_row": "Hide \"Send a Gift\"",
+        "hide_help_section": "Hide \"Help\" Section",
 
         # --- Drawer Options ---
         "drawer_options": "Drawer Options",
@@ -110,7 +116,7 @@ STRINGS = {
         # --- Profile Tabs ---
         "profile_tabs": "Profile Tabs",
         "hide_stories_tab": "Hide Stories Tab",
-        "hide_stories_tab_sub": "Does not remove the Stories tab from YOUR profile",
+        "hide_stories_tab_sub": "Also hides Posts and Archived Posts in your profile",
         "hide_gifts_tab": "Hide Gifts Tab",
 
         # --- Profile Appearance ---

@@ -55,6 +55,15 @@ class SharedMediaLayoutHook(BaseHook):
             if hide_stories:
                 remove_stories(target)
 
+    def after_hooked_method(self, param):
+        if self.is_constructor or not self.plugin.get_setting(Keys.hide_stories_tab, False):
+            return
+
+        try:
+            rebuild_tabs_without_stories(get_private_field(param.thisObject, "scrollSlidingTextTabStrip"))
+        except Exception:
+            pass
+
 
 class SharedMediaLayoutSetInfoHook(BaseHook):
     def before_hooked_method(self, param):
@@ -91,6 +100,43 @@ def remove_stories(obj: Any):
 
         if isinstance(main_tab, TL_profileTabPosts):  # ty: ignore
             set_private_field(obj, "main_tab", None)
+
+
+def rebuild_tabs_without_stories(tab_strip) -> None:
+    if tab_strip is None:
+        return
+    if not tab_strip.hasTab(8) and not tab_strip.hasTab(9):
+        return
+
+    current_tab_id = tab_strip.getCurrentTabId()
+    removed_tab_ids = {8, 9}
+    tab_ids = list(tab_strip.getTabIds())
+    cached_tabs = tab_strip.removeTabs()
+    first_available_tab = None
+
+    for tab_id in tab_ids:
+        if tab_id in removed_tab_ids:
+            continue
+
+        view = cached_tabs.get(tab_id)
+        tab_text = ""
+        try:
+            tab_text = view.getText()
+        except Exception:
+            pass
+        tab_strip.addTextTab(tab_id, tab_text, cached_tabs)
+        if first_available_tab is None:
+            first_available_tab = tab_id
+
+    tab_strip.finishAddingTabs()
+
+    if first_available_tab is None:
+        return
+
+    if current_tab_id in removed_tab_ids:
+        tab_strip.scrollTo(first_available_tab)
+    else:
+        tab_strip.selectTabWithId(current_tab_id, 1.0)
 
 
 def register_media_layout(plugin) -> None:

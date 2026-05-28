@@ -1,4 +1,5 @@
 GITHUB_URL = "https://github.com/repinek/LegacyGram"
+GITHUB_UPDATES_URL = f"{GITHUB_URL}/actions"
 
 
 # Even though camelCase isn't like python
@@ -9,8 +10,10 @@ class Keys:
     hide_premium_row = "hidePremiumRow"
     hide_stars_row = "hideStarsRow"
     hide_ton_row = "hideTonRow"
+    hide_wallet_row = "hideWalletRow"
     hide_business_row = "hideBusinessRow"
     hide_send_a_gift_row = "hideSendAGiftRow"
+    hide_help_section = "hideHelpSection"
 
     # --- Drawer Options ---
     drawer_options = "drawerSettings"  # ETG
