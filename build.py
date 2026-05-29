@@ -36,7 +36,7 @@ captured_from_imports = defaultdict(set)
 
 def parse_args():
     parser = argparse.ArgumentParser(description="LegacyGram Build Script")
-    parser.add_argument("--no-bump", action="store_true", help="Do not increment the build version")
+    parser.add_argument("--no-bump", action="store_true", help="Compatibility flag; build no longer increments the version")
     return parser.parse_args()
 
 
@@ -239,7 +239,7 @@ def process_file_content(file_path: Path) -> list[str]:
 
 
 def build():
-    args = parse_args()
+    parse_args()
     print(f"🚀 Starting build: {OUTPUT_FILENAME}...")
 
     if not SRC_DIR.exists():
@@ -255,12 +255,8 @@ def build():
         print("❌ Error: Can't find __version__ field in header!")
         sys.exit(1)
 
-    if args.no_bump:
-        new_version = f"{current_version[0]}.{current_version[1]}.{current_version[2]}"
-        print(f"📌 Version: {new_version}")
-    else:
-        new_version = increment_build_version(current_version)
-        print(f"📌 Version: {new_version}")
+    new_version = f"{current_version[0]}.{current_version[1]}.{current_version[2]}"
+    print(f"📌 Version: {new_version}")
 
     if not run_linter():
         sys.exit(1)

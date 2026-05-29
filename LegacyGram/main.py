@@ -8,6 +8,7 @@ from LegacyGram.features.gift_button import register_gift_button
 from LegacyGram.features.greeting_button import register_greeting_button
 from LegacyGram.features.media_layout import register_media_layout
 from LegacyGram.features.premium_badge import register_premium_badge
+from LegacyGram.features.premium_emoji import register_premium_emoji
 from LegacyGram.features.profile_actions import register_profile_actions
 from LegacyGram.features.profile_appearance import register_profile_appearance
 from LegacyGram.features.settings_menu import register_settings_menu
@@ -35,6 +36,7 @@ class LegacyGramPlugin(BasePlugin):
         register_greeting_button(self)
         register_profile_appearance(self)
         register_profile_actions(self)
+        register_premium_emoji(self)
         register_premium_badge(self)
         register_star_reaction(self)
 

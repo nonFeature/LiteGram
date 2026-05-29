@@ -38,6 +38,7 @@ class Keys:
     hide_profile_colorful_background = "hideProfileColorfulBackground"
     hide_boost_badge = "hideBoostBadge"
     hide_gift_hint = "hideGiftHint"
+    hide_premium_emoji = "hidePremiumEmoji"
     hide_premium_badge = "hidePremiumBadge"
     hide_bot_verification = "hideBotVerification"
 

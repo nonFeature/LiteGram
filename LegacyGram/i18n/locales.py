@@ -46,6 +46,8 @@ STRINGS = {
         "hide_boost_badge": "Скрыть значок буста",
         "hide_premium_badge": "Скрыть премиум значок",
         "hide_premium_badge_sub": "Также отключает видеоаватары в списке чатов и чате",
+        "hide_premium_emoji": "Скрыть премиум эмодзи и стикеры в выборе",
+        "hide_premium_emoji_sub": "Убирает платные эмодзи и премиум-стикеры из клавиатуры эмодзи",
         "hide_bot_verification": "Скрыть значок верификации от организации",
 
         # --- Action Bar ---
@@ -129,6 +131,8 @@ STRINGS = {
         "hide_boost_badge": "Hide Boost Badge",
         "hide_premium_badge": "Hide Premium Badge",
         "hide_premium_badge_sub": "Also disables video avatars in chat lists and chats",
+        "hide_premium_emoji": "Hide Premium Emoji and Stickers in Picker",
+        "hide_premium_emoji_sub": "Removes paid emoji and premium stickers from the emoji keyboard",
         "hide_bot_verification": "Hide Bot Verification Badge",
 
         # --- Action Bar ---
