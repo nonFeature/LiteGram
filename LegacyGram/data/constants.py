@@ -1,5 +1,4 @@
-GITHUB_URL = "https://github.com/repinek/LegacyGram"
-GITHUB_UPDATES_URL = f"{GITHUB_URL}/actions"
+GITHUB_URL = "https://github.com/nonFeature/LegacyGram"
 
 
 # Even though camelCase isn't like python
