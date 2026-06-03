@@ -139,57 +139,18 @@ def _filter_list(container, *, sub=None, drop_empty=False, drop_non_stock=False)
     return removed
 
 
-def _filter_mixed_list(container):
-    """Filter premium items AND non-stock custom emoji from a mixed list.
-
-    Used for recent stickers which can contain both stickers and custom emoji.
-    """
-    if not container or not ArrayList:
-        return 0
-    removed = 0
-    i = container.size() - 1
-    while i >= 0:
-        item = container.get(i)
-        if _is_premium(item) or _is_non_stock(item):
-            container.remove(i)
-            removed += 1
-        i -= 1
-    return removed
-
-
 def _filter_reactions_list(container):
-    """Remove premium reactions by document_id lookup."""
-    if not container or not AnimatedEmojiDrawable:
-        return 0
-    account = _current_account()
-    if not account:
+    """Remove custom emoji reactions (any with document_id)."""
+    if not container:
         return 0
     removed = 0
     i = container.size() - 1
     while i >= 0:
-        item = container.get(i)
-        doc_id = getattr(item, "document_id", None) or getattr(item, "documentId", 0)
-        if doc_id and _cached_is_premium(account, doc_id):
+        if getattr(container.get(i), "document_id", 0) != 0:
             container.remove(i)
             removed += 1
         i -= 1
     return removed
-
-
-_doc_cache = {}
-
-
-def _cached_is_premium(account, doc_id):
-    if doc_id in _doc_cache:
-        return _doc_cache[doc_id]
-    if not AnimatedEmojiDrawable:
-        return False
-    try:
-        doc = AnimatedEmojiDrawable.findDocument(account, doc_id)
-        _doc_cache[doc_id] = bool(doc and _is_premium(doc))
-    except Exception:
-        _doc_cache[doc_id] = False
-    return _doc_cache[doc_id]
 
 
 def _is_featured_premium(pack):
@@ -353,7 +314,7 @@ HANDLERS = {
     "TL_messages_searchEmojiStickerSets": lambda r: _filter_list(r.sets, drop_non_stock=True),
     "TL_messages_searchStickers": lambda r: _filter_list(r.documents),
     "TL_messages_getRecentReactions": lambda r: _filter_reactions_list(r.reactions),
-    "TL_messages_getRecentStickers": lambda r: _filter_mixed_list(r.stickers),
+    "TL_messages_getRecentStickers": lambda r: _filter_list(r.stickers),
     "TL_messages_getStickers": lambda r: _filter_list(getattr(r, "stickers", None)),
     "TL_messages_getStickerSet": lambda r: _filter_list(getattr(r, "documents", None)),
 }
@@ -551,9 +512,9 @@ class FilterRecentStickersHook(BaseHook):
         if not stickers:
             return
         before = stickers.size()
-        n = _filter_mixed_list(stickers)
+        n = _filter_list(stickers)
         if n:
-            _log(f"recent stickers filtered: {before}->{stickers.size()} ({n} premium/custom)")
+            _log(f"recent stickers filtered: {before}->{stickers.size()} ({n} premium)")
 
 
 # ============================================================
@@ -591,13 +552,12 @@ class FilterVisibleReactionsHook(BaseHook):
         removed = 0
         i = visible.size() - 1
         while i >= 0:
-            item = visible.get(i)
-            if getattr(item, "premium", False):
+            if getattr(visible.get(i), "documentId", 0) != 0:
                 visible.remove(i)
                 removed += 1
             i -= 1
         if removed:
-            _log(f"reactions panel filtered: {before}->{visible.size()} ({removed} premium)")
+            _log(f"reactions panel filtered: {before}->{visible.size()} ({removed} custom)")
 
 
 # ============================================================
