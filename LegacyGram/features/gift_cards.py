@@ -1,10 +1,11 @@
 from hook_utils import find_class
+from java import jint
 
 from LegacyGram.data.constants import Keys
 from LegacyGram.utils.xposed_utils import BaseHook
 
-GIFT_MESSAGE_TYPES = (18, 25, 30, 31, 33, 34)
-GIFT_ACTION_CLASS_NAMES = (
+ALL_HIDDEN_TYPES = (18, 25, 30, 31, 33, 34)
+ALL_HIDDEN_ACTION_CLASSES = (
     "org.telegram.tgnet.TLRPC$TL_messageActionGift",
     "org.telegram.tgnet.TLRPC$TL_messageActionGiftCode",
     "org.telegram.tgnet.TLRPC$TL_messageActionGiftPremium",
@@ -15,7 +16,7 @@ GIFT_ACTION_CLASS_NAMES = (
     "org.telegram.tgnet.TLRPC$TL_messageActionStarGiftPurchaseOffer",
     "org.telegram.tgnet.TLRPC$TL_messageActionStarGiftPurchaseOfferDeclined",
 )
-GIFT_MEDIA_CLASS_NAMES = (
+ALL_HIDDEN_MEDIA_CLASSES = (
     "org.telegram.tgnet.TLRPC$TL_messageMediaGiftStars",
     "org.telegram.tgnet.TLRPC$TL_messageMediaGiftPremium",
     "org.telegram.tgnet.TLRPC$TL_messageMediaStarGift",
@@ -74,22 +75,33 @@ def _has_gift_object_metadata(action_or_media) -> bool:
     return False
 
 
-def is_gift_card_message(msg) -> bool:
+def _is_giveaway(item) -> bool:
+    return "Giveaway" in _get_java_class_name(item)
+
+
+def _is_gift(item) -> bool:
+    cn = _get_java_class_name(item)
+    return cn in ALL_HIDDEN_ACTION_CLASSES or cn in ALL_HIDDEN_MEDIA_CLASSES
+
+
+def is_gift_message(msg) -> bool:
     try:
         if msg is None:
             return False
         try:
             msg_type = int(getattr(msg, "type", 0) or 0)
-            if msg_type in GIFT_MESSAGE_TYPES:
+            if msg_type in ALL_HIDDEN_TYPES:
                 return True
         except Exception:
             pass
         owner = getattr(msg, "messageOwner", None)
-        media = getattr(owner, "media", None) if owner else None
-        action = getattr(owner, "action", None) if owner else None
+        if owner is None:
+            return False
+        media = getattr(owner, "media", None)
+        action = getattr(owner, "action", None)
         for item in (media, action):
             if item is not None:
-                if _is_gift_class(_get_java_class_name(item)):
+                if _is_gift(item):
                     return True
                 if _has_gift_object_metadata(item):
                     return True
@@ -100,11 +112,66 @@ def is_gift_card_message(msg) -> bool:
         return False
 
 
-def _is_gift_class(class_name: str) -> bool:
-    return class_name in GIFT_ACTION_CLASS_NAMES or class_name in GIFT_MEDIA_CLASS_NAMES
+def is_giveaway_message(msg) -> bool:
+    try:
+        if msg is None:
+            return False
+        try:
+            msg_type = int(getattr(msg, "type", 0) or 0)
+            if msg_type in (26, 28):
+                return True
+        except Exception:
+            pass
+        owner = getattr(msg, "messageOwner", None)
+        if owner is None:
+            return False
+        if getattr(owner, "via_giveaway", False):
+            return True
+        media = getattr(owner, "media", None)
+        action = getattr(owner, "action", None)
+        for item in (media, action):
+            if item is not None:
+                if _is_giveaway(item):
+                    return True
+        return False
+    except Exception:
+        return False
 
 
-class ChatActivityGiftBindHook(BaseHook):
+def apply_hidden_state(view, should_hide: bool) -> None:
+    if view is None:
+        return
+    if should_hide:
+        try:
+            view.setVisibility(8)
+        except Exception:
+            pass
+        try:
+            lp = view.getLayoutParams()
+            if lp is not None:
+                lp.height = 0
+                view.setLayoutParams(lp)
+        except Exception:
+            pass
+        try:
+            view.setMinimumHeight(0)
+        except Exception:
+            pass
+    else:
+        try:
+            view.setVisibility(0)
+        except Exception:
+            pass
+        try:
+            lp = view.getLayoutParams()
+            if lp is not None and getattr(lp, "height", None) == 0:
+                lp.height = -2
+                view.setLayoutParams(lp)
+        except Exception:
+            pass
+
+
+class GiftBindHook(BaseHook):
     def before_hooked_method(self, param):
         if not self.is_enabled():
             return
@@ -116,26 +183,49 @@ class ChatActivityGiftBindHook(BaseHook):
             if not isinstance(position, int):
                 return
             adapter = param.thisObject
-            start_row = getattr(adapter, "messagesStartRow", -1)
-            if start_row < 0 or position < start_row:
+            msg = get_msg(adapter, holder, position)
+            if msg is None or not is_gift_message(msg):
                 return
-            messages = adapter.getMessages() if hasattr(adapter, "getMessages") else None
-            if messages is None:
+            view = getattr(holder, "itemView", None)
+            if view is None:
                 return
-            index = position - start_row
-            if index < 0:
-                return
-            msg = messages.get(index) if hasattr(messages, "get") else messages[index]
-            if is_gift_card_message(msg):
-                view = getattr(holder, "itemView", None)
-                if view is not None:
-                    view.setVisibility(8)
-                param.setResult(None)
+            apply_hidden_state(view, True)
+            param.setResult(None)
         except Exception:
             pass
+
+
+class GiveawayTypeHook(BaseHook):
+    def before_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        if not param.args or len(param.args) < 1:
+            return
+        try:
+            adapter = param.thisObject
+            position = param.args[0]
+            msg = get_msg(adapter, None, position)
+            if msg is not None and is_giveaway_message(msg):
+                param.setResult(jint(-1000))
+        except Exception:
+            pass
+
+
+def get_msg(adapter, holder, position):
+    start_row = getattr(adapter, "messagesStartRow", -1)
+    if start_row < 0 or position < start_row:
+        return None
+    messages = adapter.getMessages() if hasattr(adapter, "getMessages") else None
+    if messages is None:
+        return None
+    index = position - start_row
+    if index < 0:
+        return None
+    return messages.get(index) if hasattr(messages, "get") else messages[index]
 
 
 def register_gift_cards(plugin) -> None:
     ChatActivityAdapter = find_class("org.telegram.ui.ChatActivity$ChatActivityAdapter")
     if ChatActivityAdapter:
-        plugin.hook_all_methods(ChatActivityAdapter, "onBindViewHolder", ChatActivityGiftBindHook(plugin, Keys.hide_gift_cards), priority=120)
+        plugin.hook_all_methods(ChatActivityAdapter, "onBindViewHolder", GiftBindHook(plugin, Keys.hide_gift_cards), priority=120)
+        plugin.hook_all_methods(ChatActivityAdapter, "getItemViewType", GiveawayTypeHook(plugin, Keys.hide_giveaway_cards), priority=120)

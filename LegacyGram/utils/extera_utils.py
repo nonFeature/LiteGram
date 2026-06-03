@@ -30,3 +30,15 @@ def resolve_extera_function(function_name: str) -> str:
     except Exception:
         pass
     return function_name
+
+
+def resolve_icon(icon_name: str) -> str:
+    try:
+        v = parse_version(get_client_version())
+        if icon_name == "extera_outline" and v < (12, 4, 1):
+            return "etg_settings"
+        if icon_name == "etg_settings" and v >= (12, 4, 1):
+            return "extera_outline"
+    except Exception:
+        pass
+    return icon_name

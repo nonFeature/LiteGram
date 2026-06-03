@@ -54,6 +54,7 @@ class Keys:
     hide_gift_cards = "hideGiftCards"
     hide_gift_dialogs_send = "hideGiftDialogsSend"
     hide_gift_dialogs_view = "hideGiftDialogsView"
+    hide_giveaway_cards = "hideGiveawayCards"
     hide_collectible_status = "hideCollectibleStatus"
     force_disable_particles = "forceDisableParticles"
     hide_stars_rating = "hideStarsRating"

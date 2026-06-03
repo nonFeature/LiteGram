@@ -4,6 +4,7 @@ from ui.settings import Divider, Header, Text
 
 from LegacyGram.data.constants import GITHUB_URL, Keys
 from LegacyGram.i18n.i18n import t
+from LegacyGram.utils.extera_utils import resolve_icon
 from LegacyGram.utils.settings_utils import (
     Switch,
     open_extera_tab,
@@ -34,12 +35,12 @@ def get_settings_options_list() -> list[Any]:
 def _chat_settings() -> list[Any]:
     return [
         Header(text=t("chat_list")),
-        Text(text=t("hide_stories"), link_alias=Keys.hide_stories, on_click=open_extera_tab(Keys.hide_stories), icon="extera_outline"),
+        Text(text=t("hide_stories"), link_alias=Keys.hide_stories, on_click=open_extera_tab(Keys.hide_stories), icon=resolve_icon("extera_outline")),
         Text(
             text=t("hide_action_bar_status"),
             link_alias=Keys.hide_action_bar_status,
             on_click=open_extera_tab(Keys.hide_action_bar_status),
-            icon="extera_outline",
+            icon=resolve_icon("extera_outline"),
         ),
         Switch(text=t("hide_greeting_button"), subtext=t("hide_greeting_button_sub"), key=Keys.hide_greeting_button),
         Header(text=t("action_bar")),
@@ -86,7 +87,7 @@ def _interface_settings() -> list[Any]:
             text=t("manage_drawer_options"),
             link_alias=Keys.drawer_options,
             on_click=open_extera_tab(Keys.drawer_options),
-            icon="extera_outline",
+            icon=resolve_icon("extera_outline"),
         ),
     ]
 
@@ -98,6 +99,7 @@ def _gifts_settings() -> list[Any]:
         Switch(text=t("hide_gift_cards"), subtext=t("hide_gift_cards_sub"), key=Keys.hide_gift_cards),
         Switch(text=t("hide_gift_dialogs_send"), subtext=t("hide_gift_dialogs_send_sub"), key=Keys.hide_gift_dialogs_send),
         Switch(text=t("hide_gift_dialogs_view"), subtext=t("hide_gift_dialogs_view_sub"), key=Keys.hide_gift_dialogs_view),
+        Switch(text=t("hide_giveaway_cards"), subtext=t("hide_giveaway_cards_sub"), key=Keys.hide_giveaway_cards),
         Switch(text=t("hide_stars_rating"), key=Keys.hide_stars_rating),
         Switch(text=t("hide_star_reaction"), key=Keys.hide_star_reaction),
     ]
