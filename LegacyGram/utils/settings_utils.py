@@ -1,6 +1,5 @@
 from collections.abc import Callable
 
-from android.view import View
 from org.telegram.messenger import R as R_tg  # ty: ignore
 from ui.bulletin import BulletinHelper
 from ui.settings import Switch as BaseSwitch
@@ -19,7 +18,7 @@ def Switch(
     subtext: str | None = None,
     icon: str | None = None,
     on_change: Callable[[bool], None] | None = None,
-    on_long_click: Callable[[View], None] | None = None,
+    on_long_click: Callable[..., None] | None = None,
     link_alias: str | None = None,
 ) -> BaseSwitch:
     """
@@ -29,7 +28,7 @@ def Switch(
     return BaseSwitch(key=key, text=text, default=default, subtext=subtext, icon=icon, on_change=on_change, on_long_click=on_long_click, link_alias=link_alias)
 
 
-def toggle_settings_options(_: View | None = None) -> None:
+def toggle_settings_options(_=None) -> None:
     plugin_instance = LegacyGramPlugin.get_instance()
     row_keys = [
         Keys.hide_premium_row,
@@ -45,15 +44,15 @@ def toggle_settings_options(_: View | None = None) -> None:
     plugin_instance.import_settings(dict.fromkeys(row_keys, new_state), reload_settings=True)
 
 
-def open_extera_tab(tab_name: str) -> Callable[[View], None]:
-    def callback(view: View):
+def open_extera_tab(tab_name: str) -> Callable[..., None]:
+    def callback(view):
         open_extera_setting(tab_name)
 
     return callback
 
 
-def open_url_view(url: str) -> Callable[[View], None]:
-    def callback(view: View):
+def open_url_view(url: str) -> Callable[..., None]:
+    def callback(view):
         open_url(url)
 
     return callback

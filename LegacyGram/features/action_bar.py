@@ -1,4 +1,3 @@
-from android.view import View
 from hook_utils import find_class, get_private_field
 
 from LegacyGram.data.constants import Keys
@@ -54,7 +53,7 @@ class ActionBarMenuItemAddSubItemHook(BaseHook):
         )
 
         if should_hide:
-            result.setVisibility(View.GONE)
+            result.setVisibility(8)
 
 
 class ActionBarMenuItemLazilyAddSubItemHook(BaseHook):
@@ -71,7 +70,7 @@ class ActionBarMenuItemLazilyAddSubItemHook(BaseHook):
         should_hide = (hide_add_shortcut and item_id == ADD_SHORTCUT_CHAT) or (hide_boost_group and item_id == BOOST_GROUP)
 
         if should_hide:
-            result.setVisibility(View.GONE)
+            result.setVisibility(8)
 
 
 # calls showSubItem(id); if show is true
@@ -107,7 +106,7 @@ class TopicsFragmentUpdateChatInfoHook(BaseHook):
         boost_submenu_field = get_private_field(instance, "boostGroupSubmenu")
 
         if boost_submenu_field is not None:
-            boost_submenu_field.setVisibility(View.GONE)
+            boost_submenu_field.setVisibility(8)
 
 
 def register_action_bar(plugin) -> None:
