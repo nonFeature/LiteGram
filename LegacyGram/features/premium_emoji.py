@@ -169,16 +169,27 @@ def _filter_reactions_list(container):
     while i >= 0:
         item = container.get(i)
         doc_id = getattr(item, "document_id", None) or getattr(item, "documentId", 0)
-        if doc_id:
-            try:
-                doc = AnimatedEmojiDrawable.findDocument(account, doc_id)
-                if doc and _is_premium(doc):
-                    container.remove(i)
-                    removed += 1
-            except Exception:
-                pass
+        if doc_id and _cached_is_premium(account, doc_id):
+            container.remove(i)
+            removed += 1
         i -= 1
     return removed
+
+
+_doc_cache = {}
+
+
+def _cached_is_premium(account, doc_id):
+    if doc_id in _doc_cache:
+        return _doc_cache[doc_id]
+    if not AnimatedEmojiDrawable:
+        return False
+    try:
+        doc = AnimatedEmojiDrawable.findDocument(account, doc_id)
+        _doc_cache[doc_id] = bool(doc and _is_premium(doc))
+    except Exception:
+        _doc_cache[doc_id] = False
+    return _doc_cache[doc_id]
 
 
 def _is_featured_premium(pack):
@@ -505,6 +516,9 @@ class FilterFeaturedStickerSetsHook(BaseHook):
             _log(f"featured sticker sets filtered: {before}->{sets.size()}")
 
 
+_last_frozen_size = 0
+
+
 class FilterFrozenPacksHook(BaseHook):
     def before_hooked_method(self, param):
         if not self.is_enabled():
@@ -512,9 +526,14 @@ class FilterFrozenPacksHook(BaseHook):
         packs = get_private_field(param.thisObject, "frozenEmojiPacks")
         if not packs:
             return
+        rebuild = param.args and len(param.args) > 0 and bool(param.args[0])
+        global _last_frozen_size
+        if not rebuild and packs.size() == _last_frozen_size:
+            return
         before = _count_packs(packs)
         _filter_list(packs, sub="documents", drop_empty=True, drop_non_stock=True)
         after = _count_packs(packs)
+        _last_frozen_size = packs.size()
         if before != after:
             _log(f"frozen packs filtered: {before[0]}p/{before[1]}d -> {after[0]}p/{after[1]}d")
 
@@ -566,25 +585,16 @@ class FilterVisibleReactionsHook(BaseHook):
         if not param.args or len(param.args) < 1:
             return
         visible = param.args[0]
-        if not visible or not AnimatedEmojiDrawable:
-            return
-        account = _current_account()
-        if not account:
+        if not visible:
             return
         before = visible.size()
         removed = 0
         i = visible.size() - 1
         while i >= 0:
             item = visible.get(i)
-            doc_id = getattr(item, "documentId", 0)
-            if doc_id:
-                try:
-                    doc = AnimatedEmojiDrawable.findDocument(account, doc_id)
-                    if doc and _is_premium(doc):
-                        visible.remove(i)
-                        removed += 1
-                except Exception:
-                    pass
+            if getattr(item, "premium", False):
+                visible.remove(i)
+                removed += 1
             i -= 1
         if removed:
             _log(f"reactions panel filtered: {before}->{visible.size()} ({removed} premium)")
