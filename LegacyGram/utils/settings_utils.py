@@ -11,7 +11,7 @@ from LegacyGram.data.constants import Keys
 from LegacyGram.i18n.i18n import t
 from LegacyGram.main import LegacyGramPlugin
 from LegacyGram.utils.extera_utils import open_extera_setting
-from LegacyGram.utils.utils import open_url, parse_version, restart_app
+from LegacyGram.utils.utils import open_url, restart_app
 
 
 def Switch(
@@ -29,12 +29,6 @@ def Switch(
     """
     link_alias = key if link_alias is None else link_alias
     return BaseSwitch(key=key, text=text, default=default, subtext=subtext, icon=icon, on_change=on_change, on_long_click=on_long_click, link_alias=link_alias)
-
-
-def is_not_12_1_1_version(version: str) -> bool:
-    if parse_version(version) == (12, 1, 1):
-        return False
-    return True
 
 
 def toggle_settings_options(_: View | None = None) -> None:
@@ -59,15 +53,9 @@ def open_version_info(version: str) -> Callable[[View], None]:
         activity = current_fragment.getParentActivity() if current_fragment else None
         if not activity:
             return
-
         builder = AlertDialogBuilder(activity)
-        if parse_version(version) == (12, 1, 1):
-            builder.set_title(t("version_ok_title"))
-            builder.set_message(t("version_ok_message", version))
-        else:
-            builder.set_title(t("version_warn_title"))
-            builder.set_message(t("version_warn_message", version))
-
+        builder.set_title(t("version_ok_title"))
+        builder.set_message(t("version_ok_message", version))
         builder.set_positive_button("OK", lambda b, w: b.dismiss())
         builder.show()
 

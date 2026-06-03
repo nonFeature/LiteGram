@@ -2,7 +2,6 @@ from hook_utils import find_class
 from ui.bulletin import BulletinHelper
 
 from LegacyGram.data.constants import Keys
-from LegacyGram.utils.utils import get_client_version, parse_version
 
 
 # thx jadx
@@ -21,16 +20,6 @@ def open_extera_setting(alias: str, plugin_id: str | None = None) -> None:
 
 
 def resolve_extera_function(function_name: str) -> str:
-    try:
-        client_version = parse_version(get_client_version())
-
-        if function_name == Keys.drawer_options:
-            if client_version == (12, 1, 1):
-                return "myProfileItem"
-            if client_version >= (12, 4, 1):
-                return "mainMenuSettings"
-
-    except Exception:
-        pass
-
+    if function_name == Keys.drawer_options:
+        return "mainMenuSettings"
     return function_name
