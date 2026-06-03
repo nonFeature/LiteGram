@@ -40,30 +40,32 @@ def parse_args():
     return parser.parse_args()
 
 
-def get_current_version() -> tuple[int, int, int] | None:
+def get_current_version() -> str | None:
     content = HEADER_FILE.read_text(encoding="utf-8")
-    match = re.search(r'__version__\s*=\s*"(\d+)\.(\d+)\.(\d+)"', content)
+    match = re.search(r'__version__\s*=\s*"([^"]+)"', content)
     if match:
-        return int(match.group(1)), int(match.group(2)), int(match.group(3))
+        return match.group(1)
     return None
 
 
-def increment_build_version(current_version: tuple[int, int, int]) -> str:
-    major, minor, build_num = current_version
-    new_version = (major, minor, build_num + 1)
+def increment_version(version: str) -> str:
+    match = re.search(r"(\d+)([^\d]*)$", version)
+    if match:
+        num = int(match.group(1))
+        suffix = match.group(2)
+        prefix = version[: match.start(1)]
+        return f"{prefix}{num + 1}{suffix}"
+    return version
 
-    version_str = f"{new_version[0]}.{new_version[1]}.{new_version[2]}"
 
-    # Update header.py
+def update_header_version(new_version: str) -> None:
     content = HEADER_FILE.read_text(encoding="utf-8")
     content = re.sub(
         r'__version__\s*=\s*"[^"]+"',
-        f'__version__ = "{version_str}"',
+        f'__version__ = "{new_version}"',
         content,
     )
     HEADER_FILE.write_text(content, encoding="utf-8")
-
-    return version_str
 
 
 def run_linter():
@@ -255,8 +257,7 @@ def build():
         print("❌ Error: Can't find __version__ field in header!")
         sys.exit(1)
 
-    new_version = f"{current_version[0]}.{current_version[1]}.{current_version[2]}"
-    print(f"📌 Version: {new_version}")
+    print(f"📌 Version: {current_version}")
 
     if not run_linter():
         sys.exit(1)
