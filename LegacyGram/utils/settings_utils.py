@@ -1,9 +1,7 @@
 from collections.abc import Callable
 
 from android.view import View
-from client_utils import get_last_fragment
 from org.telegram.messenger import R as R_tg  # ty: ignore
-from ui.alert import AlertDialogBuilder
 from ui.bulletin import BulletinHelper
 from ui.settings import Switch as BaseSwitch
 
@@ -12,6 +10,8 @@ from LegacyGram.i18n.i18n import t
 from LegacyGram.main import LegacyGramPlugin
 from LegacyGram.utils.extera_utils import open_extera_setting
 from LegacyGram.utils.utils import open_url, restart_app
+
+DRAWER_FALLBACK_URL = "https://t.me/exteraSettings?s=appNavigationSettings"
 
 
 def Switch(
@@ -47,25 +47,13 @@ def toggle_settings_options(_: View | None = None) -> None:
     plugin_instance.import_settings(dict.fromkeys(row_keys, new_state), reload_settings=True)
 
 
-def open_version_info(version: str) -> Callable[[View], None]:
+def open_extera_tab(tab_name: str, fallback_url: str | None = None) -> Callable[[View], None]:
     def callback(view: View):
-        current_fragment = get_last_fragment()
-        activity = current_fragment.getParentActivity() if current_fragment else None
-        if not activity:
-            return
-        builder = AlertDialogBuilder(activity)
-        builder.set_title(t("version_ok_title"))
-        builder.set_message(t("version_ok_message", version))
-        builder.set_positive_button("OK", lambda b, w: b.dismiss())
-        builder.show()
-
-    return callback
-
-
-# lambda works too, but It's better
-def open_extera_tab(tab_name: str) -> Callable[[View], None]:
-    def callback(view: View):
-        open_extera_setting(tab_name)
+        try:
+            open_extera_setting(tab_name)
+        except Exception:
+            if fallback_url:
+                open_url(fallback_url)
 
     return callback
 

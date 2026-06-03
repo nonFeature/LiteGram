@@ -5,6 +5,7 @@ from ui.settings import Divider, Header, Text
 from LegacyGram.data.constants import GITHUB_URL, Keys
 from LegacyGram.i18n.i18n import t
 from LegacyGram.utils.settings_utils import (
+    DRAWER_FALLBACK_URL,
     Switch,
     open_extera_tab,
     open_url_view,
@@ -79,7 +80,12 @@ def _interface_settings() -> list[Any]:
         Text(text=t("switch_all"), link_alias=Keys.switch_all, on_click=toggle_settings_options),
         *[Switch(text=t(text_key), key=key) for key, text_key in SETTINGS_OPTION_ROWS],
         Header(text=t("drawer_options")),
-        Text(text=t("manage_drawer_options"), link_alias=Keys.drawer_options, on_click=open_extera_tab(Keys.drawer_options), icon="etg_settings"),
+        Text(
+            text=t("manage_drawer_options"),
+            link_alias=Keys.drawer_options,
+            on_click=open_extera_tab(Keys.drawer_options, fallback_url=DRAWER_FALLBACK_URL),
+            icon="etg_settings",
+        ),
     ]
 
 

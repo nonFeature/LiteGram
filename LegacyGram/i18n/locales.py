@@ -84,13 +84,6 @@ STRINGS = {
 
         # --- About Plugin ---
         "about_plugin": "О Плагине",
-        "client_version": "Версия клиента: {0}",
-        "version_ok_title": "Полная совместимость",
-        "version_ok_message": "Вы используете рекомендуемую версию клиента {0}! Это последняя сборка без интеграции \"Liquid Glass UI\"",
-        "version_warn_title": "Потенциальная нестабильность",
-        "version_warn_message": "Вы используете {0} с новым \"Liquid Glass UI\". "
-                                "Плагин сохраняет работоспособность, но рекомендуемая версия 12.1.1. "
-                                "Если что-то не работает, напишите автору в ЛС или создайте issue на GitHub.",
         "github_repository": "Репозиторий на Github (Поставьте ⭐!)",
         "github_sub": "Никакой телеметрии, модульная архитектура на Python, "
                       "кастомный скрипт для сборки, Ruff-линтинг и типизация для java, xposed и android модулей",
@@ -186,13 +179,6 @@ STRINGS = {
 
         # --- About Plugin ---
         "about_plugin": "About Plugin",
-        "client_version": "Client version: {0}",
-        "version_ok_title": "Full Compatibility",
-        "version_ok_message": "You are using the recommended client version {0}! The last version without \"Liquid Glass UI\" integration",
-        "version_warn_title": "Potential Instability",
-        "version_warn_message": "You are using the client version {0} with new \"Liquid Glass UI\" integration. "
-                                "Plugin still works, but recommended version is 12.1.1. "
-                                "If something doesn't work, please contact the author via DM or open an issue on GitHub.",
         "github_repository": "Github Repository (Leave a ⭐!)",
         "github_sub": "Zero Telemetry, Python modular architecture with custom build script, "
                       "Ruff linting, and typing stubs for java, Xposed and android modules",
