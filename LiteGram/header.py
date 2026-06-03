@@ -1,6 +1,6 @@
 __name__ = "LiteGram"
 __description__ = "A highly customizable plugin to **remove paid and bloated features** from Telegram."
-__version__ = "1.3.0"
+__version__ = "1.3"
 __id__ = "litegram"
 __author__ = "fork: @feature_plugins, origin author: @wepinek"
 __icon__ = "feature_plugins/8"
