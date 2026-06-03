@@ -110,8 +110,8 @@ def _about_settings() -> list[Any]:
 
 def get_main_settings_list() -> list[Any]:
     return [
-        Text(text=t("category_chat"), icon="msg_chat", create_sub_fragment=_chat_settings),
-        Text(text=t("category_profile"), icon="msg_contact", create_sub_fragment=_profile_settings),
+        Text(text=t("category_chat"), icon="settings_chat", create_sub_fragment=_chat_settings),
+        Text(text=t("category_profile"), icon="msg_contacts", create_sub_fragment=_profile_settings),
         Text(text=t("category_interface"), icon="msg_settings", create_sub_fragment=_interface_settings),
         Text(text=t("category_gifts"), icon="msg_gift_premium", create_sub_fragment=_gifts_settings),
         Text(text=t("category_about"), icon="msg_help", create_sub_fragment=_about_settings),
