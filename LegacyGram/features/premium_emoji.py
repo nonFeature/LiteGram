@@ -129,6 +129,11 @@ def _filter_list(container, *, sub=None, drop_empty=False, drop_non_stock=False)
             if drop_non_stock and _is_non_stock(obj):
                 container.remove(i)
                 removed += 1
+            elif not drop_non_stock:
+                prem = getattr(obj, "premium", None)
+                if prem is not None and bool(prem):
+                    container.remove(i)
+                    removed += 1
             elif _is_premium(obj):
                 container.remove(i)
                 removed += 1
