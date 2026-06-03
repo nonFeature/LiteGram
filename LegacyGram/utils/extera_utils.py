@@ -25,7 +25,7 @@ def resolve_extera_function(function_name: str) -> str:
         v = parse_version(get_client_version())
         if function_name == Keys.drawer_options:
             if v >= (12, 4, 1):
-                return "mainMenuSettings"
+                return "appNavigationSettings"
             return "myProfileItem"
     except Exception:
         pass
