@@ -3,6 +3,10 @@ from hook_utils import find_class, get_private_field
 from LegacyGram.data.constants import Keys
 from LegacyGram.utils.xposed_utils import BaseHook
 
+# ============================================================
+# Class resolution
+# ============================================================
+
 AnimatedEmojiDrawable = find_class("org.telegram.ui.Components.AnimatedEmojiDrawable")
 Emoji = find_class("org.telegram.messenger.Emoji")
 EmojiView = find_class("org.telegram.ui.Components.EmojiView")
@@ -12,493 +16,528 @@ SuggestEmojiView = find_class("org.telegram.ui.Components.SuggestEmojiView")
 ArrayList = find_class("java.util.ArrayList")
 MediaDataController = find_class("org.telegram.messenger.MediaDataController")
 MessageObject = find_class("org.telegram.messenger.MessageObject")
+ReactionsContainerLayout = find_class("org.telegram.ui.Components.ReactionsContainerLayout")
 UserConfig = find_class("org.telegram.messenger.UserConfig")
 
-_plugin = None
+# ============================================================
+# Module state & logging
+# ============================================================
+
+_logger = None
 
 
-def _log(msg: str) -> None:
-    global _plugin
-    if _plugin is not None:
+def _init(plugin):
+    global _logger
+    _logger = plugin.log
+
+
+def _log(msg):
+    if _logger:
         try:
-            _plugin.log(msg)
+            _logger(msg)
         except Exception:
             pass
 
 
-def _is_keep_document(document) -> bool:
+# ============================================================
+# Core checks
+# ============================================================
+
+
+def _is_premium(document) -> bool:
+    """True if a document is premium (sticker/emoji locked behind subscription)."""
     if document is None:
         return False
     try:
-        prem = bool(getattr(document, "premium", False))
-        if prem:
-            return False
+        if getattr(document, "premium", False):
+            return True
     except Exception:
         pass
     if MessageObject:
         try:
-            return bool(MessageObject.isFreeEmoji(document))
-        except Exception:
-            pass
-    return True
-
-
-# ========== TL API handlers ==========
-
-
-def _filter_documents_in_place(documents) -> bool:
-    if not documents or not ArrayList:
-        return False
-    changed = False
-    try:
-        keep = []
-        for idx in range(documents.size()):
-            doc = documents.get(idx)
-            if _is_keep_document(doc):
-                keep.append(doc)
-            else:
-                changed = True
-        if changed:
-            documents.clear()
-            for doc in keep:
-                documents.add(doc)
-    except Exception:
-        return False
-    return changed
-
-
-def _is_premium_featured_pack(sticker_set_covered) -> bool:
-    if not sticker_set_covered or not MessageObject:
-        return False
-    try:
-        return bool(MessageObject.isPremiumEmojiPack(sticker_set_covered))
-    except Exception:
-        pass
-    documents = getattr(sticker_set_covered, "documents", None)
-    if documents is None:
-        documents = getattr(sticker_set_covered, "covers", None)
-    if not documents:
-        return False
-    for idx in range(documents.size()):
-        doc = documents.get(idx)
-        try:
-            if bool(getattr(doc, "premium", False)):
-                return True
+            return not MessageObject.isFreeEmoji(document)
         except Exception:
             pass
     return False
 
 
-def _filter_packs_in_response(response) -> None:
-    if not hasattr(response, "sets"):
-        return
-    idx = response.sets.size() - 1
-    while idx >= 0:
-        pack = response.sets.get(idx)
-        if hasattr(pack, "documents"):
-            _filter_documents_in_place(pack.documents)
-        removed = False
-        if hasattr(pack, "documents") and pack.documents.size() == 0:
-            response.sets.remove(idx)
-            removed = True
-        if not removed:
-            idx -= 1
+def _is_non_stock(item) -> bool:
+    """True if item is a custom (non-stock) emoji.
 
+    Stock emoji = standard Unicode emoji that existed before Telegram Premium.
+    Custom emoji = everything else (from emoji packs, stored with document IDs).
 
-def _filter_featured_packs(response) -> None:
-    if not hasattr(response, "sets"):
-        return
-    idx = response.sets.size() - 1
-    while idx >= 0:
-        pack = response.sets.get(idx)
-        if _is_premium_featured_pack(pack):
-            response.sets.remove(idx)
-        idx -= 1
-
-
-def _filter_search_packs(response) -> None:
-    if hasattr(response, "sets"):
-        idx = response.sets.size() - 1
-        while idx >= 0:
-            item = response.sets.get(idx)
-            if hasattr(item, "title") and item.title:
-                idx -= 1
-                continue
-            if not _is_keep_document(item):
-                response.sets.remove(idx)
-            idx -= 1
-
-
-def _filter_documents_response(response) -> None:
-    if hasattr(response, "documents"):
-        idx = response.documents.size() - 1
-        while idx >= 0:
-            doc = response.documents.get(idx)
-            if not _is_keep_document(doc):
-                response.documents.remove(idx)
-            idx -= 1
-
-
-def _filter_pack_list_in_place(packs) -> bool:
-    if not packs or not ArrayList:
-        return False
-    changed = False
-    idx = packs.size() - 1
-    while idx >= 0:
-        pack = packs.get(idx)
-        if hasattr(pack, "documents"):
-            if _filter_documents_in_place(pack.documents):
-                changed = True
-        if hasattr(pack, "documents") and pack.documents.size() == 0:
-            packs.remove(idx)
-            changed = True
-        idx -= 1
-    return changed
-
-
-def _filter_reactions_response(response) -> None:
-    if not hasattr(response, "reactions"):
-        return
-    account = _resolve_current_account(None)
-    if account is None or not AnimatedEmojiDrawable:
-        return
-    removed = 0
-    idx = response.reactions.size() - 1
-    while idx >= 0:
-        reaction = response.reactions.get(idx)
-        document_id = getattr(reaction, "document_id", None)
-        if document_id is not None:
-            try:
-                document = AnimatedEmojiDrawable.findDocument(account, document_id)
-                if document and not _is_keep_document(document):
-                    response.reactions.remove(idx)
-                    removed += 1
-                    idx -= 1
-                    continue
-            except Exception:
-                pass
-        idx -= 1
-    if removed:
-        _log(f"reactions filtered: removed {removed} premium")
-
-
-HANDLERS = {
-    "TL_messages_getEmojiStickers": _filter_packs_in_response,
-    "TL_messages_getFeaturedEmojiStickers": _filter_featured_packs,
-    "TL_messages_searchEmojiStickerSets": _filter_search_packs,
-    "TL_messages_searchStickers": _filter_documents_response,
-    "TL_messages_getRecentReactions": _filter_reactions_response,
-}
-
-
-def filter_response(request_name: str, response) -> None:
-    handler = HANDLERS.get(request_name)
-    if handler is not None:
-        _log(f"TL handler: {request_name}")
+    Works for both string entries (recent emoji, search) and TL documents.
+    """
+    if isinstance(item, str):
+        return item.startswith("animated_")
+    if MessageObject:
         try:
-            handler(response)
-        except Exception as e:
-            _log(f"TL handler error: {request_name} {e}")
+            return bool(MessageObject.isAnimatedEmoji(item))
+        except Exception:
+            pass
+    return False
 
 
-# ========== Lightweight Java hooks (search + recent) ==========
-
-
-def _resolve_current_account(current_account: int | None) -> int | None:
-    if current_account is not None:
-        return current_account
+def _current_account(account=None) -> int:
+    if account is not None:
+        return account
     if UserConfig:
         try:
             return int(UserConfig.selectedAccount)
         except Exception:
-            return None
-    return None
+            pass
+    return 0
 
 
-def _animated_emoji_document_id(emoji_source) -> int | None:
-    if not isinstance(emoji_source, str) or not emoji_source.startswith("animated_"):
-        return None
-    try:
-        return int(emoji_source.removeprefix("animated_"))
-    except ValueError:
-        return None
+# ============================================================
+# Filtering primitives
+# ============================================================
 
 
-def _is_premium_animated_emoji(emoji_source, current_account: int | None) -> bool:
-    document_id = _animated_emoji_document_id(emoji_source)
-    if document_id is None:
+def _filter_list(container, *, sub=None, drop_empty=False, drop_non_stock=False):
+    """Remove premium (and optionally non-stock) items from an ArrayList.
+
+    sub=None           -> items are documents directly
+    sub="documents"    -> each item has a .documents sublist
+    drop_empty         -> remove items whose sublist becomes empty
+    drop_non_stock     -> also remove non-stock custom emoji items
+    """
+    if not container or not ArrayList:
+        return 0
+    removed = 0
+    i = container.size() - 1
+    while i >= 0:
+        item = container.get(i)
+        if sub:
+            docs = getattr(item, sub, None)
+            if docs is not None:
+                j = docs.size() - 1
+                while j >= 0:
+                    doc = docs.get(j)
+                    if _is_premium(doc) or (drop_non_stock and _is_non_stock(doc)):
+                        docs.remove(j)
+                        removed += 1
+                    j -= 1
+                if drop_empty and docs.size() == 0:
+                    container.remove(i)
+                    removed += 1
+        else:
+            obj = container.get(i)
+            if _is_premium(obj) or (drop_non_stock and _is_non_stock(obj)):
+                container.remove(i)
+                removed += 1
+        i -= 1
+    return removed
+
+
+def _filter_mixed_list(container):
+    """Filter premium items AND non-stock custom emoji from a mixed list.
+
+    Used for recent stickers which can contain both stickers and custom emoji.
+    """
+    if not container or not ArrayList:
+        return 0
+    removed = 0
+    i = container.size() - 1
+    while i >= 0:
+        item = container.get(i)
+        if _is_premium(item) or _is_non_stock(item):
+            container.remove(i)
+            removed += 1
+        i -= 1
+    return removed
+
+
+def _filter_reactions_list(container):
+    """Remove premium reactions by document_id lookup."""
+    if not container or not AnimatedEmojiDrawable:
+        return 0
+    account = _current_account()
+    if not account:
+        return 0
+    removed = 0
+    i = container.size() - 1
+    while i >= 0:
+        item = container.get(i)
+        doc_id = getattr(item, "document_id", None) or getattr(item, "documentId", 0)
+        if doc_id:
+            try:
+                doc = AnimatedEmojiDrawable.findDocument(account, doc_id)
+                if doc and _is_premium(doc):
+                    container.remove(i)
+                    removed += 1
+            except Exception:
+                pass
+        i -= 1
+    return removed
+
+
+def _is_featured_premium(pack):
+    """Check if a StickerSetCovered is a premium pack."""
+    if not pack or not MessageObject:
         return False
-    account = _resolve_current_account(current_account)
-    if account is None or not AnimatedEmojiDrawable:
-        return False
     try:
-        document = AnimatedEmojiDrawable.findDocument(account, document_id)
+        return bool(MessageObject.isPremiumEmojiPack(pack))
     except Exception:
+        pass
+    for attr in ("documents", "covers"):
+        docs = getattr(pack, attr, None)
+        if docs:
+            for j in range(docs.size()):
+                try:
+                    if getattr(docs.get(j), "premium", False):
+                        return True
+                except Exception:
+                    pass
+    return False
+
+
+def _is_featured_non_stock(pack):
+    """Check if a StickerSetCovered is a custom emoji pack (no stock emoji)."""
+    if not pack:
         return False
-    if not document:
-        return False
-    return not _is_keep_document(document)
-
-
-def _filter_animated_emoji_string_list_in_place(emoji_list, current_account: int | None) -> bool:
-    if not emoji_list:
-        return False
-    changed = False
-    for idx in range(emoji_list.size() - 1, -1, -1):
-        emoji = emoji_list.get(idx)
-        if _is_premium_animated_emoji(emoji, current_account):
-            emoji_list.remove(idx)
-            changed = True
-    return changed
-
-
-def _filter_keyword_results_in_place(keyword_results, current_account: int | None) -> bool:
-    if not keyword_results:
-        return False
-    changed = False
-    for idx in range(keyword_results.size() - 1, -1, -1):
-        result = keyword_results.get(idx)
-        emoji = getattr(result, "emoji", None)
-        if emoji is None:
-            try:
-                emoji = str(result)
-            except Exception:
-                continue
-        if _is_premium_animated_emoji(emoji, current_account):
-            keyword_results.remove(idx)
-            changed = True
-    return changed
-
-
-def _filter_recent_emoji(recent_emoji, current_account: int | None) -> None:
-    current_account = _resolve_current_account(current_account)
-    if not recent_emoji:
-        return
-    _filter_animated_emoji_string_list_in_place(recent_emoji, current_account)
-
-
-def _filter_search_results(search_results, current_account: int | None) -> None:
-    current_account = _resolve_current_account(current_account)
-    if not search_results:
-        return
-    for idx in range(search_results.size() - 1, -1, -1):
-        result = search_results.get(idx)
-        emoji = getattr(result, "emoji", None)
-        if emoji is None:
-            try:
-                emoji = str(result)
-            except Exception:
-                continue
-        if _is_premium_animated_emoji(emoji, current_account):
-            search_results.remove(idx)
-            continue
+    sticker_set = getattr(pack, "set", None)
+    if sticker_set:
         try:
-            if bool(getattr(result, "premium", False)):
-                search_results.remove(idx)
+            return bool(sticker_set.emojis)
         except Exception:
             pass
+    return False
 
 
-def _filter_search_sets_in_place(search_sets) -> None:
-    if not search_sets or not ArrayList:
+def _filter_featured_sets(sets):
+    """Remove premium emoji packs AND custom emoji packs from featured sets."""
+    if not sets:
+        return 0
+    removed = 0
+    i = sets.size() - 1
+    while i >= 0:
+        pack = sets.get(i)
+        if _is_featured_premium(pack) or _is_featured_non_stock(pack):
+            sets.remove(i)
+            removed += 1
+        i -= 1
+    return removed
+
+
+def _is_premium_sticker_pack(pack):
+    """Check if a StickerSetCovered is a premium sticker pack by its cover."""
+    if not pack:
+        return False
+    cover = getattr(pack, "cover", None)
+    if cover and _is_premium(cover):
+        return True
+    return False
+
+
+def _filter_featured_sticker_sets(sets):
+    """Remove premium packs from featured sticker sets."""
+    if not sets:
+        return 0
+    removed = 0
+    i = sets.size() - 1
+    while i >= 0:
+        if _is_premium_sticker_pack(sets.get(i)):
+            sets.remove(i)
+            removed += 1
+        i -= 1
+    return removed
+
+
+def _count_packs(packs):
+    if not packs:
+        return 0, 0
+    total = 0
+    for i in range(packs.size()):
+        p = packs.get(i)
+        if hasattr(p, "documents"):
+            total += p.documents.size()
+    return packs.size(), total
+
+
+# ============================================================
+# Search-specific filtering
+# ============================================================
+
+
+def _filter_search_results(results):
+    """Filter non-stock emoji and premium items from search results."""
+    if not results:
+        return 0
+    removed = 0
+    i = results.size() - 1
+    while i >= 0:
+        r = results.get(i)
+        emoji = getattr(r, "emoji", None)
+        if emoji is None:
+            try:
+                emoji = str(r)
+            except Exception:
+                i -= 1
+                continue
+        if _is_non_stock(emoji):
+            results.remove(i)
+            removed += 1
+            i -= 1
+            continue
+        try:
+            if getattr(r, "premium", False):
+                results.remove(i)
+                removed += 1
+        except Exception:
+            pass
+        i -= 1
+    return removed
+
+
+def _reindex_search_sets(sets):
+    """Rebuild search sets keeping header-group structure, dropping non-stock + premium."""
+    if not sets or not ArrayList:
         return
     changed = False
-    for idx in range(search_sets.size()):
-        item = search_sets.get(idx)
-        if bool(item) and getattr(item, "title", None) is not None:
+    for i in range(sets.size()):
+        item = sets.get(i)
+        if item and getattr(item, "title", None) is not None:
             continue
-        if not _is_keep_document(item):
+        if _is_premium(item) or _is_non_stock(item):
             changed = True
     if not changed:
         return
-    rebuild = ArrayList()
-    current_docs = ArrayList()
-    for idx in range(search_sets.size()):
-        item = search_sets.get(idx)
-        if bool(item) and getattr(item, "title", None) is not None:
-            if current_docs.size() > 0:
-                rebuild.add(item)
-                for di in range(current_docs.size()):
-                    rebuild.add(current_docs.get(di))
-            current_docs = ArrayList()
+    rebuilt = ArrayList()
+    buffer = ArrayList()
+    for i in range(sets.size()):
+        item = sets.get(i)
+        if item and getattr(item, "title", None) is not None:
+            if buffer.size() > 0:
+                rebuilt.add(item)
+                for d in range(buffer.size()):
+                    rebuilt.add(buffer.get(d))
+            buffer = ArrayList()
             continue
-        if _is_keep_document(item):
-            current_docs.add(item)
-    if current_docs.size() > 0:
-        for di in range(current_docs.size()):
-            rebuild.add(current_docs.get(di))
-    search_sets.clear()
-    search_sets.addAll(rebuild)
+        if not _is_premium(item) and not _is_non_stock(item):
+            buffer.add(item)
+    for d in range(buffer.size()):
+        rebuilt.add(buffer.get(d))
+    sets.clear()
+    sets.addAll(rebuilt)
 
 
-# ========== Hook classes ==========
+# ============================================================
+# TL response handlers
+# ============================================================
+
+HANDLERS = {
+    "TL_messages_getEmojiStickers": lambda r: _filter_list(r.sets, sub="documents", drop_empty=True, drop_non_stock=True),
+    "TL_messages_getFeaturedEmojiStickers": lambda r: _filter_featured_sets(r.sets),
+    "TL_messages_getFeaturedStickers": lambda r: _filter_featured_sticker_sets(r.sets),
+    "TL_messages_searchEmojiStickerSets": lambda r: _filter_list(r.sets, drop_non_stock=True),
+    "TL_messages_searchStickers": lambda r: _filter_list(r.documents),
+    "TL_messages_getRecentReactions": lambda r: _filter_reactions_list(r.reactions),
+    "TL_messages_getRecentStickers": lambda r: _filter_mixed_list(r.stickers),
+    "TL_messages_getStickers": lambda r: _filter_list(getattr(r, "stickers", None)),
+    "TL_messages_getStickerSet": lambda r: _filter_list(getattr(r, "documents", None)),
+}
 
 
-class EmojiSearchAdapterSearchResultsHook(BaseHook):
-    def __init__(self, plugin):
-        super().__init__(plugin, Keys.hide_premium_emoji)
-
-    def before_hooked_method(self, param):
-        if not self.is_enabled():
-            return
-        if not param.args or len(param.args) < 3:
-            return
-        emoji_view = get_private_field(param.thisObject, "this$0")
-        current_account = get_private_field(emoji_view, "currentAccount") if emoji_view else None
-        before_n = param.args[1].size() if param.args[1] else 0
-        before_s = param.args[2].size() if param.args[2] else 0
-        _filter_search_results(param.args[1], current_account)
-        _filter_search_sets_in_place(param.args[2])
-        after_n = param.args[1].size() if param.args[1] else 0
-        after_s = param.args[2].size() if param.args[2] else 0
-        if before_n != after_n or before_s != after_s:
-            _log(f"search filtered: results {before_n}->{after_n}, sets {before_s}->{after_s}")
+def filter_response(request_name, response):
+    handler = HANDLERS.get(request_name)
+    if handler is None:
+        return
+    try:
+        n = handler(response)
+        if n:
+            _log(f"TL {request_name}: removed {n}")
+    except Exception as e:
+        _log(f"TL {request_name} error: {e}")
 
 
-class SuggestEmojiViewSearchKeywordsResultsHook(BaseHook):
-    def __init__(self, plugin):
-        super().__init__(plugin, Keys.hide_premium_emoji)
-
-    def before_hooked_method(self, param):
-        if not self.is_enabled():
-            return
-        if not param.args or len(param.args) < 5:
-            return
-        target = param.args[4]
-        before = target.size() if target else 0
-        _filter_keyword_results_in_place(target, get_private_field(param.thisObject, "currentAccount"))
-        after = target.size() if target else 0
-        if before != after:
-            _log(f"keywords filtered: {before}->{after}")
+# ============================================================
+# UI hooks — recent emoji
+# ============================================================
 
 
-class SuggestEmojiViewSearchAnimatedResultsHook(BaseHook):
-    def __init__(self, plugin):
-        super().__init__(plugin, Keys.hide_premium_emoji)
-
-    def before_hooked_method(self, param):
-        if not self.is_enabled():
-            return
-        if not param.args or len(param.args) < 3:
-            return
-        target = param.args[2]
-        before = target.size() if target else 0
-        _filter_keyword_results_in_place(target, get_private_field(param.thisObject, "currentAccount"))
-        after = target.size() if target else 0
-        if before != after:
-            _log(f"animated keywords filtered: {before}->{after}")
-
-
-class EmojiAddRecentEmojiHook(BaseHook):
-    def __init__(self, plugin):
-        super().__init__(plugin, Keys.hide_premium_emoji)
+class BlockNonStockHook(BaseHook):
+    """Prevent custom emoji from being added to recents."""
 
     def before_hooked_method(self, param):
         if not self.is_enabled():
             return
         if not param.args:
             return
-        emoji_source = param.args[0]
-        if not _is_premium_animated_emoji(emoji_source, None):
-            return
-        _log(f"blocked premium addRecentEmoji: {emoji_source}")
-        param.setResult(None)
+        source = param.args[0]
+        if _is_non_stock(source):
+            param.setResult(None)
 
 
-class EmojiViewGetRecentEmojiHook(BaseHook):
-    def __init__(self, plugin):
-        super().__init__(plugin, Keys.hide_premium_emoji)
+class FilterRecentEmojiHook(BaseHook):
+    """Remove custom emoji from recent emoji list."""
 
     def after_hooked_method(self, param):
         if not self.is_enabled():
             return
-        recent_emoji = param.getResult()
-        if not recent_emoji:
+        recent = param.getResult()
+        if not recent:
             return
-        current_account = get_private_field(param.thisObject, "currentAccount")
-        before = recent_emoji.size()
-        _filter_recent_emoji(recent_emoji, current_account)
-        after = recent_emoji.size()
-        if before != after:
-            _log(f"recent emoji filtered: {before}->{after}")
+        before = recent.size()
+        i = recent.size() - 1
+        while i >= 0:
+            if _is_non_stock(recent.get(i)):
+                recent.remove(i)
+            i -= 1
+        if recent.size() != before:
+            _log(f"recent emoji filtered: {before}->{recent.size()}")
 
 
-# ========== Pack filtering Java hooks ==========
+# ============================================================
+# UI hooks — search
+# ============================================================
 
 
-def _count_packs(packs) -> tuple[int, int]:
-    if not packs:
-        return 0, 0
-    total_docs = 0
-    for i in range(packs.size()):
-        pack = packs.get(i)
-        if hasattr(pack, "documents"):
-            total_docs += pack.documents.size()
-    return packs.size(), total_docs
-
-
-class MediaDataControllerGetStickerSetsHook(BaseHook):
-    def __init__(self, plugin):
-        super().__init__(plugin, Keys.hide_premium_emoji)
-
-    def after_hooked_method(self, param):
+class FilterSearchResultsHook(BaseHook):
+    def before_hooked_method(self, param):
         if not self.is_enabled():
             return
-        sticker_sets = param.getResult()
-        if not sticker_sets:
+        if not param.args or len(param.args) < 3:
             return
-        packs_before, docs_before = _count_packs(sticker_sets)
-        _filter_pack_list_in_place(sticker_sets)
-        packs_after, docs_after = _count_packs(sticker_sets)
-        if packs_before != packs_after or docs_before != docs_after:
-            _log(f"packs filtered: {packs_before}p/{docs_before}d -> {packs_after}p/{docs_after}d")
+        n1 = param.args[1].size() if param.args[1] else 0
+        s1 = param.args[2].size() if param.args[2] else 0
+        _filter_search_results(param.args[1])
+        _reindex_search_sets(param.args[2])
+        n2 = param.args[1].size() if param.args[1] else 0
+        s2 = param.args[2].size() if param.args[2] else 0
+        if n1 != n2 or s1 != s2:
+            _log(f"search filtered: results {n1}->{n2}, sets {s1}->{s2}")
 
 
-class MediaDataControllerGetFeaturedEmojiSetsHook(BaseHook):
-    def __init__(self, plugin):
+class FilterSuggestResultsHook(BaseHook):
+    def __init__(self, plugin, arg_index, label):
         super().__init__(plugin, Keys.hide_premium_emoji)
-
-    def after_hooked_method(self, param):
-        if not self.is_enabled():
-            return
-        featured_sets = param.getResult()
-        if not featured_sets:
-            return
-        before = featured_sets.size()
-        filtered = ArrayList() if ArrayList else featured_sets
-        changed = False
-        for index in range(featured_sets.size()):
-            pack = featured_sets.get(index)
-            if _is_premium_featured_pack(pack):
-                changed = True
-                continue
-            filtered.add(pack)
-        after = filtered.size()
-        if changed:
-            param.setResult(filtered)
-            _log(f"featured packs filtered: {before}->{after}")
-
-
-class EmojiGridAdapterProcessEmojiHook(BaseHook):
-    def __init__(self, plugin):
-        super().__init__(plugin, Keys.hide_premium_emoji)
+        self._arg_index = arg_index
+        self._label = label
 
     def before_hooked_method(self, param):
         if not self.is_enabled():
             return
-        frozen_emoji_packs = get_private_field(param.thisObject, "frozenEmojiPacks")
-        if not frozen_emoji_packs:
+        if not param.args or len(param.args) <= self._arg_index:
             return
-        packs_before, docs_before = _count_packs(frozen_emoji_packs)
-        _filter_pack_list_in_place(frozen_emoji_packs)
-        packs_after, docs_after = _count_packs(frozen_emoji_packs)
-        if packs_before != packs_after or docs_before != docs_after:
-            _log(f"frozen packs filtered: {packs_before}p/{docs_before}d -> {packs_after}p/{docs_after}d")
+        target = param.args[self._arg_index]
+        if not target:
+            return
+        before = target.size()
+        removed = 0
+        i = target.size() - 1
+        while i >= 0:
+            item = target.get(i)
+            emoji = getattr(item, "emoji", None)
+            if emoji is None:
+                try:
+                    emoji = str(item)
+                except Exception:
+                    i -= 1
+                    continue
+            if _is_non_stock(emoji):
+                target.remove(i)
+                removed += 1
+            i -= 1
+        if removed:
+            _log(f"suggest {self._label} filtered: {before}->{target.size()}")
 
 
-class MediaDataControllerGetRecentReactionsHook(BaseHook):
-    def __init__(self, plugin):
+# ============================================================
+# UI hooks — pack lists
+# ============================================================
+
+
+class FilterStickerSetsHook(BaseHook):
+    def after_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        sets = param.getResult()
+        if not sets:
+            return
+        before = _count_packs(sets)
+        _filter_list(sets, sub="documents", drop_empty=True, drop_non_stock=True)
+        after = _count_packs(sets)
+        if before != after:
+            _log(f"sticker sets filtered: {before[0]}p/{before[1]}d -> {after[0]}p/{after[1]}d")
+
+
+class FilterFeaturedSetsHook(BaseHook):
+    def after_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        sets = param.getResult()
+        if not sets:
+            return
+        before = sets.size()
+        result = ArrayList() if ArrayList else sets
+        changed = False
+        for idx in range(sets.size()):
+            pack = sets.get(idx)
+            if _is_featured_premium(pack) or _is_featured_non_stock(pack):
+                changed = True
+                continue
+            result.add(pack)
+        if changed:
+            param.setResult(result)
+            _log(f"featured sets filtered: {before}->{result.size()}")
+
+
+class FilterFeaturedStickerSetsHook(BaseHook):
+    def after_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        sets = param.getResult()
+        if not sets:
+            return
+        before = sets.size()
+        n = _filter_featured_sticker_sets(sets)
+        if n:
+            _log(f"featured sticker sets filtered: {before}->{sets.size()}")
+
+
+class FilterFrozenPacksHook(BaseHook):
+    def before_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        packs = get_private_field(param.thisObject, "frozenEmojiPacks")
+        if not packs:
+            return
+        before = _count_packs(packs)
+        _filter_list(packs, sub="documents", drop_empty=True, drop_non_stock=True)
+        after = _count_packs(packs)
+        if before != after:
+            _log(f"frozen packs filtered: {before[0]}p/{before[1]}d -> {after[0]}p/{after[1]}d")
+
+
+# ============================================================
+# UI hooks — recent stickers
+# ============================================================
+
+
+class FilterRecentStickersHook(BaseHook):
+    def after_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        stickers = param.getResult()
+        if not stickers:
+            return
+        before = stickers.size()
+        n = _filter_mixed_list(stickers)
+        if n:
+            _log(f"recent stickers filtered: {before}->{stickers.size()} ({n} premium/custom)")
+
+
+# ============================================================
+# UI hooks — reactions
+# ============================================================
+
+
+class FilterReactionsListHook(BaseHook):
+    def __init__(self, plugin, label):
         super().__init__(plugin, Keys.hide_premium_emoji)
+        self._label = label
 
     def after_hooked_method(self, param):
         if not self.is_enabled():
@@ -506,96 +545,85 @@ class MediaDataControllerGetRecentReactionsHook(BaseHook):
         reactions = param.getResult()
         if not reactions:
             return
-        account = _resolve_current_account(None)
-        if account is None or not AnimatedEmojiDrawable:
-            return
         before = reactions.size()
+        n = _filter_reactions_list(reactions)
+        if n:
+            _log(f"reactions ({self._label}) filtered: {before}->{reactions.size()}")
+
+
+class FilterVisibleReactionsHook(BaseHook):
+    def before_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        if not param.args or len(param.args) < 1:
+            return
+        visible = param.args[0]
+        if not visible or not AnimatedEmojiDrawable:
+            return
+        account = _current_account()
+        if not account:
+            return
+        before = visible.size()
         removed = 0
-        idx = reactions.size() - 1
-        while idx >= 0:
-            reaction = reactions.get(idx)
-            document_id = getattr(reaction, "document_id", None)
-            if document_id is not None:
+        i = visible.size() - 1
+        while i >= 0:
+            item = visible.get(i)
+            doc_id = getattr(item, "documentId", 0)
+            if doc_id:
                 try:
-                    document = AnimatedEmojiDrawable.findDocument(account, document_id)
-                    if document and not _is_keep_document(document):
-                        reactions.remove(idx)
+                    doc = AnimatedEmojiDrawable.findDocument(account, doc_id)
+                    if doc and _is_premium(doc):
+                        visible.remove(i)
                         removed += 1
                 except Exception:
                     pass
-            idx -= 1
+            i -= 1
         if removed:
-            _log(f"reactions recent filtered: {before}->{reactions.size()} ({removed} premium)")
+            _log(f"reactions panel filtered: {before}->{visible.size()} ({removed} premium)")
 
 
-def _scrub_cached_data():
-    try:
-        account = _resolve_current_account(None)
-        if account is None or not MediaDataController:
-            return
-        controller = MediaDataController.getInstance(account)
-    except Exception:
-        return
-
-    for pack_type in range(8):
-        try:
-            controller.getStickerSets(pack_type)
-        except Exception:
-            pass
-
-    try:
-        controller.getFeaturedEmojiSets()
-    except Exception:
-        pass
-
-    try:
-        controller.getRecentReactions()
-    except Exception:
-        pass
-
-    _log("scrub: done")
+# ============================================================
+# Registration
+# ============================================================
 
 
-def register_premium_emoji(plugin) -> None:
-    global _plugin
-    _plugin = plugin
+def register_premium_emoji(plugin):
+    _init(plugin)
+    classes = []
 
-    found = []
     if Emoji:
-        plugin.hook_all_methods(Emoji, "addRecentEmoji", EmojiAddRecentEmojiHook(plugin))
-        found.append("Emoji")
+        plugin.hook_all_methods(Emoji, "addRecentEmoji", BlockNonStockHook(plugin, Keys.hide_premium_emoji))
+        classes.append("Emoji")
 
     if EmojiView:
-        plugin.hook_all_methods(EmojiView, "getRecentEmoji", EmojiViewGetRecentEmojiHook(plugin))
-        found.append("EmojiView")
+        plugin.hook_all_methods(EmojiView, "getRecentEmoji", FilterRecentEmojiHook(plugin, Keys.hide_premium_emoji))
+        classes.append("EmojiView")
 
     if EmojiSearchAdapter:
-        plugin.hook_all_methods(EmojiSearchAdapter, "lambda$search$5", EmojiSearchAdapterSearchResultsHook(plugin))
-        found.append("EmojiSearchAdapter")
+        plugin.hook_all_methods(EmojiSearchAdapter, "lambda$search$5", FilterSearchResultsHook(plugin, Keys.hide_premium_emoji))
+        classes.append("EmojiSearchAdapter")
 
     if SuggestEmojiView:
-        plugin.hook_all_methods(
-            SuggestEmojiView,
-            "lambda$searchKeywords$3",
-            SuggestEmojiViewSearchKeywordsResultsHook(plugin),
-        )
-        plugin.hook_all_methods(
-            SuggestEmojiView,
-            "lambda$searchAnimated$5",
-            SuggestEmojiViewSearchAnimatedResultsHook(plugin),
-        )
-        found.append("SuggestEmojiView")
+        plugin.hook_all_methods(SuggestEmojiView, "lambda$searchKeywords$3", FilterSuggestResultsHook(plugin, 4, "keywords"))
+        plugin.hook_all_methods(SuggestEmojiView, "lambda$searchAnimated$5", FilterSuggestResultsHook(plugin, 2, "animated"))
+        classes.append("SuggestEmojiView")
 
     if MediaDataController:
-        plugin.hook_all_methods(MediaDataController, "getStickerSets", MediaDataControllerGetStickerSetsHook(plugin))
-        plugin.hook_all_methods(MediaDataController, "getFeaturedEmojiSets", MediaDataControllerGetFeaturedEmojiSetsHook(plugin))
-        plugin.hook_all_methods(MediaDataController, "getRecentReactions", MediaDataControllerGetRecentReactionsHook(plugin))
-        found.append("MediaDataController")
+        plugin.hook_all_methods(MediaDataController, "getStickerSets", FilterStickerSetsHook(plugin, Keys.hide_premium_emoji))
+        plugin.hook_all_methods(MediaDataController, "getFeaturedEmojiSets", FilterFeaturedSetsHook(plugin, Keys.hide_premium_emoji))
+        plugin.hook_all_methods(MediaDataController, "getFeaturedStickerSets", FilterFeaturedStickerSetsHook(plugin, Keys.hide_premium_emoji))
+        plugin.hook_all_methods(MediaDataController, "getRecentStickers", FilterRecentStickersHook(plugin, Keys.hide_premium_emoji))
+        plugin.hook_all_methods(MediaDataController, "getRecentReactions", FilterReactionsListHook(plugin, "recent"))
+        plugin.hook_all_methods(MediaDataController, "getTopReactions", FilterReactionsListHook(plugin, "top"))
+        plugin.hook_all_methods(MediaDataController, "getSavedReactions", FilterReactionsListHook(plugin, "saved"))
+        classes.append("MediaDataController")
 
     if EmojiGridAdapter:
-        plugin.hook_all_methods(EmojiGridAdapter, "processEmoji", EmojiGridAdapterProcessEmojiHook(plugin))
-        found.append("EmojiGridAdapter")
+        plugin.hook_all_methods(EmojiGridAdapter, "processEmoji", FilterFrozenPacksHook(plugin, Keys.hide_premium_emoji))
+        classes.append("EmojiGridAdapter")
 
-    _log(f"premium_emoji hooks registered: {', '.join(found)}")
+    if ReactionsContainerLayout:
+        plugin.hook_all_methods(ReactionsContainerLayout, "setVisibleReactionsList", FilterVisibleReactionsHook(plugin, Keys.hide_premium_emoji))
+        classes.append("ReactionsContainerLayout")
 
-    _scrub_cached_data()
+    _log(f"premium_emoji hooks: {', '.join(classes)}")

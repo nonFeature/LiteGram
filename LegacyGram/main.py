@@ -25,9 +25,13 @@ class LegacyGramPlugin(BasePlugin):
         tl_hooks = [
             "TL_messages_getEmojiStickers",
             "TL_messages_getFeaturedEmojiStickers",
+            "TL_messages_getFeaturedStickers",
             "TL_messages_searchEmojiStickerSets",
             "TL_messages_searchStickers",
             "TL_messages_getRecentReactions",
+            "TL_messages_getRecentStickers",
+            "TL_messages_getStickers",
+            "TL_messages_getStickerSet",
         ]
         for name in tl_hooks:
             try:
