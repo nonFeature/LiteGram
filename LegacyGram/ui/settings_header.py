@@ -5,7 +5,6 @@ __version__ = "1.3.0"
 def create_header(context):
     try:
         from android.util import TypedValue  # ty: ignore
-        from android.view import Gravity  # ty: ignore
         from android.widget import FrameLayout, TextView  # ty: ignore
         from org.telegram.messenger import AndroidUtilities  # ty: ignore
         from org.telegram.ui.ActionBar import Theme  # ty: ignore
@@ -25,7 +24,7 @@ def create_header(context):
             particles.drawable.randLifeTime = 3000
             particles.drawable.useRotate = False
             particles.drawable.updateColors()
-            container.addView(particles, LayoutHelper.createFrame(-1, 220, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 0, 0, 0))
+            container.addView(particles, LayoutHelper.createFrame(-1, 220, 49, 0, 0, 0, 0))
             AndroidUtilities.runOnUIThread(lambda: particles.flingParticles(360), 200)
         except Exception:
             pass
@@ -36,8 +35,8 @@ def create_header(context):
         title.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 22)
         title.setText("LegacyGram")
         title.setSingleLine(True)
-        title.setGravity(Gravity.CENTER)
-        container.addView(title, LayoutHelper.createFrame(-2, -2, Gravity.CENTER | Gravity.TOP, 50, 64, 50, 27))
+        title.setGravity(17)
+        container.addView(title, LayoutHelper.createFrame(-2, -2, 17 | 48, 50, 64, 50, 27))
 
         return container
     except Exception:

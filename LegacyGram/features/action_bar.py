@@ -1,3 +1,4 @@
+from android.view import View  # ty: ignore
 from hook_utils import find_class, get_private_field
 
 from LegacyGram.data.constants import Keys
@@ -53,7 +54,7 @@ class ActionBarMenuItemAddSubItemHook(BaseHook):
         )
 
         if should_hide:
-            result.setVisibility(8)
+            result.setVisibility(View.GONE)
 
 
 class ActionBarMenuItemLazilyAddSubItemHook(BaseHook):
@@ -70,7 +71,7 @@ class ActionBarMenuItemLazilyAddSubItemHook(BaseHook):
         should_hide = (hide_add_shortcut and item_id == ADD_SHORTCUT_CHAT) or (hide_boost_group and item_id == BOOST_GROUP)
 
         if should_hide:
-            result.setVisibility(8)
+            result.setVisibility(View.GONE)
 
 
 # calls showSubItem(id); if show is true
