@@ -1,20 +1,20 @@
-from android.util import TypedValue
-from android.view import Gravity
-from android.widget import FrameLayout, TextView
-from org.telegram.messenger import AndroidUtilities
-from org.telegram.ui.ActionBar import Theme
-from org.telegram.ui.Components import LayoutHelper
-
 __id__ = "legacygram"
 __version__ = "1.3.0"
 
 
 def create_header(context):
     try:
+        from android.util import TypedValue  # ty: ignore
+        from android.view import Gravity  # ty: ignore
+        from android.widget import FrameLayout, TextView  # ty: ignore
+        from org.telegram.messenger import AndroidUtilities  # ty: ignore
+        from org.telegram.ui.ActionBar import Theme  # ty: ignore
+        from org.telegram.ui.Components import LayoutHelper  # ty: ignore
+
         container = FrameLayout(context)
 
         try:
-            from org.telegram.ui.Components.Premium import StarParticlesView
+            from org.telegram.ui.Components.Premium import StarParticlesView  # ty: ignore
 
             particles = StarParticlesView(context)
             particles.setClipWithGradient()
@@ -26,9 +26,7 @@ def create_header(context):
             particles.drawable.useRotate = False
             particles.drawable.updateColors()
             container.addView(particles, LayoutHelper.createFrame(-1, 220, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 0, 0, 0))
-            from org.telegram.messenger import AndroidUtilities as AU
-
-            AU.runOnUIThread(lambda: particles.flingParticles(360), 200)
+            AndroidUtilities.runOnUIThread(lambda: particles.flingParticles(360), 200)
         except Exception:
             pass
 

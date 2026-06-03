@@ -21,7 +21,7 @@ class ReactionsLayoutInBubbleSetMessageHook(BaseHook):
             reaction_count = results.get(i)  # class ReactionCount
             reaction = reaction_count.reaction  # class Reaction
             # org.telegram.tgnet.TLRPC$TL_reactionEmoji, reactionCustomEmoji, reactionEmpty or reactionPaid
-            if TL_reactionPaid and isinstance(reaction, TL_reactionPaid):  # ty: ignore
+            if TL_reactionPaid and isinstance(reaction, TL_reactionPaid):
                 to_remove = reaction_count
                 break
 

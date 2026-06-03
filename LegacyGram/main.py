@@ -154,7 +154,7 @@ class LegacyGramPlugin(BasePlugin):
         try:
             from base_plugin import MethodHook
             from hook_utils import find_class, get_private_field
-            from org.telegram.ui.Components import UItem
+            from org.telegram.ui.Components import UItem  # ty: ignore
 
             class LegacyGramSettingsHeaderHook(MethodHook):
                 def after_hooked_method(inner_self, param):
