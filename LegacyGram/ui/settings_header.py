@@ -39,14 +39,7 @@ def create_header(context):
         title.setText("LegacyGram")
         title.setSingleLine(True)
         title.setGravity(Gravity.CENTER)
-        container.addView(title, LayoutHelper.createFrame(-2, -2, Gravity.CENTER | Gravity.TOP, 50, 64, 50, 0))
-
-        subtitle = TextView(context)
-        subtitle.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText))
-        subtitle.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14)
-        subtitle.setText("v" + __version__)
-        subtitle.setGravity(Gravity.CENTER)
-        container.addView(subtitle, LayoutHelper.createFrame(-2, -2, Gravity.CENTER | Gravity.TOP, 60, 100, 60, 27))
+        container.addView(title, LayoutHelper.createFrame(-2, -2, Gravity.CENTER | Gravity.TOP, 50, 64, 50, 27))
 
         return container
     except Exception:
