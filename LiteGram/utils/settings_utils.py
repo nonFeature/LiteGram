@@ -5,11 +5,11 @@ from org.telegram.messenger import R as R_tg  # ty: ignore
 from ui.bulletin import BulletinHelper
 from ui.settings import Switch as BaseSwitch
 
-from LegacyGram.data.constants import Keys
-from LegacyGram.i18n.i18n import t
-from LegacyGram.main import LegacyGramPlugin
-from LegacyGram.utils.extera_utils import open_extera_setting
-from LegacyGram.utils.utils import open_url, restart_app
+from LiteGram.data.constants import Keys
+from LiteGram.i18n.i18n import t
+from LiteGram.main import LiteGramPlugin
+from LiteGram.utils.extera_utils import open_extera_setting
+from LiteGram.utils.utils import open_url, restart_app
 
 
 def Switch(
@@ -30,7 +30,7 @@ def Switch(
 
 
 def toggle_settings_options(_: View | None = None) -> None:
-    plugin_instance = LegacyGramPlugin.get_instance()
+    plugin_instance = LiteGramPlugin.get_instance()
     row_keys = [
         Keys.hide_premium_row,
         Keys.hide_stars_row,

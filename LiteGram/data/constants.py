@@ -1,4 +1,4 @@
-GITHUB_URL = "https://github.com/nonFeature/LegacyGram"
+GITHUB_URL = "https://github.com/nonFeature/LiteGram"
 
 
 # Even though camelCase isn't like python

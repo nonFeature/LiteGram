@@ -1,8 +1,8 @@
 from hook_utils import find_class
 from ui.bulletin import BulletinHelper
 
-from LegacyGram.data.constants import Keys
-from LegacyGram.utils.utils import get_client_version, parse_version
+from LiteGram.data.constants import Keys
+from LiteGram.utils.utils import get_client_version, parse_version
 
 
 # thx jadx

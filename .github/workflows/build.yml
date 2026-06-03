@@ -1,4 +1,4 @@
-name: Build LegacyGram Plugin
+name: Build LiteGram Plugin
 
 on:
   push:
@@ -32,6 +32,6 @@ jobs:
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v6
         with:
-          name: LegacyGram.Plugin
-          path: dist/LegacyGram.plugin
+          name: LiteGram.Plugin
+          path: dist/LiteGram.plugin
 

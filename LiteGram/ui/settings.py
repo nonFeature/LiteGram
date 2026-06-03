@@ -2,10 +2,10 @@ from typing import Any
 
 from ui.settings import Divider, Header, Text
 
-from LegacyGram.data.constants import GITHUB_URL, Keys
-from LegacyGram.i18n.i18n import t
-from LegacyGram.utils.extera_utils import resolve_icon
-from LegacyGram.utils.settings_utils import (
+from LiteGram.data.constants import GITHUB_URL, Keys
+from LiteGram.i18n.i18n import t
+from LiteGram.utils.extera_utils import resolve_icon
+from LiteGram.utils.settings_utils import (
     Switch,
     open_extera_tab,
     open_url_view,

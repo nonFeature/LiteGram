@@ -1,6 +1,6 @@
 from hook_utils import find_class
 
-from LegacyGram.i18n.locales import STRINGS
+from LiteGram.i18n.locales import STRINGS
 
 _Locale = None
 

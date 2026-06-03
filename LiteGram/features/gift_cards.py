@@ -1,8 +1,8 @@
 from hook_utils import find_class
 from java import jint
 
-from LegacyGram.data.constants import Keys
-from LegacyGram.utils.xposed_utils import BaseHook
+from LiteGram.data.constants import Keys
+from LiteGram.utils.xposed_utils import BaseHook
 
 ALL_HIDDEN_TYPES = (18, 25, 30, 31, 33, 34)
 ALL_HIDDEN_ACTION_CLASSES = (

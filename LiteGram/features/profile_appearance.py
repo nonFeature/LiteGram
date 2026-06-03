@@ -2,8 +2,8 @@ from de.robv.android.xposed import XC_MethodHook as XC_MethodHook
 from hook_utils import find_class, get_private_field
 from java import jint
 
-from LegacyGram.data.constants import Keys
-from LegacyGram.utils.xposed_utils import BaseHook
+from LiteGram.data.constants import Keys
+from LiteGram.utils.xposed_utils import BaseHook
 
 
 class StarGiftPatternsDrawProfileAnimatedPatternHook(BaseHook):

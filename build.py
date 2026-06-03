@@ -15,8 +15,8 @@ pd - priority dir
 
 # CONFIGURATION
 DIST_DIR = Path("dist")
-OUTPUT_FILENAME = "LegacyGram.plugin"
-SRC_DIR = Path("LegacyGram")
+OUTPUT_FILENAME = "LiteGram.plugin"
+SRC_DIR = Path("LiteGram")
 HEADER_FILE = SRC_DIR / "header.py"
 
 PRIORITY_FILES = ["header.py"]
@@ -24,10 +24,10 @@ PRIORITY_DIRS = ["data", "i18n", "utils"]
 LAST_FILES = ["ui/settings.py", "main.py"]
 
 COPYRIGHT_STRING = (
-    "# Open Source LegacyGram plugin for https://exteragram.app\n"
+    "# Open Source LiteGram plugin for https://exteragram.app\n"
     "# Plugin created by t.me/wepinek\n"
     "# Licensed under the MIT License\n"
-    "# Repository: https://github.com/repinek/LegacyGram\n"
+    "# Repository: https://github.com/nonFeature/LegacyGram\n"
 )
 
 captured_imports = defaultdict(set)
@@ -35,7 +35,7 @@ captured_from_imports = defaultdict(set)
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="LegacyGram Build Script")
+    parser = argparse.ArgumentParser(description="LiteGram Build Script")
     parser.add_argument("--no-bump", action="store_true", help="Compatibility flag; build no longer increments the version")
     return parser.parse_args()
 
@@ -212,7 +212,7 @@ def process_file_content(file_path: Path) -> list[str]:
 
         # Skip import lines (but parse them first)
         is_import = stripped.startswith(("import ", "from "))
-        is_internal = stripped.startswith(("import LegacyGram", "from LegacyGram"))
+        is_internal = stripped.startswith(("import LiteGram", "from LiteGram"))
 
         if is_import:
             import_lines = [line]

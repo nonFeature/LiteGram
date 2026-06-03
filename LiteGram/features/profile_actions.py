@@ -1,7 +1,7 @@
 from hook_utils import find_class
 
-from LegacyGram.data.constants import Keys
-from LegacyGram.utils.xposed_utils import BaseHook
+from LiteGram.data.constants import Keys
+from LiteGram.utils.xposed_utils import BaseHook
 
 KEY_GIFT = 3
 KEY_VOICE_CHAT = 10

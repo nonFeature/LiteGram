@@ -1,7 +1,7 @@
 from hook_utils import find_class, set_private_field
 
-from LegacyGram.data.constants import Keys
-from LegacyGram.utils.xposed_utils import BaseHook
+from LiteGram.data.constants import Keys
+from LiteGram.utils.xposed_utils import BaseHook
 
 TL_reactionPaid = find_class("org.telegram.tgnet.TLRPC$TL_reactionPaid")
 

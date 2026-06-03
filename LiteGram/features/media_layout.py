@@ -3,8 +3,8 @@ from typing import Any
 from hook_utils import find_class, get_private_field, set_private_field
 from java import jint
 
-from LegacyGram.data.constants import Keys
-from LegacyGram.utils.xposed_utils import BaseHook
+from LiteGram.data.constants import Keys
+from LiteGram.utils.xposed_utils import BaseHook
 
 """
 EXPLANATION

@@ -3,21 +3,21 @@ from typing import Any, Optional
 from base_plugin import BasePlugin, HookResult
 from ui.bulletin import BulletinHelper
 
-from LegacyGram.data.constants import Keys
-from LegacyGram.features.action_bar import register_action_bar
-from LegacyGram.features.gift_button import register_gift_button
-from LegacyGram.features.gift_cards import register_gift_cards
-from LegacyGram.features.gift_dialogs import register_gift_dialogs
-from LegacyGram.features.greeting_button import register_greeting_button
-from LegacyGram.features.media_layout import register_media_layout
-from LegacyGram.features.premium_badge import register_premium_badge
-from LegacyGram.features.premium_emoji import filter_response, register_premium_emoji
-from LegacyGram.features.profile_actions import register_profile_actions
-from LegacyGram.features.profile_appearance import register_profile_appearance
-from LegacyGram.features.settings_menu import register_settings_menu
-from LegacyGram.features.star_rating import register_star_rating
-from LegacyGram.features.star_reaction import register_star_reaction
-from LegacyGram.ui.settings import get_main_settings_list
+from LiteGram.data.constants import Keys
+from LiteGram.features.action_bar import register_action_bar
+from LiteGram.features.gift_button import register_gift_button
+from LiteGram.features.gift_cards import register_gift_cards
+from LiteGram.features.gift_dialogs import register_gift_dialogs
+from LiteGram.features.greeting_button import register_greeting_button
+from LiteGram.features.media_layout import register_media_layout
+from LiteGram.features.premium_badge import register_premium_badge
+from LiteGram.features.premium_emoji import filter_response, register_premium_emoji
+from LiteGram.features.profile_actions import register_profile_actions
+from LiteGram.features.profile_appearance import register_profile_appearance
+from LiteGram.features.settings_menu import register_settings_menu
+from LiteGram.features.star_rating import register_star_rating
+from LiteGram.features.star_reaction import register_star_reaction
+from LiteGram.ui.settings import get_main_settings_list
 
 _PROFILE_GIFT_REQUEST_HOOKS = {
     "TL_users_getFullUser",
@@ -32,11 +32,11 @@ _PROFILE_GIFT_REQUEST_HOOKS = {
 _GIFT_SUBSTRING_HOOKS = {"StarGift", "Gifts", "StarGiftUnique"}
 
 
-class LegacyGramPlugin(BasePlugin):
-    _instance: Optional["LegacyGramPlugin"] = None
+class LiteGramPlugin(BasePlugin):
+    _instance: Optional["LiteGramPlugin"] = None
 
     def on_plugin_load(self) -> None:
-        LegacyGramPlugin._instance = self
+        LiteGramPlugin._instance = self
         tl_hooks = [
             "TL_messages_getEmojiStickers",
             "TL_messages_getFeaturedEmojiStickers",
@@ -136,12 +136,12 @@ class LegacyGramPlugin(BasePlugin):
                 val = getattr(obj, key, None)
                 if val is not None and hasattr(val, "__iter__"):
                     for item in val:
-                        LegacyGramPlugin._sanitize_gifts_payload(item, visited, depth + 1)
+                        LiteGramPlugin._sanitize_gifts_payload(item, visited, depth + 1)
             except Exception:
                 pass
         for key in ("user", "chat", "full_user", "full_chat", "peer", "data", "result"):
             try:
-                LegacyGramPlugin._sanitize_gifts_payload(getattr(obj, key, None), visited, depth + 1)
+                LiteGramPlugin._sanitize_gifts_payload(getattr(obj, key, None), visited, depth + 1)
             except Exception:
                 pass
 
@@ -164,8 +164,8 @@ class LegacyGramPlugin(BasePlugin):
         register_star_reaction(self)
 
     @classmethod
-    def get_instance(cls) -> "LegacyGramPlugin":
+    def get_instance(cls) -> "LiteGramPlugin":
         if cls._instance is None:
-            BulletinHelper.show_error("Error while getting LegacyGramPlugin Instance!")
-            raise RuntimeError("Error while getting LegacyGramPlugin Instance!")
+            BulletinHelper.show_error("Error while getting LiteGramPlugin Instance!")
+            raise RuntimeError("Error while getting LiteGramPlugin Instance!")
         return cls._instance

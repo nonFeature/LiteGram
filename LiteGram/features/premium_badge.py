@@ -1,7 +1,7 @@
 from hook_utils import find_class, get_private_field
 
-from LegacyGram.data.constants import Keys
-from LegacyGram.utils.xposed_utils import BaseHook
+from LiteGram.data.constants import Keys
+from LiteGram.utils.xposed_utils import BaseHook
 
 """
 EXPLANATION

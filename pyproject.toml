@@ -1,5 +1,5 @@
 [project]
-name = "LegacyGram"
+name = "litegram"
 version = "1.0.0" # We are not using that
 description = "A highly customizable plugin to remove paid and bloated features from Telegram"
 requires-python = "==3.11.*"
@@ -39,7 +39,7 @@ ignore = ["RUF001"]
 ban-relative-imports = "all"
 
 [tool.ruff.lint.isort]
-known-first-party = ["LegacyGram"]
+known-first-party = ["LiteGram"]
 combine-as-imports = true
 
 [tool.ruff.format]
