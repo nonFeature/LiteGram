@@ -7,7 +7,6 @@ from LegacyGram.utils.xposed_utils import BaseHook
 # Class resolution
 # ============================================================
 
-AnimatedEmojiDrawable = find_class("org.telegram.ui.Components.AnimatedEmojiDrawable")
 Emoji = find_class("org.telegram.messenger.Emoji")
 EmojiView = find_class("org.telegram.ui.Components.EmojiView")
 EmojiGridAdapter = find_class("org.telegram.ui.Components.EmojiView$EmojiGridAdapter")
@@ -108,7 +107,8 @@ def _filter_list(container, *, sub=None, drop_empty=False, drop_non_stock=False)
             docs = getattr(item, sub, None)
             if docs is not None:
                 # Emoji-пак: все документы — custom эмодзи → без проверок удаляем пак
-                if drop_non_stock and getattr(getattr(item, "set", None), "emojis", False):
+                _set = getattr(item, "set", None)
+                if drop_non_stock and _set and getattr(_set, "emojis", False):
                     container.remove(i)
                     removed += 1
                     i -= 1
@@ -126,7 +126,10 @@ def _filter_list(container, *, sub=None, drop_empty=False, drop_non_stock=False)
                     removed += 1
         else:
             obj = container.get(i)
-            if _is_premium(obj) or (drop_non_stock and _is_non_stock(obj)):
+            if drop_non_stock and _is_non_stock(obj):
+                container.remove(i)
+                removed += 1
+            elif _is_premium(obj):
                 container.remove(i)
                 removed += 1
         i -= 1
@@ -263,7 +266,7 @@ def _reindex_search_sets(sets):
         item = sets.get(i)
         if item and getattr(item, "title", None) is not None:
             continue
-        if _is_premium(item) or _is_non_stock(item):
+        if _is_non_stock(item):
             changed = True
     if not changed:
         return
@@ -278,7 +281,7 @@ def _reindex_search_sets(sets):
                     rebuilt.add(buffer.get(d))
             buffer = ArrayList()
             continue
-        if not _is_premium(item) and not _is_non_stock(item):
+        if not _is_non_stock(item):
             buffer.add(item)
     for d in range(buffer.size()):
         rebuilt.add(buffer.get(d))
