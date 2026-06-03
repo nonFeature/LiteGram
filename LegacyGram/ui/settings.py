@@ -34,9 +34,12 @@ def get_settings_options_list() -> list[Any]:
 def _chat_settings() -> list[Any]:
     return [
         Header(text=t("chat_list")),
-        Text(text=t("hide_stories"), link_alias=Keys.hide_stories, on_click=open_extera_tab(Keys.hide_stories), icon="etg_settings"),
+        Text(text=t("hide_stories"), link_alias=Keys.hide_stories, on_click=open_extera_tab(Keys.hide_stories), icon="extera_outline"),
         Text(
-            text=t("hide_action_bar_status"), link_alias=Keys.hide_action_bar_status, on_click=open_extera_tab(Keys.hide_action_bar_status), icon="etg_settings"
+            text=t("hide_action_bar_status"),
+            link_alias=Keys.hide_action_bar_status,
+            on_click=open_extera_tab(Keys.hide_action_bar_status),
+            icon="extera_outline",
         ),
         Switch(text=t("hide_greeting_button"), subtext=t("hide_greeting_button_sub"), key=Keys.hide_greeting_button),
         Header(text=t("action_bar")),
@@ -58,7 +61,7 @@ def _profile_settings() -> list[Any]:
         Switch(text=t("hide_stories_tab"), subtext=t("hide_stories_tab_sub"), key=Keys.hide_stories_tab),
         Switch(text=t("hide_gifts_tab"), key=Keys.hide_gifts_tab),
         Header(text=t("profile_appearance")),
-        Text(text=t("manage_reply_elements"), link_alias=Keys.reply_elements, on_click=open_extera_tab(Keys.reply_elements), icon="etg_settings"),
+        Text(text=t("manage_reply_elements"), link_alias=Keys.reply_elements, on_click=open_extera_tab(Keys.reply_elements), icon="extera_outline"),
         Switch(text=t("hide_profile_background_emoji"), subtext=t("hide_profile_background_emoji_sub"), key=Keys.hide_profile_background_emoji),
         Switch(text=t("hide_profile_pinned_gifts"), key=Keys.hide_profile_pinned_gifts),
         Switch(text=t("hide_profile_colorful_background"), key=Keys.hide_profile_colorful_background),
@@ -83,7 +86,7 @@ def _interface_settings() -> list[Any]:
             text=t("manage_drawer_options"),
             link_alias=Keys.drawer_options,
             on_click=open_extera_tab(Keys.drawer_options),
-            icon="etg_settings",
+            icon="extera_outline",
         ),
     ]
 
@@ -110,7 +113,7 @@ def _about_settings() -> list[Any]:
 
 def get_main_settings_list() -> list[Any]:
     return [
-        Text(text=t("category_chat"), icon="settings_chat", create_sub_fragment=_chat_settings),
+        Text(text=t("category_chat"), icon="msg_discussion", create_sub_fragment=_chat_settings),
         Text(text=t("category_profile"), icon="msg_contacts", create_sub_fragment=_profile_settings),
         Text(text=t("category_interface"), icon="msg_settings", create_sub_fragment=_interface_settings),
         Text(text=t("category_gifts"), icon="msg_gift_premium", create_sub_fragment=_gifts_settings),
