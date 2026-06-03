@@ -79,7 +79,7 @@ class ProfileStoriesCollectionTabsSetVisibilityHook(BaseHook):
     def before_hooked_method(self, param):
         if not self.is_enabled():
             return
-        if param.args[0] is True:  # boolean visibility
+        if param.args[0]:  # boolean visibility
             param.args[0] = False
 
 

@@ -21,7 +21,7 @@ class ReactionsLayoutInBubbleSetMessageHook(BaseHook):
             reaction_count = results.get(i)  # class ReactionCount
             reaction = reaction_count.reaction  # class Reaction
             # org.telegram.tgnet.TLRPC$TL_reactionEmoji, reactionCustomEmoji, reactionEmpty or reactionPaid
-            if isinstance(reaction, TL_reactionPaid):  # ty: ignore
+            if TL_reactionPaid and isinstance(reaction, TL_reactionPaid):  # ty: ignore
                 to_remove = reaction_count
                 break
 
@@ -36,17 +36,11 @@ class ReactionsContainerLayoutSetVisibleReactionsListHook(BaseHook):
 
         visible_reactions_list = param.args[0]  # List<ReactionsLayoutInBubble.VisibleReaction> visibleReactionsList
 
-        index_to_remove = None
-
-        for i in range(visible_reactions_list.size()):
-            reaction = visible_reactions_list.get(i)  # class VisibleReaction
-
-            if reaction.isStar:  # public boolean isStar;
-                index_to_remove = i
-                break
-
-        if index_to_remove is not None:
-            visible_reactions_list.remove(index_to_remove)
+        i = visible_reactions_list.size() - 1
+        while i >= 0:
+            if visible_reactions_list.get(i).isStar:  # public boolean isStar;
+                visible_reactions_list.remove(i)
+            i -= 1
 
 
 class ReactionsContainerLayoutDrawHook(BaseHook):

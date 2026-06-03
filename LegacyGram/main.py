@@ -3,6 +3,7 @@ from typing import Any, Optional
 from base_plugin import BasePlugin, HookResult
 from ui.bulletin import BulletinHelper
 
+from LegacyGram.data.constants import Keys
 from LegacyGram.features.action_bar import register_action_bar
 from LegacyGram.features.gift_button import register_gift_button
 from LegacyGram.features.greeting_button import register_greeting_button
@@ -44,7 +45,7 @@ class LegacyGramPlugin(BasePlugin):
     def post_request_hook(self, request_name: str, account: int, response: Any, error: Any) -> HookResult:
         if error is not None or response is None:
             return HookResult()
-        if not self.get_setting("hidePremiumEmoji", False):
+        if not self.get_setting(Keys.hide_premium_emoji, False):
             return HookResult()
         self.log(f"post_request_hook: {request_name}")
         filter_response(request_name, response)

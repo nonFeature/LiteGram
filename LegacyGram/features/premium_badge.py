@@ -64,25 +64,11 @@ class DialogObjectGetEmojiStatusDocumentIdHook(BaseHook):
 
 
 class ChatMessageCellGetAuthorStatusHook(BaseHook):
-    """
-    This hook remain only exteraGram badge in messages in chats
-    ref: see original method using JADX
-
-    java:
-        private Object getAuthorStatus() {
-        MessageObject messageObject;
-        TLRPC.User user = this.currentUser;
-        if (user != null) {
-            BadgeDTO badge = BadgesController.INSTANCE.getBadge(this.currentUser);
-            if (badge != null) {
-                return badge
-            }
-            return null
-        }
-        return null
-    """
-
     _BadgesController = None
+
+    def __init__(self, plugin, setting_key):
+        super().__init__(plugin, setting_key)
+        self._badge_cache = {}
 
     def before_hooked_method(self, param):
         if not self.is_enabled():
@@ -91,6 +77,11 @@ class ChatMessageCellGetAuthorStatusHook(BaseHook):
         current_user = get_private_field(param.thisObject, "currentUser")
 
         if current_user:
+            user_id = getattr(current_user, "id", None)
+            if user_id is not None and user_id in self._badge_cache:
+                param.setResult(self._badge_cache[user_id])
+                return
+
             if self._BadgesController is None:
                 self._BadgesController = find_class("com.exteragram.messenger.badges.BadgesController")
 
@@ -98,13 +89,15 @@ class ChatMessageCellGetAuthorStatusHook(BaseHook):
                 return
 
             badge = self._BadgesController.INSTANCE.getBadge(current_user)
+            if user_id is not None:
+                self._badge_cache[user_id] = badge
             param.setResult(badge)
         else:
             param.setResult(None)
 
 
 class MessagesControllerIsPremiumUserHook(BaseHook):
-    def after_hooked_method(self, param):
+    def before_hooked_method(self, param):
         if not self.is_enabled():
             return
         param.setResult(False)
