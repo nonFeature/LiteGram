@@ -45,12 +45,17 @@ def _log(msg):
 
 
 def _is_premium(document) -> bool:
-    """True if a document is premium (sticker/emoji locked behind subscription)."""
+    """True if a document is premium (sticker/emoji locked behind subscription).
+
+    Optimized: uses `premium` attr directly when available (stickers),
+    only falls back to Java `isFreeEmoji` for emoji documents.
+    """
     if document is None:
         return False
     try:
-        if getattr(document, "premium", False):
-            return True
+        prem = getattr(document, "premium", None)
+        if prem is not None:
+            return bool(prem)
     except Exception:
         pass
     if MessageObject:
@@ -112,10 +117,13 @@ def _filter_list(container, *, sub=None, drop_empty=False, drop_non_stock=False)
         if sub:
             docs = getattr(item, sub, None)
             if docs is not None:
+                # Только emoji-паки проверяем на non_stock (set.emojis)
+                # Для стикер-паков _is_non_stock всегда False, но Java вызов дорогой
+                check_non_stock = drop_non_stock and getattr(getattr(item, "set", None), "emojis", False)
                 j = docs.size() - 1
                 while j >= 0:
                     doc = docs.get(j)
-                    if _is_premium(doc) or (drop_non_stock and _is_non_stock(doc)):
+                    if _is_premium(doc) or (check_non_stock and _is_non_stock(doc)):
                         docs.remove(j)
                         removed += 1
                     j -= 1
