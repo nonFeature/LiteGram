@@ -11,7 +11,7 @@ from LegacyGram.main import LegacyGramPlugin
 from LegacyGram.utils.extera_utils import open_extera_setting
 from LegacyGram.utils.utils import open_url, restart_app
 
-DRAWER_FALLBACK_URL = "https://t.me/exteraSettings?s=appNavigationSettings"
+DRAWER_FALLBACK_ALIAS = "appNavigationSettings"
 
 
 def Switch(
@@ -47,13 +47,13 @@ def toggle_settings_options(_: View | None = None) -> None:
     plugin_instance.import_settings(dict.fromkeys(row_keys, new_state), reload_settings=True)
 
 
-def open_extera_tab(tab_name: str, fallback_url: str | None = None) -> Callable[[View], None]:
+def open_extera_tab(tab_name: str, fallback_alias: str | None = None) -> Callable[[View], None]:
     def callback(view: View):
         try:
             open_extera_setting(tab_name)
         except Exception:
-            if fallback_url:
-                open_url(fallback_url)
+            if fallback_alias:
+                open_extera_setting(fallback_alias)
 
     return callback
 
