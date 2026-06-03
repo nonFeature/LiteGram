@@ -26,6 +26,20 @@ SETTINGS_OPTION_ROWS = [
 ]
 
 
+def _extera_icon():
+    v = parse_version(get_client_version())
+    return "extera_outline" if v >= (12, 4, 1) else "etg_settings"
+
+
+def _version_red():
+    return is_not_12_1_1_version(get_client_version())
+
+
+# ============================================================
+# Sub-pages
+# ============================================================
+
+
 def get_settings_options_list() -> list[Any]:
     return [
         Header(text=t("settings_options")),
@@ -34,54 +48,34 @@ def get_settings_options_list() -> list[Any]:
     ]
 
 
-def get_main_settings_list() -> list[Any]:
-    is_version_text_red = is_not_12_1_1_version(get_client_version())
-    client_version = parse_version(get_client_version())
-
-    if client_version >= (12, 4, 1):
-        extera_icon = "extera_outline"
-    else:
-        extera_icon = "etg_settings"
-
-    settings_options = [
-        Header(text=t("settings_options")),
-        Text(text=t("switch_all"), link_alias=Keys.switch_all, on_click=toggle_settings_options),
-        *[Switch(text=t(text_key), key=key) for key, text_key in SETTINGS_OPTION_ROWS],
-    ]
-
-    drawer_options = [
-        Header(text=t("drawer_options")),
-        Text(text=t("manage_drawer_options"), link_alias=Keys.drawer_options, on_click=open_extera_tab(Keys.drawer_options), icon=extera_icon),
-    ]
-
-    chat_list = [
+def _chat_settings() -> list[Any]:
+    return [
         Header(text=t("chat_list")),
-        Text(text=t("hide_stories"), link_alias=Keys.hide_stories, on_click=open_extera_tab(Keys.hide_stories), icon=extera_icon),
+        Text(text=t("hide_stories"), link_alias=Keys.hide_stories, on_click=open_extera_tab(Keys.hide_stories), icon=_extera_icon()),
         Text(
-            text=t("hide_action_bar_status"),
-            link_alias=Keys.hide_action_bar_status,
-            on_click=open_extera_tab(Keys.hide_action_bar_status),
-            icon=extera_icon,
+            text=t("hide_action_bar_status"), link_alias=Keys.hide_action_bar_status, on_click=open_extera_tab(Keys.hide_action_bar_status), icon=_extera_icon()
         ),
         Switch(text=t("hide_greeting_button"), subtext=t("hide_greeting_button_sub"), key=Keys.hide_greeting_button),
+        Header(text=t("action_bar")),
+        Switch(text=t("hide_action_bar_live_stream"), key=Keys.hide_action_bar_live_stream),
+        Switch(text=t("hide_action_bar_archived_stories"), key=Keys.hide_action_bar_archived_stories),
+        Switch(text=t("hide_action_bar_send_gift"), key=Keys.hide_action_bar_send_gift),
+        Switch(text=t("hide_action_bar_boost_group"), key=Keys.hide_action_bar_boost_group),
+        Switch(text=t("hide_action_bar_add_shortcut"), key=Keys.hide_action_bar_add_shortcut),
     ]
 
-    profile_buttons = [
+
+def _profile_settings() -> list[Any]:
+    return [
         Header(text=t("profile_buttons")),
         Switch(text=t("hide_profile_actions_stories_button"), key=Keys.hide_profile_actions_stories_button),
         Switch(text=t("hide_profile_actions_gift_button"), key=Keys.hide_profile_actions_gift_button),
         Switch(text=t("hide_profile_actions_stream_button"), key=Keys.hide_profile_actions_stream_button),
-    ]
-
-    profile_tabs = [
         Header(text=t("profile_tabs")),
         Switch(text=t("hide_stories_tab"), subtext=t("hide_stories_tab_sub"), key=Keys.hide_stories_tab),
         Switch(text=t("hide_gifts_tab"), key=Keys.hide_gifts_tab),
-    ]
-
-    profile_appearance = [
         Header(text=t("profile_appearance")),
-        Text(text=t("manage_reply_elements"), link_alias=Keys.reply_elements, on_click=open_extera_tab(Keys.reply_elements), icon=extera_icon),
+        Text(text=t("manage_reply_elements"), link_alias=Keys.reply_elements, on_click=open_extera_tab(Keys.reply_elements), icon=_extera_icon()),
         Switch(text=t("hide_profile_background_emoji"), subtext=t("hide_profile_background_emoji_sub"), key=Keys.hide_profile_background_emoji),
         Switch(text=t("hide_profile_pinned_gifts"), key=Keys.hide_profile_pinned_gifts),
         Switch(text=t("hide_profile_colorful_background"), key=Keys.hide_profile_colorful_background),
@@ -92,27 +86,45 @@ def get_main_settings_list() -> list[Any]:
         Switch(text=t("hide_bot_verification"), key=Keys.hide_bot_verification),
     ]
 
-    action_bar = [
-        Header(text=t("action_bar")),
-        Switch(text=t("hide_action_bar_live_stream"), key=Keys.hide_action_bar_live_stream),
-        Switch(text=t("hide_action_bar_archived_stories"), key=Keys.hide_action_bar_archived_stories),
-        Switch(text=t("hide_action_bar_send_gift"), key=Keys.hide_action_bar_send_gift),
-        Switch(text=t("hide_action_bar_boost_group"), key=Keys.hide_action_bar_boost_group),
-        Switch(text=t("hide_action_bar_add_shortcut"), key=Keys.hide_action_bar_add_shortcut),
+
+def _interface_settings() -> list[Any]:
+    return [
+        Header(text=t("settings_options")),
+        Text(text=t("switch_all"), link_alias=Keys.switch_all, on_click=toggle_settings_options),
+        *[Switch(text=t(text_key), key=key) for key, text_key in SETTINGS_OPTION_ROWS],
+        Header(text=t("drawer_options")),
+        Text(text=t("manage_drawer_options"), link_alias=Keys.drawer_options, on_click=open_extera_tab(Keys.drawer_options), icon=_extera_icon()),
     ]
 
-    gifts = [
+
+def _gifts_settings() -> list[Any]:
+    return [
         Header(text=t("gifts")),
         Switch(text=t("hide_bottom_gift_button"), key=Keys.hide_bottom_gift_button),
         Switch(text=t("hide_stars_rating"), key=Keys.hide_stars_rating),
         Switch(text=t("hide_star_reaction"), key=Keys.hide_star_reaction),
     ]
 
-    about_plugin = [
+
+def _about_settings() -> list[Any]:
+    return [
         Header(text=t("about_plugin")),
-        Text(text=t("client_version", get_client_version()), on_click=open_version_info(get_client_version()), red=is_version_text_red, icon="msg_help"),
+        Text(text=t("client_version", get_client_version()), on_click=open_version_info(get_client_version()), red=_version_red(), icon="msg_help"),
         Text(text=t("github_repository"), icon="msg_link", on_click=open_url_view(GITHUB_URL)),
         Divider(text=t("github_sub")),
     ]
 
-    return [*settings_options, *drawer_options, *chat_list, *profile_buttons, *profile_tabs, *profile_appearance, *action_bar, *gifts, *about_plugin]
+
+# ============================================================
+# Main settings page
+# ============================================================
+
+
+def get_main_settings_list() -> list[Any]:
+    return [
+        Text(text=t("category_chat"), icon="msg_chat", create_sub_fragment=_chat_settings),
+        Text(text=t("category_profile"), icon="msg_contact", create_sub_fragment=_profile_settings),
+        Text(text=t("category_interface"), icon="msg_settings", create_sub_fragment=_interface_settings),
+        Text(text=t("category_gifts"), icon="msg_gift_premium", create_sub_fragment=_gifts_settings),
+        Text(text=t("category_about"), icon="msg_help", create_sub_fragment=_about_settings),
+    ]

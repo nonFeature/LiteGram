@@ -1,6 +1,13 @@
 # fmt: off
 STRINGS = {
     "ru": {
+        # --- Categories ---
+        "category_chat": "Чат",
+        "category_profile": "Профиль",
+        "category_interface": "Интерфейс",
+        "category_gifts": "Подарки и Реакции",
+        "category_about": "О плагине",
+
         # --- Settings Options ---
         "settings_options": "Меню настроек",
         "manage_settings_options": "Настройка меню настроек",
@@ -86,6 +93,13 @@ STRINGS = {
         "feature_unavailable": "Эта функция не поддерживается на новых клиентах с \"Liquid Glass UI\" редизайном."
     },
     "en": {
+        # --- Categories ---
+        "category_chat": "Chat",
+        "category_profile": "Profile",
+        "category_interface": "Interface",
+        "category_gifts": "Gifts & Reactions",
+        "category_about": "About Plugin",
+
         # --- Settings Options ---
         "settings_options": "Settings Options",
         "manage_settings_options": "Manage Settings Options",
