@@ -58,6 +58,8 @@ def _is_premium(document) -> bool:
             return bool(prem)
     except Exception:
         pass
+    if not _is_non_stock(document):
+        return False
     if MessageObject:
         try:
             return not MessageObject.isFreeEmoji(document)
@@ -544,6 +546,8 @@ class FilterVisibleReactionsHook(BaseHook):
         if not self.is_enabled():
             return
         if not param.args or len(param.args) < 1:
+            return
+        if get_private_field(param.thisObject, "channelReactions"):
             return
         visible = param.args[0]
         if not visible:
