@@ -84,6 +84,9 @@ def _profile_settings() -> list[Any]:
         Switch(text=t("hide_premium_emoji"), subtext=t("hide_premium_emoji_sub"), key=Keys.hide_premium_emoji),
         Switch(text=t("hide_premium_badge"), subtext=t("hide_premium_badge_sub"), on_change=show_restart_bulletin, key=Keys.hide_premium_badge),
         Switch(text=t("hide_bot_verification"), key=Keys.hide_bot_verification),
+        Header(text=t("gifts")),
+        Switch(text=t("hide_collectible_status"), subtext=t("hide_collectible_status_sub"), key=Keys.hide_collectible_status),
+        Switch(text=t("force_disable_particles"), subtext=t("force_disable_particles_sub"), key=Keys.force_disable_particles),
     ]
 
 
@@ -101,6 +104,9 @@ def _gifts_settings() -> list[Any]:
     return [
         Header(text=t("gifts")),
         Switch(text=t("hide_bottom_gift_button"), key=Keys.hide_bottom_gift_button),
+        Switch(text=t("hide_gift_cards"), subtext=t("hide_gift_cards_sub"), key=Keys.hide_gift_cards),
+        Switch(text=t("hide_gift_dialogs_send"), subtext=t("hide_gift_dialogs_send_sub"), key=Keys.hide_gift_dialogs_send),
+        Switch(text=t("hide_gift_dialogs_view"), subtext=t("hide_gift_dialogs_view_sub"), key=Keys.hide_gift_dialogs_view),
         Switch(text=t("hide_stars_rating"), key=Keys.hide_stars_rating),
         Switch(text=t("hide_star_reaction"), key=Keys.hide_star_reaction),
     ]

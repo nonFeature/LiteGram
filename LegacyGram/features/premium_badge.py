@@ -122,3 +122,108 @@ def register_premium_badge(plugin) -> None:
     MessagesController = find_class("org.telegram.messenger.MessagesController")
     if MessagesController:
         plugin.hook_all_methods(MessagesController, "isPremiumUser", MessagesControllerIsPremiumUserHook(plugin, Keys.hide_premium_badge))
+
+    # === Collectible status ===
+    _hook_collectible_status(plugin)
+    _hook_particles(plugin)
+
+
+def _disable_particles(drawable) -> None:
+    try:
+        if drawable and hasattr(drawable, "setParticles"):
+            drawable.setParticles(False, True)
+    except Exception:
+        pass
+
+
+class IsEmojiStatusCollectibleHook(BaseHook):
+    def before_hooked_method(self, param):
+        if self.is_enabled():
+            param.setResult(False)
+
+
+class ProfileEmojiStatusDrawableHook(BaseHook):
+    def after_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        _disable_particles(param.getResult())
+
+
+class DialogsStatusNeutralizeHook(BaseHook):
+    def after_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        try:
+            obj = param.thisObject
+            if hasattr(obj, "statusDrawableGiftId"):
+                obj.statusDrawableGiftId = None
+            _disable_particles(getattr(obj, "statusDrawable", None))
+        except Exception:
+            pass
+
+
+class DrawerProfileStatusNeutralizeHook(BaseHook):
+    def after_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        try:
+            obj = param.thisObject
+            if hasattr(obj, "statusGiftId"):
+                obj.statusGiftId = None
+            _disable_particles(getattr(obj, "status", None))
+        except Exception:
+            pass
+
+
+class DrawerUserStatusNeutralizeHook(BaseHook):
+    def after_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        try:
+            obj = param.thisObject
+            for field in ("statusGiftId", "statusDrawableGiftId", "emojiStatusGiftId"):
+                try:
+                    if hasattr(obj, field):
+                        setattr(obj, field, None)
+                except Exception:
+                    pass
+            _disable_particles(getattr(obj, "status", None))
+        except Exception:
+            pass
+
+
+class ForceParticlesOffHook(BaseHook):
+    def before_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        if param.args and len(param.args) > 0 and isinstance(param.args[0], bool):
+            param.args[0] = False
+
+
+def _hook_collectible_status(plugin) -> None:
+    DialogObject = find_class("org.telegram.messenger.DialogObject")
+    if DialogObject:
+        plugin.hook_all_methods(DialogObject, "isEmojiStatusCollectible", IsEmojiStatusCollectibleHook(plugin, Keys.hide_collectible_status))
+
+    ProfileActivity = find_class("org.telegram.ui.ProfileActivity")
+    if ProfileActivity:
+        plugin.hook_all_methods(ProfileActivity, "getEmojiStatusDrawable", ProfileEmojiStatusDrawableHook(plugin, Keys.hide_collectible_status))
+
+    DialogsActivity = find_class("org.telegram.ui.DialogsActivity")
+    if DialogsActivity:
+        plugin.hook_all_methods(DialogsActivity, "updateStatus", DialogsStatusNeutralizeHook(plugin, Keys.hide_collectible_status))
+
+    DrawerProfileCell = find_class("org.telegram.ui.Cells.DrawerProfileCell")
+    if DrawerProfileCell:
+        plugin.hook_all_methods(DrawerProfileCell, "setUser", DrawerProfileStatusNeutralizeHook(plugin, Keys.hide_collectible_status))
+
+    DrawerUserCell = find_class("org.telegram.ui.Cells.DrawerUserCell")
+    if DrawerUserCell:
+        for m in ("setAccount", "didReceivedNotification"):
+            plugin.hook_all_methods(DrawerUserCell, m, DrawerUserStatusNeutralizeHook(plugin, Keys.hide_collectible_status))
+
+
+def _hook_particles(plugin) -> None:
+    SwapAnimatedEmojiDrawable = find_class("org.telegram.ui.Components.AnimatedEmojiDrawable$SwapAnimatedEmojiDrawable")
+    if SwapAnimatedEmojiDrawable:
+        plugin.hook_all_methods(SwapAnimatedEmojiDrawable, "setParticles", ForceParticlesOffHook(plugin, Keys.force_disable_particles))

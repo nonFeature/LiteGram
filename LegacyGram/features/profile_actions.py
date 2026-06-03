@@ -3,16 +3,12 @@ from hook_utils import find_class
 from LegacyGram.data.constants import Keys
 from LegacyGram.utils.xposed_utils import BaseHook
 
-# from ProfileActionsView Class
 KEY_GIFT = 3
 KEY_VOICE_CHAT = 10
 KEY_STREAM = 11
 KEY_STORY = 12
 
 
-# calls from Insert if insertIfNotAvailable
-# set(int key, boolean enabled)
-# getOrCreate(List<Action> list, int key)
 class ProfileActionsViewHook(BaseHook):
     def __init__(self, plugin, key_index: int):
         super().__init__(plugin)
@@ -38,8 +34,44 @@ class ProfileActionsViewHook(BaseHook):
             param.setResult(None)
 
 
+class ProfileActionsApplyHook(BaseHook):
+    def after_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        try:
+            obj = param.thisObject
+            for coll in ("visibleActions", "actionsList", "allAvailableActions"):
+                actions = getattr(obj, coll, None)
+                if actions is not None and hasattr(actions, "remove"):
+                    try:
+                        actions.remove(KEY_GIFT)
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+
+class ProfileActivityGiftBlockHook(BaseHook):
+    def before_hooked_method(self, param):
+        if self.is_enabled():
+            param.setResult(None)
+
+
+class BlockProfileGiftViewHook(BaseHook):
+    def before_hooked_method(self, param):
+        if self.is_enabled():
+            param.setResult(None)
+
+
 def register_profile_actions(plugin) -> None:
     ProfileActionsView = find_class("org.telegram.ui.Components.ProfileActionsView")
     if ProfileActionsView:
         plugin.hook_all_methods(ProfileActionsView, "set", ProfileActionsViewHook(plugin, 0))
         plugin.hook_all_methods(ProfileActionsView, "getOrCreate", ProfileActionsViewHook(plugin, 1))
+        plugin.hook_all_methods(ProfileActionsView, "applyVisibleActions", ProfileActionsApplyHook(plugin, Keys.hide_profile_actions_gift_button), priority=100)
+
+    ProfileActivity = find_class("org.telegram.ui.ProfileActivity")
+    if ProfileActivity:
+        for m in ("showGifts", "openGifts", "openStarGifts", "onGiftClick", "onGiftPermiumClicked"):
+            plugin.hook_all_methods(ProfileActivity, m, BlockProfileGiftViewHook(plugin, Keys.hide_profile_actions_gift_button))
+        plugin.hook_all_methods(ProfileActivity, "updateGiftState", ProfileActivityGiftBlockHook(plugin, Keys.hide_profile_actions_gift_button))
