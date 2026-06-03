@@ -18,7 +18,6 @@ from LegacyGram.features.settings_menu import register_settings_menu
 from LegacyGram.features.star_rating import register_star_rating
 from LegacyGram.features.star_reaction import register_star_reaction
 from LegacyGram.ui.settings import get_main_settings_list
-from LegacyGram.ui.settings_header import create_header
 
 _PROFILE_GIFT_REQUEST_HOOKS = {
     "TL_users_getFullUser",
@@ -66,7 +65,6 @@ class LegacyGramPlugin(BasePlugin):
             except Exception:
                 pass
         self.register_hooks()
-        self._setup_settings_header()
 
     def post_request_hook(self, request_name: str, account: int, response: Any, error: Any) -> HookResult:
         if error is not None or response is None:
@@ -149,52 +147,6 @@ class LegacyGramPlugin(BasePlugin):
 
     def create_settings(self) -> list[Any]:
         return get_main_settings_list()
-
-    def _setup_settings_header(self):
-        try:
-            from base_plugin import MethodHook
-            from hook_utils import find_class, get_private_field
-            from org.telegram.ui.Components import UItem  # ty: ignore
-
-            class LegacyGramSettingsHeaderHook(MethodHook):
-                def after_hooked_method(inner_self, param):
-                    try:
-                        activity = param.thisObject
-                        items = param.args[0]
-                        if not items or items.size() == 0:
-                            return
-                        plugin_obj = get_private_field(activity, "plugin")
-                        if not plugin_obj or str(plugin_obj.getId()) != "legacygram":
-                            return
-                        if get_private_field(activity, "createSubFragmentCallback") is not None:
-                            return
-                        searching = get_private_field(activity, "searching")
-                        if searching:
-                            return
-                        header = create_header(activity.getContext())
-                        if header:
-                            item = UItem.asCustom(header)
-                            try:
-                                item.setTransparent(True)
-                            except Exception:
-                                pass
-                            items.add(0, item)
-                            items.add(1, UItem.asShadow())
-                    except Exception:
-                        pass
-
-            PluginSettingsActivity = find_class("com.exteragram.messenger.plugins.ui.PluginSettingsActivity")
-            if PluginSettingsActivity:
-                method = PluginSettingsActivity.getClass().getDeclaredMethod(
-                    "fillItems",
-                    find_class("java.util.ArrayList"),
-                    find_class("org.telegram.ui.Components.UniversalAdapter"),
-                )
-                method.setAccessible(True)
-                self.hook_method(method, LegacyGramSettingsHeaderHook())
-                self.log("settings header hook registered")
-        except Exception:
-            pass
 
     def register_hooks(self) -> None:
         register_action_bar(self)
