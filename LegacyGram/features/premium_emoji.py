@@ -17,7 +17,6 @@ ArrayList = find_class("java.util.ArrayList")
 MediaDataController = find_class("org.telegram.messenger.MediaDataController")
 MessageObject = find_class("org.telegram.messenger.MessageObject")
 ReactionsContainerLayout = find_class("org.telegram.ui.Components.ReactionsContainerLayout")
-UserConfig = find_class("org.telegram.messenger.UserConfig")
 
 # ============================================================
 # Module state & logging
@@ -86,17 +85,6 @@ def _is_non_stock(item) -> bool:
     return False
 
 
-def _current_account(account=None) -> int:
-    if account is not None:
-        return account
-    if UserConfig:
-        try:
-            return int(UserConfig.selectedAccount)
-        except Exception:
-            pass
-    return 0
-
-
 # ============================================================
 # Filtering primitives
 # ============================================================
@@ -125,10 +113,11 @@ def _filter_list(container, *, sub=None, drop_empty=False, drop_non_stock=False)
                     removed += 1
                     i -= 1
                     continue
-                # Стикер-пак: только проверка premium
+                # Стикер-пак: только атрибут premium (0 Java-вызовов)
                 j = docs.size() - 1
                 while j >= 0:
-                    if _is_premium(docs.get(j)):
+                    prem = getattr(docs.get(j), "premium", None)
+                    if prem is not None and bool(prem):
                         docs.remove(j)
                         removed += 1
                     j -= 1
@@ -228,17 +217,6 @@ def _filter_featured_sticker_sets(sets):
             removed += 1
         i -= 1
     return removed
-
-
-def _count_packs(packs):
-    if not packs:
-        return 0, 0
-    total = 0
-    for i in range(packs.size()):
-        p = packs.get(i)
-        if hasattr(p, "documents"):
-            total += p.documents.size()
-    return packs.size(), total
 
 
 # ============================================================
@@ -441,11 +419,9 @@ class FilterStickerSetsHook(BaseHook):
         sets = param.getResult()
         if not sets:
             return
-        before = _count_packs(sets)
-        _filter_list(sets, sub="documents", drop_empty=True, drop_non_stock=True)
-        after = _count_packs(sets)
-        if before != after:
-            _log(f"sticker sets filtered: {before[0]}p/{before[1]}d -> {after[0]}p/{after[1]}d")
+        n = _filter_list(sets, sub="documents", drop_empty=True, drop_non_stock=True)
+        if n:
+            _log(f"sticker sets filtered: removed {n}")
 
 
 class FilterFeaturedSetsHook(BaseHook):
@@ -496,12 +472,10 @@ class FilterFrozenPacksHook(BaseHook):
         global _last_frozen_size
         if not rebuild and packs.size() == _last_frozen_size:
             return
-        before = _count_packs(packs)
-        _filter_list(packs, sub="documents", drop_empty=True, drop_non_stock=True)
-        after = _count_packs(packs)
+        n = _filter_list(packs, sub="documents", drop_empty=True, drop_non_stock=True)
         _last_frozen_size = packs.size()
-        if before != after:
-            _log(f"frozen packs filtered: {before[0]}p/{before[1]}d -> {after[0]}p/{after[1]}d")
+        if n:
+            _log(f"frozen packs filtered: removed {n}")
 
 
 # ============================================================
