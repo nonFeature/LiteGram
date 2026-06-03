@@ -119,13 +119,16 @@ def _filter_list(container, *, sub=None, drop_empty=False, drop_non_stock=False)
         if sub:
             docs = getattr(item, sub, None)
             if docs is not None:
-                # Только emoji-паки проверяем на non_stock (set.emojis)
-                # Для стикер-паков _is_non_stock всегда False, но Java вызов дорогой
-                check_non_stock = drop_non_stock and getattr(getattr(item, "set", None), "emojis", False)
+                # Emoji-пак: все документы — custom эмодзи → без проверок удаляем пак
+                if drop_non_stock and getattr(getattr(item, "set", None), "emojis", False):
+                    container.remove(i)
+                    removed += 1
+                    i -= 1
+                    continue
+                # Стикер-пак: только проверка premium
                 j = docs.size() - 1
                 while j >= 0:
-                    doc = docs.get(j)
-                    if _is_premium(doc) or (check_non_stock and _is_non_stock(doc)):
+                    if _is_premium(docs.get(j)):
                         docs.remove(j)
                         removed += 1
                     j -= 1
