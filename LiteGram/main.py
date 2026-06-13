@@ -9,6 +9,7 @@ from LiteGram.features.gift_button import register_gift_button
 from LiteGram.features.gift_cards import register_gift_cards
 from LiteGram.features.gift_dialogs import register_gift_dialogs
 from LiteGram.features.greeting_button import register_greeting_button
+from LiteGram.features.keyboard_perf import register_keyboard_perf
 from LiteGram.features.media_layout import register_media_layout
 from LiteGram.features.premium_badge import register_premium_badge
 from LiteGram.features.premium_emoji import filter_response, register_premium_emoji
@@ -160,6 +161,7 @@ class LiteGramPlugin(BasePlugin):
         register_profile_appearance(self)
         register_profile_actions(self)
         register_premium_emoji(self)
+        register_keyboard_perf(self)
         register_premium_badge(self)
         register_star_reaction(self)
 
