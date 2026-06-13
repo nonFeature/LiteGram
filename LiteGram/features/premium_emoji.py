@@ -1,4 +1,4 @@
-from hook_utils import find_class, get_private_field
+from hook_utils import find_class
 
 from LiteGram.data.constants import Keys
 from LiteGram.utils.xposed_utils import BaseHook
@@ -13,7 +13,6 @@ EmojiGridAdapter = find_class("org.telegram.ui.Components.EmojiView$EmojiGridAda
 EmojiSearchAdapter = find_class("org.telegram.ui.Components.EmojiView$EmojiSearchAdapter")
 SuggestEmojiView = find_class("org.telegram.ui.Components.SuggestEmojiView")
 ArrayList = find_class("java.util.ArrayList")
-MediaDataController = find_class("org.telegram.messenger.MediaDataController")
 MessageObject = find_class("org.telegram.messenger.MessageObject")
 ReactionsContainerLayout = find_class("org.telegram.ui.Components.ReactionsContainerLayout")
 
@@ -416,140 +415,6 @@ class FilterSuggestResultsHook(BaseHook):
 
 
 # ============================================================
-# UI hooks — pack lists
-# ============================================================
-
-
-class FilterStickerSetsHook(BaseHook):
-    def after_hooked_method(self, param):
-        if not self.is_enabled():
-            return
-        sets = param.getResult()
-        if not sets:
-            return
-        n = _filter_list(sets, sub="documents", drop_empty=True, drop_non_stock=True)
-        if n:
-            _log(f"sticker sets filtered: removed {n}")
-
-
-class FilterFeaturedSetsHook(BaseHook):
-    def after_hooked_method(self, param):
-        if not self.is_enabled():
-            return
-        sets = param.getResult()
-        if not sets:
-            return
-        before = sets.size()
-        result = ArrayList() if ArrayList else sets
-        changed = False
-        for idx in range(sets.size()):
-            pack = sets.get(idx)
-            if _is_featured_premium(pack) or _is_featured_non_stock(pack):
-                changed = True
-                continue
-            result.add(pack)
-        if changed:
-            param.setResult(result)
-            _log(f"featured sets filtered: {before}->{result.size()}")
-
-
-class FilterFeaturedStickerSetsHook(BaseHook):
-    def after_hooked_method(self, param):
-        if not self.is_enabled():
-            return
-        sets = param.getResult()
-        if not sets:
-            return
-        before = sets.size()
-        n = _filter_featured_sticker_sets(sets)
-        if n:
-            _log(f"featured sticker sets filtered: {before}->{sets.size()}")
-
-
-_last_frozen_size = 0
-
-
-class FilterFrozenPacksHook(BaseHook):
-    def before_hooked_method(self, param):
-        if not self.is_enabled():
-            return
-        packs = get_private_field(param.thisObject, "frozenEmojiPacks")
-        if not packs:
-            return
-        rebuild = param.args and len(param.args) > 0 and bool(param.args[0])
-        global _last_frozen_size
-        if not rebuild and packs.size() == _last_frozen_size:
-            return
-        n = _filter_list(packs, sub="documents", drop_empty=True, drop_non_stock=True)
-        _last_frozen_size = packs.size()
-        if n:
-            _log(f"frozen packs filtered: removed {n}")
-
-
-# ============================================================
-# UI hooks — recent stickers
-# ============================================================
-
-
-class FilterRecentStickersHook(BaseHook):
-    def after_hooked_method(self, param):
-        if not self.is_enabled():
-            return
-        stickers = param.getResult()
-        if not stickers:
-            return
-        before = stickers.size()
-        n = _filter_list(stickers)
-        if n:
-            _log(f"recent stickers filtered: {before}->{stickers.size()} ({n} premium)")
-
-
-# ============================================================
-# UI hooks — reactions
-# ============================================================
-
-
-class FilterReactionsListHook(BaseHook):
-    def __init__(self, plugin, label):
-        super().__init__(plugin, Keys.hide_premium_emoji)
-        self._label = label
-
-    def after_hooked_method(self, param):
-        if not self.is_enabled():
-            return
-        reactions = param.getResult()
-        if not reactions:
-            return
-        before = reactions.size()
-        n = _filter_reactions_list(reactions)
-        if n:
-            _log(f"reactions ({self._label}) filtered: {before}->{reactions.size()}")
-
-
-class FilterVisibleReactionsHook(BaseHook):
-    def before_hooked_method(self, param):
-        if not self.is_enabled():
-            return
-        if not param.args or len(param.args) < 1:
-            return
-        if get_private_field(param.thisObject, "channelReactions"):
-            return
-        visible = param.args[0]
-        if not visible:
-            return
-        before = visible.size()
-        removed = 0
-        i = visible.size() - 1
-        while i >= 0:
-            if getattr(visible.get(i), "documentId", 0) != 0:
-                visible.remove(i)
-                removed += 1
-            i -= 1
-        if removed:
-            _log(f"reactions panel filtered: {before}->{visible.size()} ({removed} custom)")
-
-
-# ============================================================
 # Registration
 # ============================================================
 
@@ -574,23 +439,5 @@ def register_premium_emoji(plugin):
         plugin.hook_all_methods(SuggestEmojiView, "lambda$searchKeywords$3", FilterSuggestResultsHook(plugin, 4, "keywords"))
         plugin.hook_all_methods(SuggestEmojiView, "lambda$searchAnimated$5", FilterSuggestResultsHook(plugin, 2, "animated"))
         classes.append("SuggestEmojiView")
-
-    if MediaDataController:
-        plugin.hook_all_methods(MediaDataController, "getStickerSets", FilterStickerSetsHook(plugin, Keys.hide_premium_emoji))
-        plugin.hook_all_methods(MediaDataController, "getFeaturedEmojiSets", FilterFeaturedSetsHook(plugin, Keys.hide_premium_emoji))
-        plugin.hook_all_methods(MediaDataController, "getFeaturedStickerSets", FilterFeaturedStickerSetsHook(plugin, Keys.hide_premium_emoji))
-        plugin.hook_all_methods(MediaDataController, "getRecentStickers", FilterRecentStickersHook(plugin, Keys.hide_premium_emoji))
-        plugin.hook_all_methods(MediaDataController, "getRecentReactions", FilterReactionsListHook(plugin, "recent"))
-        plugin.hook_all_methods(MediaDataController, "getTopReactions", FilterReactionsListHook(plugin, "top"))
-        plugin.hook_all_methods(MediaDataController, "getSavedReactions", FilterReactionsListHook(plugin, "saved"))
-        classes.append("MediaDataController")
-
-    if EmojiGridAdapter:
-        plugin.hook_all_methods(EmojiGridAdapter, "processEmoji", FilterFrozenPacksHook(plugin, Keys.hide_premium_emoji))
-        classes.append("EmojiGridAdapter")
-
-    if ReactionsContainerLayout:
-        plugin.hook_all_methods(ReactionsContainerLayout, "setVisibleReactionsList", FilterVisibleReactionsHook(plugin, Keys.hide_premium_emoji))
-        classes.append("ReactionsContainerLayout")
 
     _log(f"premium_emoji hooks: {', '.join(classes)}")
