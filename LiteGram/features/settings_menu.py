@@ -98,6 +98,22 @@ def is_wallet_item(item) -> bool:
     return bool(attached_bot and getattr(attached_bot, "bot_id", None) == WALLET_BOT_ID)
 
 
+_cached_row_fields = {}
+
+
+def _get_valid_row_fields(instance):
+    clazz = instance.getClass()
+    if clazz not in _cached_row_fields:
+        fields = clazz.getDeclaredFields()
+        valid = []
+        for field in fields:
+            if field.getType().toString() == "int" and "row" in field.getName().lower() and not (field.getModifiers() & Modifier.STATIC):
+                field.setAccessible(True)
+                valid.append(field)
+        _cached_row_fields[clazz] = valid
+    return _cached_row_fields[clazz]
+
+
 class ProfileActivityUpdateRowsIdsHook(BaseHook):
     def get_rows_to_remove(self) -> list[str]:
         rows_to_remove = []
@@ -141,14 +157,7 @@ class ProfileActivityUpdateRowsIdsHook(BaseHook):
         if not isinstance(row_count, int):
             return
 
-        # Get all fields in ProfileActivity
-        fields = instance.getClass().getDeclaredFields()
-        valid_row_fields = []
-        for field in fields:
-            # only int, with "row" in lowercase name and not statics
-            if field.getType().toString() == "int" and "row" in field.getName().lower() and not (field.getModifiers() & Modifier.STATIC):
-                field.setAccessible(True)  # since all values is private
-                valid_row_fields.append(field)
+        valid_row_fields = _get_valid_row_fields(instance)
 
         rows_removed = 0
 

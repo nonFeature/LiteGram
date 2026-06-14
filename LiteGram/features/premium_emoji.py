@@ -1,4 +1,4 @@
-from hook_utils import find_class
+from hook_utils import find_class, get_private_field
 
 from LiteGram.data.constants import Keys
 from LiteGram.utils.xposed_utils import BaseHook
@@ -14,7 +14,9 @@ EmojiSearchAdapter = find_class("org.telegram.ui.Components.EmojiView$EmojiSearc
 SuggestEmojiView = find_class("org.telegram.ui.Components.SuggestEmojiView")
 ArrayList = find_class("java.util.ArrayList")
 MessageObject = find_class("org.telegram.messenger.MessageObject")
-ReactionsContainerLayout = find_class("org.telegram.ui.Components.ReactionsContainerLayout")
+StickerEmojiCell = find_class("org.telegram.ui.Cells.StickerEmojiCell")
+ChatActivityEnterView = find_class("org.telegram.ui.Components.ChatActivityEnterView")
+MediaDataController = find_class("org.telegram.messenger.MediaDataController")
 
 # ============================================================
 # Module state & logging
@@ -41,30 +43,6 @@ def _log(msg):
 # ============================================================
 
 
-def _is_premium(document) -> bool:
-    """True if a document is premium (sticker/emoji locked behind subscription).
-
-    Optimized: uses `premium` attr directly when available (stickers),
-    only falls back to Java `isFreeEmoji` for emoji documents.
-    """
-    if document is None:
-        return False
-    try:
-        prem = getattr(document, "premium", None)
-        if prem is not None:
-            return bool(prem)
-    except Exception:
-        pass
-    if not _is_non_stock(document):
-        return False
-    if MessageObject:
-        try:
-            return not MessageObject.isFreeEmoji(document)
-        except Exception:
-            pass
-    return False
-
-
 def _is_non_stock(item) -> bool:
     """True if item is a custom (non-stock) emoji.
 
@@ -83,18 +61,47 @@ def _is_non_stock(item) -> bool:
     return False
 
 
+def _is_premium_sticker(document) -> bool:
+    """True if a sticker document has premium-only animation (video_thumbs type 'f').
+
+    Pure Python — 0 Java calls for normal (free) stickers.
+    Falls back to MessageObject.isPremiumSticker only if attr access fails.
+    """
+    if document is None:
+        return False
+    try:
+        vthumbs = getattr(document, "video_thumbs", None)
+        if vthumbs:
+            for j in range(vthumbs.size()):
+                try:
+                    if getattr(vthumbs.get(j), "type", None) == "f":
+                        return True
+                except Exception:
+                    pass
+        return False
+    except Exception:
+        pass
+    if MessageObject:
+        try:
+            return bool(MessageObject.isPremiumSticker(document))
+        except Exception:
+            pass
+    return False
+
+
 # ============================================================
 # Filtering primitives
 # ============================================================
 
 
-def _filter_list(container, *, sub=None, drop_empty=False, drop_non_stock=False):
+def _filter_list(container, *, sub=None, drop_empty=False, drop_non_stock=False, is_sticker=False):
     """Remove premium (and optionally non-stock) items from an ArrayList.
 
     sub=None           -> items are documents directly
     sub="documents"    -> each item has a .documents sublist
     drop_empty         -> remove items whose sublist becomes empty
     drop_non_stock     -> also remove non-stock custom emoji items
+    is_sticker         -> use _is_premium_sticker check (video_thumbs) for leaf docs
     """
     if not container or not ArrayList:
         return 0
@@ -105,20 +112,25 @@ def _filter_list(container, *, sub=None, drop_empty=False, drop_non_stock=False)
         if sub:
             docs = getattr(item, sub, None)
             if docs is not None:
-                # Emoji-пак: все документы — custom эмодзи → без проверок удаляем пак
                 _set = getattr(item, "set", None)
-                if drop_non_stock and _set and getattr(_set, "emojis", False):
+                is_emoji_pack = drop_non_stock and _set and getattr(_set, "emojis", False)
+                if is_emoji_pack:
                     container.remove(i)
                     removed += 1
                     i -= 1
                     continue
-                # Стикер-пак: только атрибут premium (0 Java-вызовов)
                 j = docs.size() - 1
                 while j >= 0:
-                    prem = getattr(docs.get(j), "premium", None)
-                    if prem is not None and bool(prem):
-                        docs.remove(j)
-                        removed += 1
+                    doc = docs.get(j)
+                    if is_sticker:
+                        if _is_premium_sticker(doc):
+                            docs.remove(j)
+                            removed += 1
+                    else:
+                        prem = getattr(doc, "premium", None)
+                        if prem is not None and bool(prem):
+                            docs.remove(j)
+                            removed += 1
                     j -= 1
                 if drop_empty and docs.size() == 0:
                     container.remove(i)
@@ -128,14 +140,15 @@ def _filter_list(container, *, sub=None, drop_empty=False, drop_non_stock=False)
             if drop_non_stock and _is_non_stock(obj):
                 container.remove(i)
                 removed += 1
+            elif is_sticker:
+                if _is_premium_sticker(obj):
+                    container.remove(i)
+                    removed += 1
             elif not drop_non_stock:
                 prem = getattr(obj, "premium", None)
                 if prem is not None and bool(prem):
                     container.remove(i)
                     removed += 1
-            elif _is_premium(obj):
-                container.remove(i)
-                removed += 1
         i -= 1
     return removed
 
@@ -207,7 +220,7 @@ def _is_premium_sticker_pack(pack):
     if not pack:
         return False
     cover = getattr(pack, "cover", None)
-    if cover and _is_premium(cover):
+    if cover and _is_premium_sticker(cover):
         return True
     return False
 
@@ -265,17 +278,9 @@ def _reindex_search_sets(sets):
     """Rebuild search sets keeping header-group structure, dropping non-stock + premium."""
     if not sets or not ArrayList:
         return
-    changed = False
-    for i in range(sets.size()):
-        item = sets.get(i)
-        if item and getattr(item, "title", None) is not None:
-            continue
-        if _is_non_stock(item):
-            changed = True
-    if not changed:
-        return
     rebuilt = ArrayList()
     buffer = ArrayList()
+    dirty = False
     for i in range(sets.size()):
         item = sets.get(i)
         if item and getattr(item, "title", None) is not None:
@@ -285,12 +290,15 @@ def _reindex_search_sets(sets):
                     rebuilt.add(buffer.get(d))
             buffer = ArrayList()
             continue
-        if not _is_non_stock(item):
+        if _is_non_stock(item):
+            dirty = True
+        else:
             buffer.add(item)
     for d in range(buffer.size()):
         rebuilt.add(buffer.get(d))
-    sets.clear()
-    sets.addAll(rebuilt)
+    if dirty:
+        sets.clear()
+        sets.addAll(rebuilt)
 
 
 # ============================================================
@@ -302,11 +310,11 @@ HANDLERS = {
     "TL_messages_getFeaturedEmojiStickers": lambda r: _filter_featured_sets(r.sets),
     "TL_messages_getFeaturedStickers": lambda r: _filter_featured_sticker_sets(r.sets),
     "TL_messages_searchEmojiStickerSets": lambda r: _filter_list(r.sets, drop_non_stock=True),
-    "TL_messages_searchStickers": lambda r: _filter_list(r.documents),
+    "TL_messages_searchStickers": lambda r: _filter_list(r.stickers, is_sticker=True),
     "TL_messages_getRecentReactions": lambda r: _filter_reactions_list(r.reactions),
-    "TL_messages_getRecentStickers": lambda r: _filter_list(r.stickers),
-    "TL_messages_getStickers": lambda r: _filter_list(getattr(r, "stickers", None)),
-    "TL_messages_getStickerSet": lambda r: _filter_list(getattr(r, "documents", None)),
+    "TL_messages_getRecentStickers": lambda r: _filter_list(r.stickers, is_sticker=True),
+    "TL_messages_getStickers": lambda r: _filter_list(getattr(r, "stickers", None), is_sticker=True),
+    "TL_messages_getStickerSet": lambda r: _filter_list(getattr(r, "documents", None), is_sticker=True),
 }
 
 
@@ -415,6 +423,183 @@ class FilterSuggestResultsHook(BaseHook):
 
 
 # ============================================================
+# UI hooks — premium stickers
+# ============================================================
+
+
+def _hide_view(view) -> None:
+    try:
+        view.setVisibility(8)
+    except Exception:
+        pass
+    try:
+        lp = view.getLayoutParams()
+        if lp:
+            lp.height = 0
+            lp.width = 0
+            view.setLayoutParams(lp)
+    except Exception:
+        pass
+
+
+def _restore_view(view) -> None:
+    try:
+        view.setVisibility(0)
+    except Exception:
+        pass
+    try:
+        lp = view.getLayoutParams()
+        if lp and getattr(lp, "height", None) == 0:
+            lp.height = -2
+            lp.width = -2
+            view.setLayoutParams(lp)
+    except Exception:
+        pass
+
+
+class CheckDocumentsHook(BaseHook):
+    """Remove premium stickers from recentStickers and favouriteStickers in EmojiView."""
+
+    def after_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        obj = param.thisObject
+        for field in ("favouriteStickers", "recentStickers"):
+            lst = get_private_field(obj, field)
+            if not lst:
+                continue
+            before = lst.size()
+            i = lst.size() - 1
+            while i >= 0:
+                if _is_premium_sticker(lst.get(i)):
+                    lst.remove(i)
+                i -= 1
+            if lst.size() != before:
+                _log(f"EmojiView.{field}: {before}->{lst.size()}")
+
+
+class HidePremiumStickerCellHook(BaseHook):
+    """Hide StickerEmojiCell if document is premium; restore visibility otherwise (recycling fix)."""
+
+    def before_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        if not param.args:
+            return
+        doc = param.args[0]
+        view = param.thisObject
+        if _is_premium_sticker(doc):
+            _hide_view(view)
+            param.setResult(None)
+        else:
+            _restore_view(view)
+
+
+# ============================================================
+# UI hooks — keyboard performance
+# ============================================================
+
+
+class SkipEmojiPacksHook(BaseHook):
+    def __init__(self, plugin):
+        super().__init__(plugin, Keys.hide_premium_emoji)
+
+    def before_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        param.setResult(None)
+
+
+class EmptyEmojiPacksHook(BaseHook):
+    def __init__(self, plugin):
+        super().__init__(plugin, Keys.hide_premium_emoji)
+
+    def before_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        if ArrayList:
+            param.setResult(ArrayList())
+
+
+class FilterSearchV7Hook(BaseHook):
+    def __init__(self, plugin):
+        super().__init__(plugin, Keys.hide_premium_emoji)
+
+    def before_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        if not param.args or len(param.args) < 3:
+            return
+        _filter_search_results(param.args[1])
+        _reindex_search_sets(param.args[2])
+
+
+class DisableNotificationsLockerHook(BaseHook):
+    def __init__(self, plugin):
+        super().__init__(plugin, Keys.hide_premium_emoji)
+
+    def after_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        locker = get_private_field(param.thisObject, "notificationsLocker")
+        if locker:
+            locker.disabled = True
+
+
+class SetAllowAnimatedEmojiFalseHook(BaseHook):
+    def __init__(self, plugin):
+        super().__init__(plugin, Keys.hide_premium_emoji)
+
+    def after_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        param.thisObject.allowAnimatedEmoji = False
+
+
+class FilterReactionsListHook(BaseHook):
+    def __init__(self, plugin):
+        super().__init__(plugin, Keys.hide_premium_emoji)
+
+    def after_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        reactions = param.getResult()
+        if not reactions:
+            return
+        i = reactions.size() - 1
+        while i >= 0:
+            if getattr(reactions.get(i), "document_id", 0) != 0:
+                reactions.remove(i)
+            i -= 1
+
+
+class ClearStickerSetsType5Hook(BaseHook):
+    def __init__(self, plugin):
+        super().__init__(plugin, Keys.hide_premium_emoji)
+
+    def after_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        if not param.args or param.args[0] != 5:
+            return
+        sets = param.getResult()
+        if sets:
+            sets.clear()
+
+
+class ClearFeaturedEmojiSetsHook(BaseHook):
+    def __init__(self, plugin):
+        super().__init__(plugin, Keys.hide_premium_emoji)
+
+    def after_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        sets = param.getResult()
+        if sets:
+            sets.clear()
+
+
+# ============================================================
 # Registration
 # ============================================================
 
@@ -429,15 +614,39 @@ def register_premium_emoji(plugin):
 
     if EmojiView:
         plugin.hook_all_methods(EmojiView, "getRecentEmoji", FilterRecentEmojiHook(plugin, Keys.hide_premium_emoji))
+        plugin.hook_all_methods(EmojiView, "checkDocuments", CheckDocumentsHook(plugin, Keys.hide_premium_emoji))
+        plugin.hook_all_methods(EmojiView, "getEmojipacks", EmptyEmojiPacksHook(plugin))
+        plugin.hook_all_methods(EmojiView, "<init>", SetAllowAnimatedEmojiFalseHook(plugin))
         classes.append("EmojiView")
+
+    if EmojiGridAdapter:
+        plugin.hook_all_methods(EmojiGridAdapter, "processEmoji", SkipEmojiPacksHook(plugin))
+        classes.append("EmojiGridAdapter")
 
     if EmojiSearchAdapter:
         plugin.hook_all_methods(EmojiSearchAdapter, "lambda$search$5", FilterSearchResultsHook(plugin, Keys.hide_premium_emoji))
+        plugin.hook_all_methods(EmojiSearchAdapter, "lambda$search$7", FilterSearchV7Hook(plugin))
         classes.append("EmojiSearchAdapter")
 
     if SuggestEmojiView:
         plugin.hook_all_methods(SuggestEmojiView, "lambda$searchKeywords$3", FilterSuggestResultsHook(plugin, 4, "keywords"))
         plugin.hook_all_methods(SuggestEmojiView, "lambda$searchAnimated$5", FilterSuggestResultsHook(plugin, 2, "animated"))
         classes.append("SuggestEmojiView")
+
+    if StickerEmojiCell:
+        plugin.hook_all_methods(StickerEmojiCell, "setSticker", HidePremiumStickerCellHook(plugin, Keys.hide_premium_emoji))
+        classes.append("StickerEmojiCell")
+
+    if ChatActivityEnterView:
+        plugin.hook_all_methods(ChatActivityEnterView, "<init>", DisableNotificationsLockerHook(plugin))
+        classes.append("ChatActivityEnterView")
+
+    if MediaDataController:
+        plugin.hook_all_methods(MediaDataController, "getRecentReactions", FilterReactionsListHook(plugin))
+        plugin.hook_all_methods(MediaDataController, "getTopReactions", FilterReactionsListHook(plugin))
+        plugin.hook_all_methods(MediaDataController, "getSavedReactions", FilterReactionsListHook(plugin))
+        plugin.hook_all_methods(MediaDataController, "getStickerSets", ClearStickerSetsType5Hook(plugin))
+        plugin.hook_all_methods(MediaDataController, "getFeaturedEmojiSets", ClearFeaturedEmojiSetsHook(plugin))
+        classes.append("MediaDataController")
 
     _log(f"premium_emoji hooks: {', '.join(classes)}")

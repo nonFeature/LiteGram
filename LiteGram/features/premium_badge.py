@@ -193,11 +193,21 @@ class DrawerUserStatusNeutralizeHook(BaseHook):
 
 
 class ForceParticlesOffHook(BaseHook):
+    _active = False
+
     def before_hooked_method(self, param):
         if not self.is_enabled():
             return
+        if ForceParticlesOffHook._active:
+            return
         if param.args and len(param.args) > 0 and isinstance(param.args[0], bool):
+            if not param.args[0]:
+                return
+            ForceParticlesOffHook._active = True
             param.args[0] = False
+
+    def after_hooked_method(self, param):
+        ForceParticlesOffHook._active = False
 
 
 def _hook_collectible_status(plugin) -> None:

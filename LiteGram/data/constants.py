@@ -59,3 +59,14 @@ class Keys:
     force_disable_particles = "forceDisableParticles"
     hide_stars_rating = "hideStarsRating"
     hide_star_reaction = "hideStarReaction"
+
+    # --- Settings Option Rows (shared between ui/settings and utils/settings_utils) ---
+    SETTINGS_OPTION_ROWS = (
+        (hide_premium_row, "hide_premium_row"),
+        (hide_stars_row, "hide_stars_row"),
+        (hide_ton_row, "hide_ton_row"),
+        (hide_wallet_row, "hide_wallet_row"),
+        (hide_business_row, "hide_business_row"),
+        (hide_send_a_gift_row, "hide_send_a_gift_row"),
+        (hide_help_section, "hide_help_section"),
+    )

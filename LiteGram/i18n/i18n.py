@@ -3,24 +3,29 @@ from hook_utils import find_class
 from LiteGram.i18n.locales import STRINGS
 
 _Locale = None
+_cached_lang = None
 
 
 def get_system_language() -> str:
-    global _Locale
+    global _Locale, _cached_lang
+    if _cached_lang is not None:
+        return _cached_lang
     try:
         if _Locale is None:
             _Locale = find_class("java.util.Locale")
 
         if not _Locale:
-            return "en"
+            _cached_lang = "en"
+            return _cached_lang
 
         lang = _Locale.getDefault().getLanguage()
-        if lang in STRINGS:
-            return lang
+        _cached_lang = lang if lang in STRINGS else "en"
+        return _cached_lang
     except Exception:
         pass
 
-    return "en"
+    _cached_lang = "en"
+    return _cached_lang
 
 
 def t(key: str, *args) -> str:

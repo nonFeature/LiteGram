@@ -32,29 +32,25 @@ BOOST_GROUP = 29
 # from TopicsFragment class
 BOOST_GROUP_TOPIC = 14
 
+_ITEM_KEY_MAP = {
+    CALL_ITEM: Keys.hide_action_bar_live_stream,
+    GIFT_PREMIUM: Keys.hide_action_bar_send_gift,
+    CHANNEL_STORIES: Keys.hide_action_bar_archived_stories,
+    ADD_SHORTCUT_PROFILE: Keys.hide_action_bar_add_shortcut,
+    ADD_SHORTCUT_CHAT: Keys.hide_action_bar_add_shortcut,
+    BOOST_GROUP: Keys.hide_action_bar_boost_group,
+}
+
 
 class ActionBarMenuItemAddSubItemHook(BaseHook):
     def after_hooked_method(self, param):
-        result = param.getResult()  # The created ActionBarMenuSubItem view
+        result = param.getResult()
         if result is None:
             return
-
-        item_id = param.args[0]  # int id
-
-        hide_live_stream = self.plugin.get_setting(Keys.hide_action_bar_live_stream, False)
-        hide_send_gift = self.plugin.get_setting(Keys.hide_action_bar_send_gift, False)
-        hide_archived_stories = self.plugin.get_setting(Keys.hide_action_bar_archived_stories, False)
-        hide_add_shortcut = self.plugin.get_setting(Keys.hide_action_bar_add_shortcut, False)
-
-        should_hide = (
-            (hide_live_stream and item_id == CALL_ITEM)
-            or (hide_send_gift and item_id == GIFT_PREMIUM)
-            or (hide_archived_stories and item_id == CHANNEL_STORIES)
-            or (hide_add_shortcut and item_id == ADD_SHORTCUT_PROFILE)
-        )
-
-        if should_hide:
-            result.setVisibility(View.GONE)
+        item_id = param.args[0]
+        if item_id not in _ITEM_KEY_MAP or not self.plugin.get_setting(_ITEM_KEY_MAP[item_id], False):
+            return
+        result.setVisibility(View.GONE)
 
 
 class ActionBarMenuItemLazilyAddSubItemHook(BaseHook):
@@ -62,39 +58,18 @@ class ActionBarMenuItemLazilyAddSubItemHook(BaseHook):
         result = param.getResult()
         if result is None:
             return
-
-        item_id = param.args[0]  # int id
-
-        hide_add_shortcut = self.plugin.get_setting(Keys.hide_action_bar_add_shortcut, False)
-        hide_boost_group = self.plugin.get_setting(Keys.hide_action_bar_boost_group, False)
-
-        should_hide = (hide_add_shortcut and item_id == ADD_SHORTCUT_CHAT) or (hide_boost_group and item_id == BOOST_GROUP)
-
-        if should_hide:
-            result.setVisibility(View.GONE)
+        item_id = param.args[0]
+        if item_id not in _ITEM_KEY_MAP or not self.plugin.get_setting(_ITEM_KEY_MAP[item_id], False):
+            return
+        result.setVisibility(View.GONE)
 
 
 # calls showSubItem(id); if show is true
 # public void setSubItemShown(int id, boolean show)
 class ActionBarMenuItemSetSubItemShownHook(BaseHook):
     def before_hooked_method(self, param):
-        item_id = param.args[0]  # int id
-
-        hide_live_stream = self.plugin.get_setting(Keys.hide_action_bar_live_stream, False)
-        hide_send_gift = self.plugin.get_setting(Keys.hide_action_bar_send_gift, False)
-        hide_archived_stories = self.plugin.get_setting(Keys.hide_action_bar_archived_stories, False)
-        hide_add_shortcut = self.plugin.get_setting(Keys.hide_action_bar_add_shortcut, False)
-        hide_boost_group = self.plugin.get_setting(Keys.hide_action_bar_boost_group, False)
-
-        should_hide = (
-            (hide_live_stream and item_id == CALL_ITEM)
-            or (hide_send_gift and item_id == GIFT_PREMIUM)
-            or (hide_archived_stories and item_id == CHANNEL_STORIES)
-            or (hide_add_shortcut and item_id in (ADD_SHORTCUT_PROFILE, ADD_SHORTCUT_CHAT))
-            or (hide_boost_group and item_id == BOOST_GROUP)
-        )
-
-        if should_hide:
+        item_id = param.args[0]
+        if item_id in _ITEM_KEY_MAP and self.plugin.get_setting(_ITEM_KEY_MAP[item_id], False):
             param.args[1] = False  # boolean show
 
 

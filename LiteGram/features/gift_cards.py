@@ -138,66 +138,18 @@ def is_giveaway_message(msg) -> bool:
         return False
 
 
-def apply_hidden_state(view, should_hide: bool) -> None:
-    if view is None:
-        return
-    if should_hide:
-        try:
-            view.setVisibility(8)
-        except Exception:
-            pass
-        try:
-            lp = view.getLayoutParams()
-            if lp is not None:
-                lp.height = 0
-                view.setLayoutParams(lp)
-        except Exception:
-            pass
-        try:
-            view.setMinimumHeight(0)
-        except Exception:
-            pass
-    else:
-        try:
-            view.setVisibility(0)
-        except Exception:
-            pass
-        try:
-            lp = view.getLayoutParams()
-            if lp is not None and getattr(lp, "height", None) == 0:
-                lp.height = -2
-                view.setLayoutParams(lp)
-        except Exception:
-            pass
+HIDDEN_VIEW_TYPE = -1000
+
+View = find_class("android.view.View")
+RecyclerViewLayoutParams = find_class("androidx.recyclerview.widget.RecyclerView$LayoutParams")
+Holder = find_class("org.telegram.ui.Components.RecyclerListView$Holder")
 
 
-class GiftBindHook(BaseHook):
+class CollapseItemViewTypeHook(BaseHook):
     def before_hooked_method(self, param):
-        if not self.is_enabled():
-            return
-        if not param.args or len(param.args) < 2:
-            return
-        try:
-            holder = param.args[0]
-            position = param.args[1]
-            if not isinstance(position, int):
-                return
-            adapter = param.thisObject
-            msg = get_msg(adapter, holder, position)
-            if msg is None or not is_gift_message(msg):
-                return
-            view = getattr(holder, "itemView", None)
-            if view is None:
-                return
-            apply_hidden_state(view, True)
-            param.setResult(None)
-        except Exception:
-            pass
-
-
-class GiveawayTypeHook(BaseHook):
-    def before_hooked_method(self, param):
-        if not self.is_enabled():
+        hide_gifts = self.plugin.get_setting(Keys.hide_gift_cards, False)
+        hide_giveaways = self.plugin.get_setting(Keys.hide_giveaway_cards, False)
+        if not hide_gifts and not hide_giveaways:
             return
         if not param.args or len(param.args) < 1:
             return
@@ -205,8 +157,55 @@ class GiveawayTypeHook(BaseHook):
             adapter = param.thisObject
             position = param.args[0]
             msg = get_msg(adapter, None, position)
-            if msg is not None and is_giveaway_message(msg):
-                param.setResult(jint(-1000))
+            if msg is None:
+                return
+            if (hide_gifts and is_gift_message(msg)) or (hide_giveaways and is_giveaway_message(msg)):
+                param.setResult(jint(HIDDEN_VIEW_TYPE))
+        except Exception:
+            pass
+
+
+class CollapseCreateHook(BaseHook):
+    def before_hooked_method(self, param):
+        hide_gifts = self.plugin.get_setting(Keys.hide_gift_cards, False)
+        hide_giveaways = self.plugin.get_setting(Keys.hide_giveaway_cards, False)
+        if not hide_gifts and not hide_giveaways:
+            return
+        if not param.args or len(param.args) < 2:
+            return
+        viewType = param.args[1]
+        if viewType != HIDDEN_VIEW_TYPE:
+            return
+        try:
+            parent = param.args[0]
+            context = parent.getContext()
+            if View and RecyclerViewLayoutParams and Holder:
+                empty = View(context)
+                empty.setLayoutParams(RecyclerViewLayoutParams(-1, 0))
+                empty.setMinimumHeight(0)
+                param.setResult(Holder(empty))
+        except Exception:
+            pass
+
+
+class CollapseBindHook(BaseHook):
+    def before_hooked_method(self, param):
+        hide_gifts = self.plugin.get_setting(Keys.hide_gift_cards, False)
+        hide_giveaways = self.plugin.get_setting(Keys.hide_giveaway_cards, False)
+        if not hide_gifts and not hide_giveaways:
+            return
+        if not param.args or len(param.args) < 2:
+            return
+        try:
+            adapter = param.thisObject
+            position = param.args[1]
+            if not isinstance(position, int):
+                return
+            msg = get_msg(adapter, None, position)
+            if msg is None:
+                return
+            if (hide_gifts and is_gift_message(msg)) or (hide_giveaways and is_giveaway_message(msg)):
+                param.setResult(None)
         except Exception:
             pass
 
@@ -227,5 +226,6 @@ def get_msg(adapter, holder, position):
 def register_gift_cards(plugin) -> None:
     ChatActivityAdapter = find_class("org.telegram.ui.ChatActivity$ChatActivityAdapter")
     if ChatActivityAdapter:
-        plugin.hook_all_methods(ChatActivityAdapter, "onBindViewHolder", GiftBindHook(plugin, Keys.hide_gift_cards), priority=120)
-        plugin.hook_all_methods(ChatActivityAdapter, "getItemViewType", GiveawayTypeHook(plugin, Keys.hide_giveaway_cards), priority=120)
+        plugin.hook_all_methods(ChatActivityAdapter, "getItemViewType", CollapseItemViewTypeHook(plugin), priority=120)
+        plugin.hook_all_methods(ChatActivityAdapter, "onCreateViewHolder", CollapseCreateHook(plugin), priority=120)
+        plugin.hook_all_methods(ChatActivityAdapter, "onBindViewHolder", CollapseBindHook(plugin), priority=120)

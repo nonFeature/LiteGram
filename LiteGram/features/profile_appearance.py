@@ -1,4 +1,3 @@
-from de.robv.android.xposed import XC_MethodHook as XC_MethodHook
 from hook_utils import find_class, get_private_field
 from java import jint
 

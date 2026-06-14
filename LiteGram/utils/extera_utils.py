@@ -4,6 +4,15 @@ from ui.bulletin import BulletinHelper
 from LiteGram.data.constants import Keys
 from LiteGram.utils.utils import get_client_version, parse_version
 
+_cached_parsed_version = None
+
+
+def _parsed_version():
+    global _cached_parsed_version
+    if _cached_parsed_version is None:
+        _cached_parsed_version = parse_version(get_client_version())
+    return _cached_parsed_version
+
 
 # thx jadx
 def open_extera_setting(alias: str, plugin_id: str | None = None) -> None:
@@ -22,7 +31,7 @@ def open_extera_setting(alias: str, plugin_id: str | None = None) -> None:
 
 def resolve_extera_function(function_name: str) -> str:
     try:
-        v = parse_version(get_client_version())
+        v = _parsed_version()
         if function_name == Keys.drawer_options:
             if v >= (12, 4, 1):
                 return "appNavigationSettings"
@@ -34,7 +43,7 @@ def resolve_extera_function(function_name: str) -> str:
 
 def resolve_icon(icon_name: str) -> str:
     try:
-        v = parse_version(get_client_version())
+        v = _parsed_version()
         if icon_name == "extera_outline" and v < (12, 4, 1):
             return "etg_settings"
         if icon_name == "etg_settings" and v >= (12, 4, 1):

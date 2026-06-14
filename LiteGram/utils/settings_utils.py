@@ -31,15 +31,7 @@ def Switch(
 
 def toggle_settings_options(_: View | None = None) -> None:
     plugin_instance = LiteGramPlugin.get_instance()
-    row_keys = [
-        Keys.hide_premium_row,
-        Keys.hide_stars_row,
-        Keys.hide_ton_row,
-        Keys.hide_wallet_row,
-        Keys.hide_business_row,
-        Keys.hide_send_a_gift_row,
-        Keys.hide_help_section,
-    ]
+    row_keys = [key for key, _ in Keys.SETTINGS_OPTION_ROWS]
 
     new_state = any(not bool(plugin_instance.get_setting(key, False)) for key in row_keys)
     plugin_instance.import_settings(dict.fromkeys(row_keys, new_state), reload_settings=True)
@@ -59,5 +51,5 @@ def open_url_view(url: str) -> Callable[[View], None]:
     return callback
 
 
-def show_restart_bulletin(enabled: bool) -> None:
+def show_restart_bulletin(_enabled: bool) -> None:
     BulletinHelper.show_with_button(text=t("restart_required"), button_text=t("restart"), icon_res_id=R_tg.raw.info, on_click=lambda: restart_app())

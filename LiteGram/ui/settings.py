@@ -13,15 +13,7 @@ from LiteGram.utils.settings_utils import (
     toggle_settings_options,
 )
 
-SETTINGS_OPTION_ROWS = [
-    (Keys.hide_premium_row, "hide_premium_row"),
-    (Keys.hide_stars_row, "hide_stars_row"),
-    (Keys.hide_ton_row, "hide_ton_row"),
-    (Keys.hide_wallet_row, "hide_wallet_row"),
-    (Keys.hide_business_row, "hide_business_row"),
-    (Keys.hide_send_a_gift_row, "hide_send_a_gift_row"),
-    (Keys.hide_help_section, "hide_help_section"),
-]
+SETTINGS_OPTION_ROWS = Keys.SETTINGS_OPTION_ROWS
 
 
 def get_settings_options_list() -> list[Any]:
@@ -62,7 +54,12 @@ def _profile_settings() -> list[Any]:
         Switch(text=t("hide_stories_tab"), subtext=t("hide_stories_tab_sub"), key=Keys.hide_stories_tab),
         Switch(text=t("hide_gifts_tab"), key=Keys.hide_gifts_tab),
         Header(text=t("profile_appearance")),
-        Text(text=t("manage_reply_elements"), link_alias=Keys.reply_elements, on_click=open_extera_tab(Keys.reply_elements), icon="extera_outline"),
+        Text(
+            text=t("manage_reply_elements"),
+            link_alias=Keys.reply_elements,
+            on_click=open_extera_tab(Keys.reply_elements),
+            icon=resolve_icon("extera_outline"),
+        ),
         Switch(text=t("hide_profile_background_emoji"), subtext=t("hide_profile_background_emoji_sub"), key=Keys.hide_profile_background_emoji),
         Switch(text=t("hide_profile_pinned_gifts"), key=Keys.hide_profile_pinned_gifts),
         Switch(text=t("hide_profile_colorful_background"), key=Keys.hide_profile_colorful_background),

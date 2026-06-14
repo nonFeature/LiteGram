@@ -3,15 +3,22 @@ from hook_utils import find_class
 from java.lang import Runtime
 from ui.bulletin import BulletinHelper
 
+_cached_version = None
+
 
 def get_client_version() -> str:
+    global _cached_version
+    if _cached_version is not None:
+        return _cached_version
     try:
         BuildVars = find_class("org.telegram.messenger.BuildVars")
         if BuildVars:
-            return str(BuildVars.BUILD_VERSION_STRING)
+            _cached_version = str(BuildVars.BUILD_VERSION_STRING)
+            return _cached_version
     except Exception:
         pass
-    return "Unknown"
+    _cached_version = "Unknown"
+    return _cached_version
 
 
 def parse_version(version: str):
@@ -42,6 +49,8 @@ def open_url(url: str) -> None:
 # Thx extera
 def restart_app() -> None:
     current_fragment = get_last_fragment()
+    if not current_fragment:
+        return
     context = current_fragment.getParentActivity()
     if context:
         package_name = context.getPackageName()
