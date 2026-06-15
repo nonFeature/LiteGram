@@ -19,23 +19,12 @@ ChatActivityEnterView = find_class("org.telegram.ui.Components.ChatActivityEnter
 MediaDataController = find_class("org.telegram.messenger.MediaDataController")
 
 # ============================================================
-# Module state & logging
+# Module state
 # ============================================================
-
-_logger = None
 
 
 def _init(plugin):
-    global _logger
-    _logger = plugin.log
-
-
-def _log(msg):
-    if _logger:
-        try:
-            _logger(msg)
-        except Exception:
-            pass
+    pass
 
 
 # ============================================================
@@ -322,12 +311,7 @@ def filter_response(request_name, response):
     handler = HANDLERS.get(request_name)
     if handler is None:
         return
-    try:
-        n = handler(response)
-        if n:
-            _log(f"TL {request_name}: removed {n}")
-    except Exception as e:
-        _log(f"TL {request_name} error: {e}")
+    handler(response)
 
 
 # ============================================================
@@ -357,14 +341,11 @@ class FilterRecentEmojiHook(BaseHook):
         recent = param.getResult()
         if not recent:
             return
-        before = recent.size()
         i = recent.size() - 1
         while i >= 0:
             if _is_non_stock(recent.get(i)):
                 recent.remove(i)
             i -= 1
-        if recent.size() != before:
-            _log(f"recent emoji filtered: {before}->{recent.size()}")
 
 
 # ============================================================
@@ -378,14 +359,8 @@ class FilterSearchResultsHook(BaseHook):
             return
         if not param.args or len(param.args) < 3:
             return
-        n1 = param.args[1].size() if param.args[1] else 0
-        s1 = param.args[2].size() if param.args[2] else 0
         _filter_search_results(param.args[1])
         _reindex_search_sets(param.args[2])
-        n2 = param.args[1].size() if param.args[1] else 0
-        s2 = param.args[2].size() if param.args[2] else 0
-        if n1 != n2 or s1 != s2:
-            _log(f"search filtered: results {n1}->{n2}, sets {s1}->{s2}")
 
 
 class FilterSuggestResultsHook(BaseHook):
@@ -402,8 +377,6 @@ class FilterSuggestResultsHook(BaseHook):
         target = param.args[self._arg_index]
         if not target:
             return
-        before = target.size()
-        removed = 0
         i = target.size() - 1
         while i >= 0:
             item = target.get(i)
@@ -416,10 +389,7 @@ class FilterSuggestResultsHook(BaseHook):
                     continue
             if _is_non_stock(emoji):
                 target.remove(i)
-                removed += 1
             i -= 1
-        if removed:
-            _log(f"suggest {self._label} filtered: {before}->{target.size()}")
 
 
 # ============================================================
@@ -468,14 +438,11 @@ class CheckDocumentsHook(BaseHook):
             lst = get_private_field(obj, field)
             if not lst:
                 continue
-            before = lst.size()
             i = lst.size() - 1
             while i >= 0:
                 if _is_premium_sticker(lst.get(i)):
                     lst.remove(i)
                 i -= 1
-            if lst.size() != before:
-                _log(f"EmojiView.{field}: {before}->{lst.size()}")
 
 
 class HidePremiumStickerCellHook(BaseHook):
@@ -648,5 +615,3 @@ def register_premium_emoji(plugin):
         plugin.hook_all_methods(MediaDataController, "getStickerSets", ClearStickerSetsType5Hook(plugin))
         plugin.hook_all_methods(MediaDataController, "getFeaturedEmojiSets", ClearFeaturedEmojiSetsHook(plugin))
         classes.append("MediaDataController")
-
-    _log(f"premium_emoji hooks: {', '.join(classes)}")

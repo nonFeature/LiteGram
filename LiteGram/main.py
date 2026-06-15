@@ -51,9 +51,8 @@ class LiteGramPlugin(BasePlugin):
         for name in tl_hooks:
             try:
                 self.add_hook(name)
-                self.log(f"TL add_hook: {name}")
-            except Exception as e:
-                self.log(f"TL add_hook failed: {name} {e}")
+            except Exception:
+                pass
         for name in _PROFILE_GIFT_REQUEST_HOOKS:
             try:
                 self.add_hook(name)
