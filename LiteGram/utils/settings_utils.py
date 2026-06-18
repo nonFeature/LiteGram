@@ -34,7 +34,8 @@ def toggle_settings_options(_: View | None = None) -> None:
     row_keys = [key for key, _ in Keys.SETTINGS_OPTION_ROWS]
 
     new_state = any(not bool(plugin_instance.get_setting(key, False)) for key in row_keys)
-    plugin_instance.import_settings(dict.fromkeys(row_keys, new_state), reload_settings=True)
+    for i, key in enumerate(row_keys):
+        plugin_instance.set_setting(key, new_state, reload_settings=(i == len(row_keys) - 1))
 
 
 def open_extera_tab(tab_name: str) -> Callable[[View], None]:
