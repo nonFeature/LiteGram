@@ -47,9 +47,10 @@ class ActionBarMenuItemAddSubItemHook(BaseHook):
         result = param.getResult()
         if result is None:
             return
-        if not param.args:
+        try:
+            item_id = param.args[0]
+        except IndexError:
             return
-        item_id = param.args[0]
         if item_id not in _ITEM_KEY_MAP or not self.plugin.get_setting(_ITEM_KEY_MAP[item_id], False):
             return
         result.setVisibility(View.GONE)
@@ -60,9 +61,10 @@ class ActionBarMenuItemLazilyAddSubItemHook(BaseHook):
         result = param.getResult()
         if result is None:
             return
-        if not param.args:
+        try:
+            item_id = param.args[0]
+        except IndexError:
             return
-        item_id = param.args[0]
         if item_id not in _ITEM_KEY_MAP or not self.plugin.get_setting(_ITEM_KEY_MAP[item_id], False):
             return
         result.setVisibility(View.GONE)
@@ -72,11 +74,15 @@ class ActionBarMenuItemLazilyAddSubItemHook(BaseHook):
 # public void setSubItemShown(int id, boolean show)
 class ActionBarMenuItemSetSubItemShownHook(BaseHook):
     def before_hooked_method(self, param):
-        if not param.args or len(param.args) < 2:
+        try:
+            item_id = param.args[0]
+        except IndexError:
             return
-        item_id = param.args[0]
         if item_id in _ITEM_KEY_MAP and self.plugin.get_setting(_ITEM_KEY_MAP[item_id], False):
-            param.args[1] = False  # boolean show
+            try:
+                param.args[1] = False  # boolean show
+            except IndexError:
+                pass
 
 
 class TopicsFragmentUpdateChatInfoHook(BaseHook):

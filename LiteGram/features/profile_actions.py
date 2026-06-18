@@ -22,10 +22,10 @@ class ProfileActionsViewHook(BaseHook):
         if not hide_gifts and not hide_stories and not hide_stream:
             return
 
-        if not param.args or len(param.args) <= self.key_index:
+        try:
+            current_key = param.args[self.key_index]
+        except IndexError:
             return
-
-        current_key = param.args[self.key_index]
 
         should_hide = (
             (hide_gifts and current_key == KEY_GIFT)

@@ -35,10 +35,10 @@ class ReactionsContainerLayoutSetVisibleReactionsListHook(BaseHook):
     def before_hooked_method(self, param):
         if not self.is_enabled():
             return
-        if not param.args:
+        try:
+            visible_reactions_list = param.args[0]  # List<ReactionsLayoutInBubble.VisibleReaction> visibleReactionsList
+        except IndexError:
             return
-
-        visible_reactions_list = param.args[0]  # List<ReactionsLayoutInBubble.VisibleReaction> visibleReactionsList
 
         i = visible_reactions_list.size() - 1
         while i >= 0:

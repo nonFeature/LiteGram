@@ -9,8 +9,10 @@ from LiteGram.utils.xposed_utils import BaseHook
 class StarRatingViewSetHook(BaseHook):
     def before_hooked_method(self, param):
         if self.is_enabled():
-            if param.args:
+            try:
                 param.args[0] = None
+            except IndexError:
+                pass
 
 
 def register_star_rating(plugin) -> None:

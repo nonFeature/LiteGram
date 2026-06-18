@@ -32,9 +32,10 @@ class SharedMediaLayoutHook(BaseHook):
 
     def _get_info_objects(self, param) -> tuple[Any, Any]:
         if self.is_constructor:
-            if len(param.args) < 7:
+            try:
+                return param.args[5], param.args[6]
+            except IndexError:
                 return None, None
-            return param.args[5], param.args[6]
         else:
             # updateTabs: info stored in instance fields
             instance = param.thisObject
@@ -71,10 +72,10 @@ class SharedMediaLayoutSetInfoHook(BaseHook):
     def before_hooked_method(self, param):
         if not self.is_enabled():
             return
-        if not param.args:
+        try:
+            info_obj = param.args[0]
+        except IndexError:
             return
-
-        info_obj = param.args[0]
         remove_stories(info_obj)
 
 
@@ -83,10 +84,11 @@ class ProfileStoriesCollectionTabsSetVisibilityHook(BaseHook):
     def before_hooked_method(self, param):
         if not self.is_enabled():
             return
-        if not param.args:
-            return
-        if param.args[0]:  # boolean visibility
-            param.args[0] = False
+        try:
+            if param.args[0]:  # boolean visibility
+                param.args[0] = False
+        except IndexError:
+            pass
 
 
 def remove_gifts(obj: Any):
