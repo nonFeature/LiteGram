@@ -43,7 +43,7 @@ class ChatActivityShowGiftButtonHook(BaseHook):
 class ChatActivityChannelButtonsLayoutShowButtonHook(BaseHook):
     def before_hooked_method(self, param):
         if self.is_enabled():
-            if param.args[0] == BUTTON_GIFT:
+            if param.args and param.args[0] == BUTTON_GIFT:
                 param.setResult(None)
 
 
