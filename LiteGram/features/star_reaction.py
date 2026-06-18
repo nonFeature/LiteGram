@@ -11,9 +11,11 @@ class ReactionsLayoutInBubbleSetMessageHook(BaseHook):
         if not self.is_enabled():
             return
 
-        message_object = param.args[0]  # MessageObject messageObject
-        # MessageObject.TLRPC.Message.TL_messageReactions.ArrayList<ReactionCount>
-        results = message_object.messageOwner.reactions.results
+        try:
+            message_object = param.args[0]  # MessageObject messageObject
+            results = message_object.messageOwner.reactions.results
+        except (AttributeError, TypeError):
+            return
 
         to_remove = None
 

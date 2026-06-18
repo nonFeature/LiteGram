@@ -48,8 +48,11 @@ class ChatMessageCellSetMessageObjectInternalHook(BaseHook):
         if not self.is_enabled():
             return
 
-        message_object = param.args[0]  # MessageObject messageObject
-        message_object.messageOwner.from_boosts_applied = 0
+        try:
+            message_object = param.args[0]  # MessageObject messageObject
+            message_object.messageOwner.from_boosts_applied = 0
+        except (AttributeError, TypeError):
+            pass
 
 
 class MessagesControllerPeerColorFromCollectibleHook(BaseHook):
