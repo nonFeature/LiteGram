@@ -5,7 +5,6 @@ STRINGS = {
         "category_chat": "Чат",
         "category_profile": "Профиль",
         "category_interface": "Интерфейс",
-        "category_gifts": "Подарки и Реакции",
         "category_about": "О плагине",
 
         # --- Settings Options ---
@@ -93,16 +92,12 @@ STRINGS = {
         # --- Bulletins ---
         "restart_required": "Перезапустите приложение, чтобы изменения вступили в силу.",
         "restart": "ПЕРЕЗАПУСТИТЬ",
-
-        # --- Other ---
-        "feature_unavailable": "Эта функция не поддерживается на новых клиентах с \"Liquid Glass UI\" редизайном."
     },
     "en": {
         # --- Categories ---
         "category_chat": "Chat",
         "category_profile": "Profile",
         "category_interface": "Interface",
-        "category_gifts": "Gifts & Reactions",
         "category_about": "About Plugin",
 
         # --- Settings Options ---
@@ -190,9 +185,6 @@ STRINGS = {
         # --- Bulletins ---
         "restart_required": "Restart the app for changes to take effect.",
         "restart": "RESTART",
-
-        # --- Other ---
-        "feature_unavailable": "This feature is not supported on new version with \"Liquid Glass UI\" redesign."
     }
 }
 # fmt: on

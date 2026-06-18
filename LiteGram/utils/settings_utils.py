@@ -39,7 +39,7 @@ def toggle_settings_options(_: View | None = None) -> None:
 
 def open_extera_tab(tab_name: str) -> Callable[[View], None]:
     def callback(view: View):
-        open_extera_setting(tab_name)
+        open_extera_setting(tab_name, plugin_id="litegram")
 
     return callback
 

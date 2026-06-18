@@ -14,6 +14,12 @@ class Keys:
     hide_send_a_gift_row = "hideSendAGiftRow"
     hide_help_section = "hideHelpSection"
 
+    # --- Category Link Aliases (deep links) ---
+    chatSettings = "chatSettings"
+    profileSettings = "profileSettings"
+    interfaceSettings = "interfaceSettings"
+    aboutSettings = "aboutSettings"
+
     # --- Drawer Options ---
     drawer_options = "drawerSettings"  # ETG
     hide_profile_actions_stream_button = "hideProfileActionsStreamButton"
