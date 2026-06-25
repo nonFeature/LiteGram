@@ -45,24 +45,19 @@ class ProfileActionsApplyHook(BaseHook):
             for coll in ("visibleActions", "actionsList", "allAvailableActions"):
                 actions = getattr(obj, coll, None)
                 if actions is not None and hasattr(actions, "remove"):
-                    if self.plugin.get_setting(Keys.hide_profile_actions_gift_button, False):
-                        for k in (KEY_GIFT, jint(KEY_GIFT)):
-                            try:
-                                actions.remove(k)
-                            except Exception:
-                                pass
-                    if self.plugin.get_setting(Keys.hide_profile_actions_stories_button, False):
-                        for k in (KEY_STORY, jint(KEY_STORY)):
-                            try:
-                                actions.remove(k)
-                            except Exception:
-                                pass
-                    if self.plugin.get_setting(Keys.hide_profile_actions_stream_button, False):
-                        for k in (KEY_VOICE_CHAT, jint(KEY_VOICE_CHAT), KEY_STREAM, jint(KEY_STREAM)):
-                            try:
-                                actions.remove(k)
-                            except Exception:
-                                pass
+                    settings_map = [
+                        (Keys.hide_profile_actions_gift_button, (KEY_GIFT,)),
+                        (Keys.hide_profile_actions_stories_button, (KEY_STORY,)),
+                        (Keys.hide_profile_actions_stream_button, (KEY_VOICE_CHAT, KEY_STREAM)),
+                    ]
+                    for setting_key, target_keys in settings_map:
+                        if self.plugin.get_setting(setting_key, False):
+                            for key in target_keys:
+                                for k in (key, jint(key)):
+                                    try:
+                                        actions.remove(k)
+                                    except Exception:
+                                        pass
         except Exception:
             pass
 

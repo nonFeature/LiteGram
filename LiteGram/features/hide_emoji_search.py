@@ -24,29 +24,19 @@ class EmojiViewInitHook(BaseHook):
         plugin = self.plugin
 
         try:
-            # 1. Emoji search categories (quick reactions / recent emojis)
-            if plugin.get_setting(Keys.hide_emoji_search, False):
-                emoji_sf = get_private_field(self_view, "emojiSearchField")
-                if emoji_sf:
-                    categories_list = get_private_field(emoji_sf, "categoriesListView")
-                    if categories_list:
-                        categories_list.setVisibility(8)  # GONE
+            search_fields_config = [
+                ("emojiSearchField", Keys.hide_emoji_search),
+                ("stickersSearchField", Keys.hide_sticker_search),
+                ("gifSearchField", Keys.hide_gif_search),
+            ]
 
-            # 2. Sticker search categories
-            if plugin.get_setting(Keys.hide_sticker_search, False):
-                sticker_sf = get_private_field(self_view, "stickersSearchField")
-                if sticker_sf:
-                    categories_list = get_private_field(sticker_sf, "categoriesListView")
-                    if categories_list:
-                        categories_list.setVisibility(8)  # GONE
-
-            # 3. GIF search categories
-            if plugin.get_setting(Keys.hide_gif_search, False):
-                gif_sf = get_private_field(self_view, "gifSearchField")
-                if gif_sf:
-                    categories_list = get_private_field(gif_sf, "categoriesListView")
-                    if categories_list:
-                        categories_list.setVisibility(8)  # GONE
+            for field_name, setting_key in search_fields_config:
+                if plugin.get_setting(setting_key, False):
+                    sf = get_private_field(self_view, field_name)
+                    if sf:
+                        categories_list = get_private_field(sf, "categoriesListView")
+                        if categories_list:
+                            categories_list.setVisibility(8)  # GONE
         except Exception:
             pass
 

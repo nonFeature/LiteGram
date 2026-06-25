@@ -1,4 +1,4 @@
-from android.view import View  # ty: ignore
+from android.view import View
 from hook_utils import find_class, get_private_field
 
 from LiteGram.data.constants import Keys

@@ -1,6 +1,6 @@
 from collections.abc import Callable
 
-from android.view import View  # ty: ignore
+from android.view import View
 from org.telegram.messenger import R as R_tg  # ty: ignore
 from ui.bulletin import BulletinHelper
 from ui.settings import Switch as BaseSwitch
