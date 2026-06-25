@@ -85,6 +85,22 @@ def _chat_settings() -> list[Any]:
             icon=resolve_icon("extera_outline"),
         ),
         Switch(text=t("hide_greeting_button"), subtext=t("hide_greeting_button_sub"), key=Keys.hide_greeting_button),
+        Header(text=t("action_bar")),
+        Switch(text=t("hide_action_bar_live_stream"), key=Keys.hide_action_bar_live_stream),
+        Switch(text=t("hide_action_bar_archived_stories"), key=Keys.hide_action_bar_archived_stories),
+        Switch(text=t("hide_action_bar_send_gift"), key=Keys.hide_action_bar_send_gift),
+        Switch(text=t("hide_action_bar_boost_group"), key=Keys.hide_action_bar_boost_group),
+        Switch(text=t("hide_action_bar_add_shortcut"), key=Keys.hide_action_bar_add_shortcut),
+        Header(text=t("gifts")),
+        Switch(text=t("hide_bottom_gift_button"), key=Keys.hide_bottom_gift_button),
+        Switch(text=t("hide_gift_cards"), subtext=t("hide_gift_cards_sub"), key=Keys.hide_gift_cards),
+        Switch(text=t("hide_giveaway_cards"), subtext=t("hide_giveaway_cards_sub"), key=Keys.hide_giveaway_cards),
+        Switch(text=t("hide_stars_rating"), key=Keys.hide_stars_rating),
+        Switch(text=t("hide_star_reaction"), key=Keys.hide_star_reaction),
+        Header(text=t("emoji_search")),
+        Text(text=t("switch_all"), link_alias=Keys.switch_all_emoji_search, on_click=toggle_emoji_search_options),
+        *[Switch(text=t(text_key), key=key) for key, text_key in Keys.EMOJI_SEARCH_ROWS],
+        Header(text=t("keyboard")),
         Switch(text=t("hide_premium_emoji"), subtext=t("hide_premium_emoji_sub"), key=Keys.hide_premium_emoji),
         *(
             [
@@ -111,21 +127,6 @@ def _chat_settings() -> list[Any]:
             if bool(LiteGramPlugin.get_instance().get_setting(Keys.hide_premium_stickers, False))
             else []
         ),
-        Header(text=t("action_bar")),
-        Switch(text=t("hide_action_bar_live_stream"), key=Keys.hide_action_bar_live_stream),
-        Switch(text=t("hide_action_bar_archived_stories"), key=Keys.hide_action_bar_archived_stories),
-        Switch(text=t("hide_action_bar_send_gift"), key=Keys.hide_action_bar_send_gift),
-        Switch(text=t("hide_action_bar_boost_group"), key=Keys.hide_action_bar_boost_group),
-        Switch(text=t("hide_action_bar_add_shortcut"), key=Keys.hide_action_bar_add_shortcut),
-        Header(text=t("gifts")),
-        Switch(text=t("hide_bottom_gift_button"), key=Keys.hide_bottom_gift_button),
-        Switch(text=t("hide_gift_cards"), subtext=t("hide_gift_cards_sub"), key=Keys.hide_gift_cards),
-        Switch(text=t("hide_giveaway_cards"), subtext=t("hide_giveaway_cards_sub"), key=Keys.hide_giveaway_cards),
-        Switch(text=t("hide_stars_rating"), key=Keys.hide_stars_rating),
-        Switch(text=t("hide_star_reaction"), key=Keys.hide_star_reaction),
-        Header(text=t("emoji_search")),
-        Text(text=t("switch_all"), link_alias=Keys.switch_all_emoji_search, on_click=toggle_emoji_search_options),
-        *[Switch(text=t(text_key), key=key) for key, text_key in Keys.EMOJI_SEARCH_ROWS],
     ]
 
 
