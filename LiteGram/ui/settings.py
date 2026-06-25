@@ -151,10 +151,8 @@ def _profile_settings() -> list[Any]:
         Switch(text=t("hide_profile_colorful_background"), key=Keys.hide_profile_colorful_background),
         Switch(text=t("hide_boost_badge"), key=Keys.hide_boost_badge),
         Switch(text=t("hide_premium_badge"), subtext=t("hide_premium_badge_sub"), on_change=show_restart_bulletin, key=Keys.hide_premium_badge),
-        Switch(text=t("hide_bot_verification"), key=Keys.hide_bot_verification),
-        Header(text=t("gifts")),
         Switch(text=t("hide_collectible_status"), subtext=t("hide_collectible_status_sub"), key=Keys.hide_collectible_status),
-    ]
+        Switch(text=t("hide_bot_verification"), key=Keys.hide_bot_verification),
 
 
 def _interface_settings() -> list[Any]:
