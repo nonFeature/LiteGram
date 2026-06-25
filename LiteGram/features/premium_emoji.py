@@ -567,7 +567,10 @@ class DisableNotificationsLockerHook(BaseHook):
             return
         locker = get_private_field(param.thisObject, "notificationsLocker")
         if locker:
-            locker.disabled = True
+            try:
+                locker.disabled = True
+            except Exception:
+                pass
 
 
 class SetAllowAnimatedEmojiFalseHook(BaseHook):
@@ -577,7 +580,10 @@ class SetAllowAnimatedEmojiFalseHook(BaseHook):
     def after_hooked_method(self, param):
         if not self.is_enabled():
             return
-        param.thisObject.allowAnimatedEmoji = False
+        try:
+            param.thisObject.allowAnimatedEmoji = False
+        except Exception:
+            pass
 
 
 class FilterReactionsListHook(BaseHook):

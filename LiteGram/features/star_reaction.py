@@ -17,6 +17,9 @@ class ReactionsLayoutInBubbleSetMessageHook(BaseHook):
         except (AttributeError, TypeError):
             return
 
+        if results is None:
+            return
+
         to_remove = None
 
         for i in range(results.size()):
