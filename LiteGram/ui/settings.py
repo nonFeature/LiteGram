@@ -154,7 +154,6 @@ def _profile_settings() -> list[Any]:
         Switch(text=t("hide_bot_verification"), key=Keys.hide_bot_verification),
         Header(text=t("gifts")),
         Switch(text=t("hide_collectible_status"), subtext=t("hide_collectible_status_sub"), key=Keys.hide_collectible_status),
-        Switch(text=t("hide_gift_hint"), key=Keys.hide_gift_hint),
     ]
 
 

@@ -77,7 +77,7 @@ STRINGS = {
         "hide_collectible_status_sub": "Скрывает эффекты и частицы collectible-статуса",
         "force_disable_particles": "Отключить частицы у статуса",
         "force_disable_particles_sub": "Принудительно отключает частицы у статуса в боковом меню",
-        "hide_gift_hint": "Скрыть подсказку о подарке над эмодзи статусом",
+
         "hide_stars_rating": "Скрыть рейтинг звёзд",
         "hide_star_reaction": "Скрыть звёздные реакции",
 
@@ -191,7 +191,7 @@ STRINGS = {
         "hide_collectible_status_sub": "Hides collectible status effects and particles",
         "force_disable_particles": "Disable Status Particles",
         "force_disable_particles_sub": "Forces particle effects off in status menus",
-        "hide_gift_hint": "Hide Gift Hint Above Emoji Status",
+
         "hide_stars_rating": "Hide Stars Rating",
         "hide_star_reaction": "Hide Star Reaction",
 

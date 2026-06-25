@@ -28,13 +28,6 @@ hook ChatAvatarContainerSetTitleHook for hide premium badge in chat header (para
 """
 
 
-class ProfileActivitySetCollectibleGiftStatusHook(BaseHook):
-    def before_hooked_method(self, param):
-        if not self.is_enabled():
-            return
-        param.setResult(None)
-
-
 class UserObjectGetEmojiStatusDocumentIdHook(BaseHook):
     def before_hooked_method(self, param):
         if not self.is_enabled():
@@ -105,11 +98,7 @@ class MessagesControllerIsPremiumUserHook(BaseHook):
 
 def register_premium_badge(plugin) -> None:
     ProfileActivity = find_class("org.telegram.ui.ProfileActivity")
-    if ProfileActivity:
-        try:
-            plugin.hook_all_methods(ProfileActivity, "setCollectibleGiftStatus", ProfileActivitySetCollectibleGiftStatusHook(plugin, Keys.hide_gift_hint))
-        except Exception:
-            pass
+
 
     ChatMessageCell = find_class("org.telegram.ui.Cells.ChatMessageCell")
     if ChatMessageCell:
@@ -173,6 +162,21 @@ class DialogsStatusNeutralizeHook(BaseHook):
             if hasattr(obj, "statusDrawableGiftId"):
                 obj.statusDrawableGiftId = None
             _disable_particles(getattr(obj, "statusDrawable", None))
+        except Exception:
+            pass
+
+
+class DialogCellStatusNeutralizeHook(BaseHook):
+    def after_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        try:
+            obj = param.thisObject
+            for field in ("statusDrawableGiftId", "emojiStatusGiftId"):
+                if hasattr(obj, field):
+                    setattr(obj, field, None)
+            _disable_particles(getattr(obj, "statusDrawable", None))
+            _disable_particles(getattr(obj, "emojiStatus", None))
         except Exception:
             pass
 
@@ -258,6 +262,14 @@ def _hook_collectible_status(plugin) -> None:
             plugin.hook_all_methods(DialogsActivity, "updateStatus", DialogsStatusNeutralizeHook(plugin, Keys.hide_collectible_status))
         except Exception:
             pass
+
+    DialogCell = find_class("org.telegram.ui.Cells.DialogCell")
+    if DialogCell:
+        for m in ("buildLayout", "update"):
+            try:
+                plugin.hook_all_methods(DialogCell, m, DialogCellStatusNeutralizeHook(plugin, Keys.hide_collectible_status))
+            except Exception:
+                pass
 
     DrawerProfileCell = find_class("org.telegram.ui.Cells.DrawerProfileCell")
     if DrawerProfileCell:
