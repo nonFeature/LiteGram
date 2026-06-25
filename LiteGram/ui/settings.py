@@ -11,6 +11,7 @@ from LiteGram.utils.settings_utils import (
     open_extera_tab,
     open_url_view,
     show_restart_bulletin,
+    show_restart_bulletin_if_disabled,
     toggle_emoji_search_options,
     toggle_premium_emoji_options,
     toggle_premium_stickers_options,
@@ -27,6 +28,7 @@ def _premium_emoji_settings() -> list[Any]:
         Switch(
             text=t("hide_premium_emoji_packs"),
             key=Keys.hide_premium_emoji_packs,
+            on_change=show_restart_bulletin_if_disabled,
             default=True,
         ),
         Switch(
@@ -90,7 +92,7 @@ def _chat_settings() -> list[Any]:
         Text(text=t("switch_all"), link_alias=Keys.switch_all_emoji_search, on_click=toggle_emoji_search_options),
         *[Switch(text=t(text_key), key=key) for key, text_key in Keys.EMOJI_SEARCH_ROWS],
         Header(text=t("keyboard")),
-        Switch(text=t("hide_premium_emoji"), key=Keys.hide_premium_emoji),
+        Switch(text=t("hide_premium_emoji"), key=Keys.hide_premium_emoji, on_change=show_restart_bulletin_if_disabled),
         *(
             [
                 Text(

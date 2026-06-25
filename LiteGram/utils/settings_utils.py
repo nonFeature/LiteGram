@@ -89,3 +89,8 @@ def open_url_view(url: str) -> Callable[[View], None]:
 
 def show_restart_bulletin(_enabled: bool) -> None:
     BulletinHelper.show_with_button(text=t("restart_required"), button_text=t("restart"), icon_res_id=R_tg.raw.info, on_click=lambda: restart_app())
+
+
+def show_restart_bulletin_if_disabled(enabled: bool) -> None:
+    if not enabled:
+        show_restart_bulletin(False)
