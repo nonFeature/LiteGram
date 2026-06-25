@@ -101,7 +101,7 @@ def _chat_settings() -> list[Any]:
         Text(text=t("switch_all"), link_alias=Keys.switch_all_emoji_search, on_click=toggle_emoji_search_options),
         *[Switch(text=t(text_key), key=key) for key, text_key in Keys.EMOJI_SEARCH_ROWS],
         Header(text=t("keyboard")),
-        Switch(text=t("hide_premium_emoji"), subtext=t("hide_premium_emoji_sub"), key=Keys.hide_premium_emoji),
+        Switch(text=t("hide_premium_emoji"), key=Keys.hide_premium_emoji),
         *(
             [
                 Text(
@@ -114,7 +114,7 @@ def _chat_settings() -> list[Any]:
             if bool(LiteGramPlugin.get_instance().get_setting(Keys.hide_premium_emoji, False))
             else []
         ),
-        Switch(text=t("hide_premium_stickers"), subtext=t("hide_premium_stickers_sub"), key=Keys.hide_premium_stickers),
+        Switch(text=t("hide_premium_stickers"), key=Keys.hide_premium_stickers),
         *(
             [
                 Text(
