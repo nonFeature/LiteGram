@@ -45,6 +45,21 @@ class Keys:
     hide_boost_badge = "hideBoostBadge"
     hide_gift_hint = "hideGiftHint"
     hide_premium_emoji = "hidePremiumEmoji"
+    hide_premium_emoji_packs = "hidePremiumEmojiPacks"
+    hide_premium_recent = "hidePremiumRecent"
+    hide_premium_search = "hidePremiumSearch"
+    hide_premium_suggestions = "hidePremiumSuggestions"
+    hide_premium_reactions = "hidePremiumReactions"
+    switch_all_premium_emoji = "switchAllPremiumEmoji"
+    premiumEmojiSettings = "premiumEmojiSettings"
+
+    hide_premium_stickers = "hidePremiumStickers"
+    hide_premium_stickers_recent = "hidePremiumStickersRecent"
+    hide_premium_stickers_search = "hidePremiumStickersSearch"
+    hide_premium_stickers_grid = "hidePremiumStickersGrid"
+    switch_all_premium_stickers = "switchAllPremiumStickers"
+    premiumStickersSettings = "premiumStickersSettings"
+
     hide_premium_badge = "hidePremiumBadge"
     hide_bot_verification = "hideBotVerification"
 
@@ -58,8 +73,11 @@ class Keys:
     # --- Gifts ---
     hide_bottom_gift_button = "hideBottomGiftButton"
     hide_gift_cards = "hideGiftCards"
+    hide_gift_dialogs_send = "hideGiftDialogsSend"
+    hide_gift_dialogs_view = "hideGiftDialogsView"
     hide_giveaway_cards = "hideGiveawayCards"
     hide_collectible_status = "hideCollectibleStatus"
+    force_disable_particles = "forceDisableParticles"
     hide_stars_rating = "hideStarsRating"
     hide_star_reaction = "hideStarReaction"
 
