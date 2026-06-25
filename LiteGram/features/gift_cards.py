@@ -226,6 +226,15 @@ def get_msg(adapter, holder, position):
 def register_gift_cards(plugin) -> None:
     ChatActivityAdapter = find_class("org.telegram.ui.ChatActivity$ChatActivityAdapter")
     if ChatActivityAdapter:
-        plugin.hook_all_methods(ChatActivityAdapter, "getItemViewType", CollapseItemViewTypeHook(plugin), priority=120)
-        plugin.hook_all_methods(ChatActivityAdapter, "onCreateViewHolder", CollapseCreateHook(plugin), priority=120)
-        plugin.hook_all_methods(ChatActivityAdapter, "onBindViewHolder", CollapseBindHook(plugin), priority=120)
+        try:
+            plugin.hook_all_methods(ChatActivityAdapter, "getItemViewType", CollapseItemViewTypeHook(plugin), priority=120)
+        except Exception:
+            pass
+        try:
+            plugin.hook_all_methods(ChatActivityAdapter, "onCreateViewHolder", CollapseCreateHook(plugin), priority=120)
+        except Exception:
+            pass
+        try:
+            plugin.hook_all_methods(ChatActivityAdapter, "onBindViewHolder", CollapseBindHook(plugin), priority=120)
+        except Exception:
+            pass

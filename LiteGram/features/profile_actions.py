@@ -1,4 +1,5 @@
-from hook_utils import find_class
+from hook_utils import find_class, get_private_field
+from java import jint
 
 from LiteGram.data.constants import Keys
 from LiteGram.utils.xposed_utils import BaseHook
@@ -23,8 +24,8 @@ class ProfileActionsViewHook(BaseHook):
             return
 
         try:
-            current_key = param.args[self.key_index]
-        except IndexError:
+            current_key = int(param.args[self.key_index])
+        except (IndexError, ValueError, TypeError):
             return
 
         should_hide = (
@@ -39,17 +40,29 @@ class ProfileActionsViewHook(BaseHook):
 
 class ProfileActionsApplyHook(BaseHook):
     def after_hooked_method(self, param):
-        if not self.is_enabled():
-            return
         try:
             obj = param.thisObject
             for coll in ("visibleActions", "actionsList", "allAvailableActions"):
                 actions = getattr(obj, coll, None)
                 if actions is not None and hasattr(actions, "remove"):
-                    try:
-                        actions.remove(KEY_GIFT)
-                    except Exception:
-                        pass
+                    if self.plugin.get_setting(Keys.hide_profile_actions_gift_button, False):
+                        for k in (KEY_GIFT, jint(KEY_GIFT)):
+                            try:
+                                actions.remove(k)
+                            except Exception:
+                                pass
+                    if self.plugin.get_setting(Keys.hide_profile_actions_stories_button, False):
+                        for k in (KEY_STORY, jint(KEY_STORY)):
+                            try:
+                                actions.remove(k)
+                            except Exception:
+                                pass
+                    if self.plugin.get_setting(Keys.hide_profile_actions_stream_button, False):
+                        for k in (KEY_VOICE_CHAT, jint(KEY_VOICE_CHAT), KEY_STREAM, jint(KEY_STREAM)):
+                            try:
+                                actions.remove(k)
+                            except Exception:
+                                pass
         except Exception:
             pass
 
@@ -66,15 +79,112 @@ class BlockProfileGiftViewHook(BaseHook):
             param.setResult(None)
 
 
+class ProfileActivityUpdateBottomButtonYHook(BaseHook):
+    def before_hooked_method(self, param):
+        if self.is_enabled():
+            try:
+                instance = param.thisObject
+                bottom_buttons_container = get_private_field(instance, "bottomButtonsContainer")
+                if bottom_buttons_container:
+                    bottom_buttons_container.setVisibility(8)  # GONE
+            except Exception:
+                pass
+            param.setResult(None)
+
+
+class ProfileGiftsContainerUpdateButtonHook(BaseHook):
+    def before_hooked_method(self, param):
+        if self.is_enabled():
+            try:
+                instance = param.thisObject
+                button_container = get_private_field(instance, "buttonContainer")
+                if button_container:
+                    button_container.setVisibility(8)  # GONE
+            except Exception:
+                pass
+            param.setResult(None)
+
+
+class ProfileGiftsContainerGetBottomOffsetHook(BaseHook):
+    def before_hooked_method(self, param):
+        if self.is_enabled():
+            param.setResult(jint(0))
+
+
+class ProfileGiftsContainerPageUpdateEmptyViewHook(BaseHook):
+    def after_hooked_method(self, param):
+        if self.is_enabled():
+            try:
+                instance = param.thisObject
+                empty_view_button = get_private_field(instance, "emptyView1Button")
+                if empty_view_button:
+                    empty_view_button.setVisibility(8)  # GONE
+            except Exception:
+                pass
+
+
 def register_profile_actions(plugin) -> None:
     ProfileActionsView = find_class("org.telegram.ui.Components.ProfileActionsView")
     if ProfileActionsView:
-        plugin.hook_all_methods(ProfileActionsView, "set", ProfileActionsViewHook(plugin, 0))
-        plugin.hook_all_methods(ProfileActionsView, "getOrCreate", ProfileActionsViewHook(plugin, 1))
-        plugin.hook_all_methods(ProfileActionsView, "applyVisibleActions", ProfileActionsApplyHook(plugin, Keys.hide_profile_actions_gift_button), priority=100)
+        try:
+            plugin.hook_all_methods(ProfileActionsView, "set", ProfileActionsViewHook(plugin, 0))
+        except Exception:
+            pass
+        try:
+            plugin.hook_all_methods(ProfileActionsView, "applyVisibleActions", ProfileActionsApplyHook(plugin), priority=100)
+        except Exception:
+            pass
 
     ProfileActivity = find_class("org.telegram.ui.ProfileActivity")
     if ProfileActivity:
         for m in ("showGifts", "openGifts", "openStarGifts", "onGiftClick", "onGiftPermiumClicked"):
-            plugin.hook_all_methods(ProfileActivity, m, BlockProfileGiftViewHook(plugin, Keys.hide_profile_actions_gift_button))
-        plugin.hook_all_methods(ProfileActivity, "updateGiftState", ProfileActivityGiftBlockHook(plugin, Keys.hide_profile_actions_gift_button))
+            try:
+                plugin.hook_all_methods(ProfileActivity, m, BlockProfileGiftViewHook(plugin, Keys.hide_profile_actions_gift_button))
+            except Exception:
+                pass
+        try:
+            plugin.hook_all_methods(
+                ProfileActivity,
+                "updateGiftState",
+                ProfileActivityGiftBlockHook(plugin, Keys.hide_profile_actions_gift_button),
+            )
+        except Exception:
+            pass
+        try:
+            plugin.hook_all_methods(
+                ProfileActivity,
+                "updateBottomButtonY",
+                ProfileActivityUpdateBottomButtonYHook(plugin, Keys.hide_profile_actions_stories_button),
+            )
+        except Exception:
+            pass
+
+    ProfileGiftsContainer = find_class("org.telegram.ui.Gifts.ProfileGiftsContainer")
+    if ProfileGiftsContainer:
+        try:
+            plugin.hook_all_methods(
+                ProfileGiftsContainer,
+                "updateButton",
+                ProfileGiftsContainerUpdateButtonHook(plugin, Keys.hide_profile_actions_gift_button),
+            )
+        except Exception:
+            pass
+        try:
+            plugin.hook_all_methods(
+                ProfileGiftsContainer,
+                "getBottomOffset",
+                ProfileGiftsContainerGetBottomOffsetHook(plugin, Keys.hide_profile_actions_gift_button),
+            )
+        except Exception:
+            pass
+
+    ProfileGiftsContainerPage = find_class("org.telegram.ui.Gifts.ProfileGiftsContainer$Page")
+    if ProfileGiftsContainerPage:
+        try:
+            plugin.hook_all_methods(
+                ProfileGiftsContainerPage,
+                "updateEmptyView",
+                ProfileGiftsContainerPageUpdateEmptyViewHook(plugin, Keys.hide_profile_actions_gift_button),
+            )
+        except Exception:
+            pass

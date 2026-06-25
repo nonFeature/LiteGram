@@ -240,9 +240,18 @@ class SettingsActivityOnClickHook(BaseHook):
 def register_settings_menu(plugin) -> None:
     ProfileActivityClass = find_class("org.telegram.ui.ProfileActivity")
     if ProfileActivityClass:
-        plugin.hook_all_methods(ProfileActivityClass, "updateRowsIds", ProfileActivityUpdateRowsIdsHook(plugin))
+        try:
+            plugin.hook_all_methods(ProfileActivityClass, "updateRowsIds", ProfileActivityUpdateRowsIdsHook(plugin))
+        except Exception:
+            pass
 
     SettingsActivity = find_class("org.telegram.ui.SettingsActivity")
     if SettingsActivity:
-        plugin.hook_all_methods(SettingsActivity, "fillItems", SettingsActivityFillItemsHook(plugin))
-        plugin.hook_all_methods(SettingsActivity, "onClick", SettingsActivityOnClickHook(plugin))
+        try:
+            plugin.hook_all_methods(SettingsActivity, "fillItems", SettingsActivityFillItemsHook(plugin))
+        except Exception:
+            pass
+        try:
+            plugin.hook_all_methods(SettingsActivity, "onClick", SettingsActivityOnClickHook(plugin))
+        except Exception:
+            pass

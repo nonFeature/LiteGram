@@ -106,22 +106,37 @@ class MessagesControllerIsPremiumUserHook(BaseHook):
 def register_premium_badge(plugin) -> None:
     ProfileActivity = find_class("org.telegram.ui.ProfileActivity")
     if ProfileActivity:
-        plugin.hook_all_methods(ProfileActivity, "setCollectibleGiftStatus", ProfileActivitySetCollectibleGiftStatusHook(plugin, Keys.hide_gift_hint))
+        try:
+            plugin.hook_all_methods(ProfileActivity, "setCollectibleGiftStatus", ProfileActivitySetCollectibleGiftStatusHook(plugin, Keys.hide_gift_hint))
+        except Exception:
+            pass
 
     ChatMessageCell = find_class("org.telegram.ui.Cells.ChatMessageCell")
     if ChatMessageCell:
-        plugin.hook_all_methods(ChatMessageCell, "getAuthorStatus", ChatMessageCellGetAuthorStatusHook(plugin, Keys.hide_premium_badge))
+        try:
+            plugin.hook_all_methods(ChatMessageCell, "getAuthorStatus", ChatMessageCellGetAuthorStatusHook(plugin, Keys.hide_premium_badge))
+        except Exception:
+            pass
 
     DialogObject = find_class("org.telegram.messenger.DialogObject")
     UserObject = find_class("org.telegram.messenger.UserObject")
     if DialogObject:
-        plugin.hook_all_methods(DialogObject, "getEmojiStatusDocumentId", DialogObjectGetEmojiStatusDocumentIdHook(plugin, Keys.hide_premium_badge))
+        try:
+            plugin.hook_all_methods(DialogObject, "getEmojiStatusDocumentId", DialogObjectGetEmojiStatusDocumentIdHook(plugin, Keys.hide_premium_badge))
+        except Exception:
+            pass
     if UserObject:
-        plugin.hook_all_methods(UserObject, "getEmojiStatusDocumentId", UserObjectGetEmojiStatusDocumentIdHook(plugin, Keys.hide_premium_badge))
+        try:
+            plugin.hook_all_methods(UserObject, "getEmojiStatusDocumentId", UserObjectGetEmojiStatusDocumentIdHook(plugin, Keys.hide_premium_badge))
+        except Exception:
+            pass
 
     MessagesController = find_class("org.telegram.messenger.MessagesController")
     if MessagesController:
-        plugin.hook_all_methods(MessagesController, "isPremiumUser", MessagesControllerIsPremiumUserHook(plugin, Keys.hide_premium_badge))
+        try:
+            plugin.hook_all_methods(MessagesController, "isPremiumUser", MessagesControllerIsPremiumUserHook(plugin, Keys.hide_premium_badge))
+        except Exception:
+            pass
 
     # === Collectible status ===
     _hook_collectible_status(plugin)
@@ -192,6 +207,18 @@ class DrawerUserStatusNeutralizeHook(BaseHook):
             pass
 
 
+class DrawerHeaderViewStatusNeutralizeHook(BaseHook):
+    def after_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        try:
+            obj = param.thisObject
+            _disable_particles(getattr(obj, "premiumStatusDrawable", None))
+            _disable_particles(getattr(obj, "exteraBadgeDrawable", None))
+        except Exception:
+            pass
+
+
 class ForceParticlesOffHook(BaseHook):
     _active = False
 
@@ -213,27 +240,52 @@ class ForceParticlesOffHook(BaseHook):
 def _hook_collectible_status(plugin) -> None:
     DialogObject = find_class("org.telegram.messenger.DialogObject")
     if DialogObject:
-        plugin.hook_all_methods(DialogObject, "isEmojiStatusCollectible", IsEmojiStatusCollectibleHook(plugin, Keys.hide_collectible_status))
+        try:
+            plugin.hook_all_methods(DialogObject, "isEmojiStatusCollectible", IsEmojiStatusCollectibleHook(plugin, Keys.hide_collectible_status))
+        except Exception:
+            pass
 
     ProfileActivity = find_class("org.telegram.ui.ProfileActivity")
     if ProfileActivity:
-        plugin.hook_all_methods(ProfileActivity, "getEmojiStatusDrawable", ProfileEmojiStatusDrawableHook(plugin, Keys.hide_collectible_status))
+        try:
+            plugin.hook_all_methods(ProfileActivity, "getEmojiStatusDrawable", ProfileEmojiStatusDrawableHook(plugin, Keys.hide_collectible_status))
+        except Exception:
+            pass
 
     DialogsActivity = find_class("org.telegram.ui.DialogsActivity")
     if DialogsActivity:
-        plugin.hook_all_methods(DialogsActivity, "updateStatus", DialogsStatusNeutralizeHook(plugin, Keys.hide_collectible_status))
+        try:
+            plugin.hook_all_methods(DialogsActivity, "updateStatus", DialogsStatusNeutralizeHook(plugin, Keys.hide_collectible_status))
+        except Exception:
+            pass
 
     DrawerProfileCell = find_class("org.telegram.ui.Cells.DrawerProfileCell")
     if DrawerProfileCell:
-        plugin.hook_all_methods(DrawerProfileCell, "setUser", DrawerProfileStatusNeutralizeHook(plugin, Keys.hide_collectible_status))
+        try:
+            plugin.hook_all_methods(DrawerProfileCell, "setUser", DrawerProfileStatusNeutralizeHook(plugin, Keys.hide_collectible_status))
+        except Exception:
+            pass
 
     DrawerUserCell = find_class("org.telegram.ui.Cells.DrawerUserCell")
     if DrawerUserCell:
         for m in ("setAccount", "didReceivedNotification"):
-            plugin.hook_all_methods(DrawerUserCell, m, DrawerUserStatusNeutralizeHook(plugin, Keys.hide_collectible_status))
+            try:
+                plugin.hook_all_methods(DrawerUserCell, m, DrawerUserStatusNeutralizeHook(plugin, Keys.hide_collectible_status))
+            except Exception:
+                pass
+
+    DrawerHeaderView = find_class("com.exteragram.messenger.drawer.DrawerHeaderView")
+    if DrawerHeaderView:
+        try:
+            plugin.hook_all_methods(DrawerHeaderView, "updateUserInfo", DrawerHeaderViewStatusNeutralizeHook(plugin, Keys.hide_collectible_status))
+        except Exception:
+            pass
 
 
 def _hook_particles(plugin) -> None:
     SwapAnimatedEmojiDrawable = find_class("org.telegram.ui.Components.AnimatedEmojiDrawable$SwapAnimatedEmojiDrawable")
     if SwapAnimatedEmojiDrawable:
-        plugin.hook_all_methods(SwapAnimatedEmojiDrawable, "setParticles", ForceParticlesOffHook(plugin, Keys.force_disable_particles))
+        try:
+            plugin.hook_all_methods(SwapAnimatedEmojiDrawable, "setParticles", ForceParticlesOffHook(plugin, Keys.hide_collectible_status))
+        except Exception:
+            pass

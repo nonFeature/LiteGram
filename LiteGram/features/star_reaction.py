@@ -61,11 +61,20 @@ class ReactionsContainerLayoutDrawHook(BaseHook):
 def register_star_reaction(plugin) -> None:
     ReactionsLayoutInBubble = find_class("org.telegram.ui.Components.Reactions.ReactionsLayoutInBubble")
     if ReactionsLayoutInBubble:
-        plugin.hook_all_methods(ReactionsLayoutInBubble, "setMessage", ReactionsLayoutInBubbleSetMessageHook(plugin, Keys.hide_star_reaction))
+        try:
+            plugin.hook_all_methods(ReactionsLayoutInBubble, "setMessage", ReactionsLayoutInBubbleSetMessageHook(plugin, Keys.hide_star_reaction))
+        except Exception:
+            pass
 
     ReactionsContainerLayout = find_class("org.telegram.ui.Components.ReactionsContainerLayout")
     if ReactionsContainerLayout:
-        plugin.hook_all_methods(
-            ReactionsContainerLayout, "setVisibleReactionsList", ReactionsContainerLayoutSetVisibleReactionsListHook(plugin, Keys.hide_star_reaction)
-        )
-        plugin.hook_all_methods(ReactionsContainerLayout, "dispatchDraw", ReactionsContainerLayoutDrawHook(plugin, Keys.hide_star_reaction))
+        try:
+            plugin.hook_all_methods(
+                ReactionsContainerLayout, "setVisibleReactionsList", ReactionsContainerLayoutSetVisibleReactionsListHook(plugin, Keys.hide_star_reaction)
+            )
+        except Exception:
+            pass
+        try:
+            plugin.hook_all_methods(ReactionsContainerLayout, "dispatchDraw", ReactionsContainerLayoutDrawHook(plugin, Keys.hide_star_reaction))
+        except Exception:
+            pass

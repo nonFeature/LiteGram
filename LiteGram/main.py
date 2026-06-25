@@ -7,7 +7,6 @@ from LiteGram.data.constants import Keys
 from LiteGram.features.action_bar import register_action_bar
 from LiteGram.features.gift_button import register_gift_button
 from LiteGram.features.gift_cards import register_gift_cards
-from LiteGram.features.gift_dialogs import register_gift_dialogs
 from LiteGram.features.greeting_button import register_greeting_button
 from LiteGram.features.media_layout import register_media_layout
 from LiteGram.features.premium_badge import register_premium_badge
@@ -70,18 +69,18 @@ class LiteGramPlugin(BasePlugin):
             return HookResult()
         if self.get_setting(Keys.hide_premium_emoji, False):
             filter_response(request_name, response)
-        if self.get_setting(Keys.hide_gifts_tab, False) or self.get_setting(Keys.hide_profile_pinned_gifts, False):
+        if self.get_setting(Keys.hide_gifts_tab, False):
             if self._is_gift_request(request_name):
                 self._sanitize_gifts_payload(response)
         return HookResult()
 
     def on_update_hook(self, update_name: str, account: int, update: Any) -> HookResult:
-        if self.get_setting(Keys.hide_profile_pinned_gifts, False) and update is not None:
+        if self.get_setting(Keys.hide_gifts_tab, False) and update is not None:
             self._sanitize_gifts_payload(update)
         return HookResult()
 
     def on_updates_hook(self, container_name: str, account: int, updates: Any) -> HookResult:
-        if self.get_setting(Keys.hide_profile_pinned_gifts, False) and updates is not None:
+        if self.get_setting(Keys.hide_gifts_tab, False) and updates is not None:
             self._sanitize_gifts_payload(updates)
         return HookResult()
 
@@ -154,7 +153,6 @@ class LiteGramPlugin(BasePlugin):
         register_settings_menu(self)
         register_gift_button(self)
         register_gift_cards(self)
-        register_gift_dialogs(self)
         register_greeting_button(self)
         register_profile_appearance(self)
         register_profile_actions(self)

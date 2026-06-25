@@ -101,8 +101,20 @@ def register_action_bar(plugin) -> None:
     ActionBarMenuItem = find_class("org.telegram.ui.ActionBar.ActionBarMenuItem")
     TopicsFragment = find_class("org.telegram.ui.TopicsFragment")
     if ActionBarMenuItem:
-        plugin.hook_all_methods(ActionBarMenuItem, "addSubItem", ActionBarMenuItemAddSubItemHook(plugin))
-        plugin.hook_all_methods(ActionBarMenuItem, "lazilyAddSubItem", ActionBarMenuItemLazilyAddSubItemHook(plugin))
-        plugin.hook_all_methods(ActionBarMenuItem, "setSubItemShown", ActionBarMenuItemSetSubItemShownHook(plugin))
+        try:
+            plugin.hook_all_methods(ActionBarMenuItem, "addSubItem", ActionBarMenuItemAddSubItemHook(plugin))
+        except Exception:
+            pass
+        try:
+            plugin.hook_all_methods(ActionBarMenuItem, "lazilyAddSubItem", ActionBarMenuItemLazilyAddSubItemHook(plugin))
+        except Exception:
+            pass
+        try:
+            plugin.hook_all_methods(ActionBarMenuItem, "setSubItemShown", ActionBarMenuItemSetSubItemShownHook(plugin))
+        except Exception:
+            pass
     if TopicsFragment:
-        plugin.hook_all_methods(TopicsFragment, "updateChatInfo", TopicsFragmentUpdateChatInfoHook(plugin, Keys.hide_action_bar_boost_group))
+        try:
+            plugin.hook_all_methods(TopicsFragment, "updateChatInfo", TopicsFragmentUpdateChatInfoHook(plugin, Keys.hide_action_bar_boost_group))
+        except Exception:
+            pass

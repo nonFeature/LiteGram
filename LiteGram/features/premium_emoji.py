@@ -633,48 +633,108 @@ def register_premium_emoji(plugin):
     classes = []
 
     if Emoji:
-        plugin.hook_all_methods(Emoji, "addRecentEmoji", BlockNonStockHook(plugin, Keys.hide_premium_emoji))
-        classes.append("Emoji")
+        try:
+            plugin.hook_all_methods(Emoji, "addRecentEmoji", BlockNonStockHook(plugin, Keys.hide_premium_emoji))
+            classes.append("Emoji")
+        except Exception:
+            pass
 
     if EmojiView:
-        plugin.hook_all_methods(EmojiView, "getRecentEmoji", FilterRecentEmojiHook(plugin, Keys.hide_premium_emoji))
-        plugin.hook_all_methods(EmojiView, "checkDocuments", CheckDocumentsHook(plugin, Keys.hide_premium_emoji))
-        plugin.hook_all_methods(EmojiView, "getEmojipacks", EmptyEmojiPacksHook(plugin))
-        plugin.hook_all_methods(EmojiView, "<init>", SetAllowAnimatedEmojiFalseHook(plugin))
+        try:
+            plugin.hook_all_methods(EmojiView, "getRecentEmoji", FilterRecentEmojiHook(plugin, Keys.hide_premium_emoji))
+        except Exception:
+            pass
+        try:
+            plugin.hook_all_methods(EmojiView, "checkDocuments", CheckDocumentsHook(plugin, Keys.hide_premium_emoji))
+        except Exception:
+            pass
+        try:
+            plugin.hook_all_methods(EmojiView, "getEmojipacks", EmptyEmojiPacksHook(plugin))
+        except Exception:
+            pass
+        try:
+            plugin.hook_all_methods(EmojiView, "<init>", SetAllowAnimatedEmojiFalseHook(plugin))
+        except Exception:
+            pass
         classes.append("EmojiView")
 
     if EmojiGridAdapter:
-        plugin.hook_all_methods(EmojiGridAdapter, "processEmoji", SkipEmojiPacksHook(plugin))
-        classes.append("EmojiGridAdapter")
+        try:
+            plugin.hook_all_methods(EmojiGridAdapter, "processEmoji", SkipEmojiPacksHook(plugin))
+            classes.append("EmojiGridAdapter")
+        except Exception:
+            pass
 
     if EmojiSearchAdapter:
-        plugin.hook_all_methods(EmojiSearchAdapter, "lambda$search$5", FilterSearchResultsHook(plugin, Keys.hide_premium_emoji))
-        plugin.hook_all_methods(EmojiSearchAdapter, "lambda$search$7", FilterSearchV7Hook(plugin))
-        plugin.hook_all_methods(EmojiSearchAdapter, "lambda$search$3", BlockGlobalSearchHook(plugin, Keys.hide_premium_emoji))
-        plugin.hook_all_methods(EmojiSearchAdapter, "searchEmoji", BlockGlobalSearchHook(plugin, Keys.hide_premium_emoji))
+        try:
+            plugin.hook_all_methods(EmojiSearchAdapter, "lambda$search$5", FilterSearchResultsHook(plugin, Keys.hide_premium_emoji))
+        except Exception:
+            pass
+        try:
+            plugin.hook_all_methods(EmojiSearchAdapter, "lambda$search$7", FilterSearchV7Hook(plugin))
+        except Exception:
+            pass
+        try:
+            plugin.hook_all_methods(EmojiSearchAdapter, "lambda$search$3", BlockGlobalSearchHook(plugin, Keys.hide_premium_emoji))
+        except Exception:
+            pass
+        try:
+            plugin.hook_all_methods(EmojiSearchAdapter, "searchEmoji", BlockGlobalSearchHook(plugin, Keys.hide_premium_emoji))
+        except Exception:
+            pass
         classes.append("EmojiSearchAdapter")
 
     if EmojiSearchAdapterRunnable:
-        plugin.hook_all_methods(EmojiSearchAdapterRunnable, "lambda$run$7", FilterSearchV12_8_1Hook(plugin, Keys.hide_premium_emoji))
-        classes.append("EmojiSearchAdapterRunnable")
+        try:
+            plugin.hook_all_methods(EmojiSearchAdapterRunnable, "lambda$run$7", FilterSearchV12_8_1Hook(plugin, Keys.hide_premium_emoji))
+            classes.append("EmojiSearchAdapterRunnable")
+        except Exception:
+            pass
 
     if SuggestEmojiView:
-        plugin.hook_all_methods(SuggestEmojiView, "lambda$searchKeywords$3", FilterSuggestResultsHook(plugin, 4, "keywords"))
-        plugin.hook_all_methods(SuggestEmojiView, "lambda$searchAnimated$5", FilterSuggestResultsHook(plugin, 2, "animated"))
+        try:
+            plugin.hook_all_methods(SuggestEmojiView, "lambda$searchKeywords$3", FilterSuggestResultsHook(plugin, 4, "keywords"))
+        except Exception:
+            pass
+        try:
+            plugin.hook_all_methods(SuggestEmojiView, "lambda$searchAnimated$5", FilterSuggestResultsHook(plugin, 2, "animated"))
+        except Exception:
+            pass
         classes.append("SuggestEmojiView")
 
     if StickerEmojiCell:
-        plugin.hook_all_methods(StickerEmojiCell, "setSticker", HidePremiumStickerCellHook(plugin, Keys.hide_premium_emoji))
-        classes.append("StickerEmojiCell")
+        try:
+            plugin.hook_all_methods(StickerEmojiCell, "setSticker", HidePremiumStickerCellHook(plugin, Keys.hide_premium_emoji))
+            classes.append("StickerEmojiCell")
+        except Exception:
+            pass
 
     if ChatActivityEnterView:
-        plugin.hook_all_methods(ChatActivityEnterView, "<init>", DisableNotificationsLockerHook(plugin))
-        classes.append("ChatActivityEnterView")
+        try:
+            plugin.hook_all_methods(ChatActivityEnterView, "<init>", DisableNotificationsLockerHook(plugin))
+            classes.append("ChatActivityEnterView")
+        except Exception:
+            pass
 
     if MediaDataController:
-        plugin.hook_all_methods(MediaDataController, "getRecentReactions", FilterReactionsListHook(plugin))
-        plugin.hook_all_methods(MediaDataController, "getTopReactions", FilterReactionsListHook(plugin))
-        plugin.hook_all_methods(MediaDataController, "getSavedReactions", FilterReactionsListHook(plugin))
-        plugin.hook_all_methods(MediaDataController, "getStickerSets", ClearStickerSetsType5Hook(plugin))
-        plugin.hook_all_methods(MediaDataController, "getFeaturedEmojiSets", ClearFeaturedEmojiSetsHook(plugin))
+        try:
+            plugin.hook_all_methods(MediaDataController, "getRecentReactions", FilterReactionsListHook(plugin))
+        except Exception:
+            pass
+        try:
+            plugin.hook_all_methods(MediaDataController, "getTopReactions", FilterReactionsListHook(plugin))
+        except Exception:
+            pass
+        try:
+            plugin.hook_all_methods(MediaDataController, "getSavedReactions", FilterReactionsListHook(plugin))
+        except Exception:
+            pass
+        try:
+            plugin.hook_all_methods(MediaDataController, "getStickerSets", ClearStickerSetsType5Hook(plugin))
+        except Exception:
+            pass
+        try:
+            plugin.hook_all_methods(MediaDataController, "getFeaturedEmojiSets", ClearFeaturedEmojiSetsHook(plugin))
+        except Exception:
+            pass
         classes.append("MediaDataController")

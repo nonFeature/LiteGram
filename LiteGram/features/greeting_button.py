@@ -13,4 +13,7 @@ class ChatActivityShowGreetInfoHook(BaseHook):
 def register_greeting_button(plugin) -> None:
     ChatActivity = find_class("org.telegram.ui.ChatActivity")
     if ChatActivity:
-        plugin.hook_all_methods(ChatActivity, "showGreetInfo", ChatActivityShowGreetInfoHook(plugin, Keys.hide_greeting_button))
+        try:
+            plugin.hook_all_methods(ChatActivity, "showGreetInfo", ChatActivityShowGreetInfoHook(plugin, Keys.hide_greeting_button))
+        except Exception:
+            pass

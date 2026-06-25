@@ -126,43 +126,73 @@ def register_profile_appearance(plugin) -> None:
     # Profile Background Emoji
     StarGiftPatterns = find_class("org.telegram.ui.Stars.StarGiftPatterns")
     if StarGiftPatterns:
-        plugin.hook_all_methods(
-            StarGiftPatterns, "drawProfileAnimatedPattern", StarGiftPatternsDrawProfileAnimatedPatternHook(plugin, Keys.hide_profile_background_emoji)
-        )
+        try:
+            plugin.hook_all_methods(
+                StarGiftPatterns, "drawProfileAnimatedPattern", StarGiftPatternsDrawProfileAnimatedPatternHook(plugin, Keys.hide_profile_background_emoji)
+            )
+        except Exception:
+            pass
 
     # Profile Pinned Gifts
     ProfileGiftsView = find_class("org.telegram.ui.Stars.ProfileGiftsView")
     if ProfileGiftsView:
-        plugin.hook_all_methods(ProfileGiftsView, "update", ProfileGiftsViewUpdateHook(plugin, Keys.hide_profile_pinned_gifts))
+        try:
+            plugin.hook_all_methods(ProfileGiftsView, "update", ProfileGiftsViewUpdateHook(plugin, Keys.hide_profile_pinned_gifts))
+        except Exception:
+            pass
 
     # Boost Badge
     ChatMessageCell = find_class("org.telegram.ui.Cells.ChatMessageCell")
     if ChatMessageCell:
-        plugin.hook_all_methods(ChatMessageCell, "setMessageObjectInternal", ChatMessageCellSetMessageObjectInternalHook(plugin, Keys.hide_boost_badge))
+        try:
+            plugin.hook_all_methods(ChatMessageCell, "setMessageObjectInternal", ChatMessageCellSetMessageObjectInternalHook(plugin, Keys.hide_boost_badge))
+        except Exception:
+            pass
 
     # Profile Colorful Background
     MessagesController = find_class("org.telegram.messenger.MessagesController$PeerColor")
     UserObject = find_class("org.telegram.messenger.UserObject")
     ChatObject = find_class("org.telegram.messenger.ChatObject")
     if MessagesController:
-        plugin.hook_all_methods(
-            MessagesController, "fromCollectible", MessagesControllerPeerColorFromCollectibleHook(plugin, Keys.hide_profile_colorful_background)
-        )
+        try:
+            plugin.hook_all_methods(
+                MessagesController, "fromCollectible", MessagesControllerPeerColorFromCollectibleHook(plugin, Keys.hide_profile_colorful_background)
+            )
+        except Exception:
+            pass
     if UserObject:
-        plugin.hook_all_methods(UserObject, "getProfileColorId", UserObjectGetProfileColorIdHook(plugin, Keys.hide_profile_colorful_background))
+        try:
+            plugin.hook_all_methods(UserObject, "getProfileColorId", UserObjectGetProfileColorIdHook(plugin, Keys.hide_profile_colorful_background))
+        except Exception:
+            pass
     if ChatObject:
-        plugin.hook_all_methods(ChatObject, "getProfileColorId", ChatObjectGetProfileColorIdHook(plugin, Keys.hide_profile_colorful_background))
+        try:
+            plugin.hook_all_methods(ChatObject, "getProfileColorId", ChatObjectGetProfileColorIdHook(plugin, Keys.hide_profile_colorful_background))
+        except Exception:
+            pass
 
     # Bot verification (Also see settings_menu UpdateRowsIds hook!)
     DialogObject = find_class("org.telegram.messenger.DialogObject")
     ProfileActivity = find_class("org.telegram.ui.ProfileActivity")
     if DialogObject:
-        plugin.hook_all_methods(DialogObject, "getBotVerificationIcon", DialogObjectGetBotVerificationIconHook(plugin, Keys.hide_bot_verification))
-        plugin.hook_all_methods(DialogObject, "getBotVerification", DialogObjectGetBotVerificationHook(plugin, Keys.hide_bot_verification))
+        try:
+            plugin.hook_all_methods(DialogObject, "getBotVerificationIcon", DialogObjectGetBotVerificationIconHook(plugin, Keys.hide_bot_verification))
+        except Exception:
+            pass
+        try:
+            plugin.hook_all_methods(DialogObject, "getBotVerification", DialogObjectGetBotVerificationHook(plugin, Keys.hide_bot_verification))
+        except Exception:
+            pass
     if ProfileActivity:
-        plugin.hook_all_methods(
-            ProfileActivity, "getBotVerificationDrawable", ProfileActivityGetBotVerificationDrawableHook(plugin, Keys.hide_bot_verification)
-        )
+        try:
+            plugin.hook_all_methods(
+                ProfileActivity, "getBotVerificationDrawable", ProfileActivityGetBotVerificationDrawableHook(plugin, Keys.hide_bot_verification)
+            )
+        except Exception:
+            pass
     ChatActivity = find_class("org.telegram.ui.ChatActivity")
     if ChatActivity:
-        plugin.hook_all_methods(ChatActivity, "updateTopPanelView", ChatActivityUpdateTopPanelHook(plugin, Keys.hide_bot_verification))
+        try:
+            plugin.hook_all_methods(ChatActivity, "updateTopPanelView", ChatActivityUpdateTopPanelHook(plugin, Keys.hide_bot_verification))
+        except Exception:
+            pass

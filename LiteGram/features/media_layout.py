@@ -150,17 +150,29 @@ def rebuild_tabs_without_stories(tab_strip) -> None:
 def register_media_layout(plugin) -> None:
     SharedMediaLayout = find_class("org.telegram.ui.Components.SharedMediaLayout")
     if SharedMediaLayout:
-        constructor_hook = SharedMediaLayoutHook(plugin, is_constructor=True)
-        plugin.hook_all_constructors(SharedMediaLayout, constructor_hook)
+        try:
+            constructor_hook = SharedMediaLayoutHook(plugin, is_constructor=True)
+            plugin.hook_all_constructors(SharedMediaLayout, constructor_hook)
+        except Exception:
+            pass
 
-        update_tabs_hook = SharedMediaLayoutHook(plugin, is_constructor=False)
-        plugin.hook_all_methods(SharedMediaLayout, "updateTabs", update_tabs_hook)
+        try:
+            update_tabs_hook = SharedMediaLayoutHook(plugin, is_constructor=False)
+            plugin.hook_all_methods(SharedMediaLayout, "updateTabs", update_tabs_hook)
+        except Exception:
+            pass
 
-        info_hook = SharedMediaLayoutSetInfoHook(plugin, Keys.hide_stories_tab)
-        plugin.hook_all_methods(SharedMediaLayout, "setChatInfo", info_hook)
-        plugin.hook_all_methods(SharedMediaLayout, "setUserInfo", info_hook)
+        try:
+            info_hook = SharedMediaLayoutSetInfoHook(plugin, Keys.hide_stories_tab)
+            plugin.hook_all_methods(SharedMediaLayout, "setChatInfo", info_hook)
+            plugin.hook_all_methods(SharedMediaLayout, "setUserInfo", info_hook)
+        except Exception:
+            pass
 
     ProfileStoriesCollectionTabs = find_class("org.telegram.ui.ProfileStoriesCollectionTabs")
     if ProfileStoriesCollectionTabs:
-        visibility_hook = ProfileStoriesCollectionTabsSetVisibilityHook(plugin, Keys.hide_stories_tab)
-        plugin.hook_all_methods(ProfileStoriesCollectionTabs, "setVisibility", visibility_hook)
+        try:
+            visibility_hook = ProfileStoriesCollectionTabsSetVisibilityHook(plugin, Keys.hide_stories_tab)
+            plugin.hook_all_methods(ProfileStoriesCollectionTabs, "setVisibility", visibility_hook)
+        except Exception:
+            pass

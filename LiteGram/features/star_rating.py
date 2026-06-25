@@ -18,4 +18,7 @@ class StarRatingViewSetHook(BaseHook):
 def register_star_rating(plugin) -> None:
     StarRatingView = find_class("org.telegram.ui.Components.StarRatingView")
     if StarRatingView:
-        plugin.hook_all_methods(StarRatingView, "set", StarRatingViewSetHook(plugin, Keys.hide_stars_rating))
+        try:
+            plugin.hook_all_methods(StarRatingView, "set", StarRatingViewSetHook(plugin, Keys.hide_stars_rating))
+        except Exception:
+            pass
