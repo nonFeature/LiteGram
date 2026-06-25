@@ -17,6 +17,7 @@ MessageObject = find_class("org.telegram.messenger.MessageObject")
 StickerEmojiCell = find_class("org.telegram.ui.Cells.StickerEmojiCell")
 ChatActivityEnterView = find_class("org.telegram.ui.Components.ChatActivityEnterView")
 MediaDataController = find_class("org.telegram.messenger.MediaDataController")
+EmojiSearchAdapterRunnable = find_class("org.telegram.ui.Components.EmojiView$EmojiSearchAdapter$5")
 
 # ============================================================
 # Module state
@@ -290,6 +291,27 @@ def _reindex_search_sets(sets):
         sets.addAll(rebuilt)
 
 
+def _filter_search_packs(packs_list):
+    """Remove custom (non-stock) emoji packs from search packs list."""
+    if not packs_list:
+        return 0
+    removed = 0
+    i = packs_list.size() - 1
+    while i >= 0:
+        pack_info = packs_list.get(i)
+        docs = getattr(pack_info, "documents", None)
+        if docs:
+            _filter_list(docs, drop_non_stock=True)
+            if docs.size() == 0:
+                packs_list.remove(i)
+                removed += 1
+        else:
+            packs_list.remove(i)
+            removed += 1
+        i -= 1
+    return removed
+
+
 # ============================================================
 # TL response handlers
 # ============================================================
@@ -501,6 +523,41 @@ class FilterSearchV7Hook(BaseHook):
         _reindex_search_sets(param.args[2])
 
 
+class FilterSearchV12_8_1Hook(BaseHook):
+    def before_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        if not param.args or len(param.args) < 5:
+            return
+
+        runnable_instance = param.thisObject
+        search_adapter = getattr(runnable_instance, "this$0", None)
+        if search_adapter:
+            result_pre = get_private_field(search_adapter, "resultPre")
+            if result_pre:
+                _filter_search_results(result_pre)
+
+        _filter_search_results(param.args[1])
+        _filter_search_packs(param.args[2])
+        _filter_search_packs(param.args[3])
+
+
+class BlockGlobalSearchHook(BaseHook):
+    def before_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        if not param.args:
+            return
+        method_name = param.method.getName()
+        if method_name == "searchEmoji":
+            runnable = param.args[0]
+        else:
+            runnable = param.args[-1]
+        if runnable:
+            runnable.run()
+        param.setResult(None)
+
+
 class DisableNotificationsLockerHook(BaseHook):
     def __init__(self, plugin):
         super().__init__(plugin, Keys.hide_premium_emoji)
@@ -593,7 +650,13 @@ def register_premium_emoji(plugin):
     if EmojiSearchAdapter:
         plugin.hook_all_methods(EmojiSearchAdapter, "lambda$search$5", FilterSearchResultsHook(plugin, Keys.hide_premium_emoji))
         plugin.hook_all_methods(EmojiSearchAdapter, "lambda$search$7", FilterSearchV7Hook(plugin))
+        plugin.hook_all_methods(EmojiSearchAdapter, "lambda$search$3", BlockGlobalSearchHook(plugin, Keys.hide_premium_emoji))
+        plugin.hook_all_methods(EmojiSearchAdapter, "searchEmoji", BlockGlobalSearchHook(plugin, Keys.hide_premium_emoji))
         classes.append("EmojiSearchAdapter")
+
+    if EmojiSearchAdapterRunnable:
+        plugin.hook_all_methods(EmojiSearchAdapterRunnable, "lambda$run$7", FilterSearchV12_8_1Hook(plugin, Keys.hide_premium_emoji))
+        classes.append("EmojiSearchAdapterRunnable")
 
     if SuggestEmojiView:
         plugin.hook_all_methods(SuggestEmojiView, "lambda$searchKeywords$3", FilterSuggestResultsHook(plugin, 4, "keywords"))
