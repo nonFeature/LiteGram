@@ -10,6 +10,7 @@ from LiteGram.utils.settings_utils import (
     open_extera_tab,
     open_url_view,
     show_restart_bulletin,
+    toggle_emoji_search_options,
     toggle_settings_options,
 )
 
@@ -40,6 +41,9 @@ def _chat_settings() -> list[Any]:
         Switch(text=t("hide_giveaway_cards"), subtext=t("hide_giveaway_cards_sub"), key=Keys.hide_giveaway_cards),
         Switch(text=t("hide_stars_rating"), key=Keys.hide_stars_rating),
         Switch(text=t("hide_star_reaction"), key=Keys.hide_star_reaction),
+        Header(text=t("emoji_search")),
+        Text(text=t("switch_all"), link_alias=Keys.switch_all_emoji_search, on_click=toggle_emoji_search_options),
+        *[Switch(text=t(text_key), key=key) for key, text_key in Keys.EMOJI_SEARCH_ROWS],
     ]
 
 

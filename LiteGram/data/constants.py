@@ -63,6 +63,18 @@ class Keys:
     hide_stars_rating = "hideStarsRating"
     hide_star_reaction = "hideStarReaction"
 
+    # --- Emoji Search Options ---
+    hide_emoji_search = "hideEmojiSearch"
+    hide_sticker_search = "hideStickerSearch"
+    hide_gif_search = "hideGifSearch"
+    switch_all_emoji_search = "switchAllEmojiSearch"
+
+    EMOJI_SEARCH_ROWS = (
+        (hide_emoji_search, "hide_emoji_search"),
+        (hide_sticker_search, "hide_sticker_search"),
+        (hide_gif_search, "hide_gif_search"),
+    )
+
     # --- Settings Option Rows (shared between ui/settings and utils/settings_utils) ---
     SETTINGS_OPTION_ROWS = (
         (hide_premium_row, "hide_premium_row"),

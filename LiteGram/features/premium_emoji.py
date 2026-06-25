@@ -653,7 +653,7 @@ def register_premium_emoji(plugin):
         except Exception:
             pass
         try:
-            plugin.hook_all_methods(EmojiView, "<init>", SetAllowAnimatedEmojiFalseHook(plugin))
+            plugin.hook_all_constructors(EmojiView, SetAllowAnimatedEmojiFalseHook(plugin))
         except Exception:
             pass
         classes.append("EmojiView")
@@ -711,7 +711,7 @@ def register_premium_emoji(plugin):
 
     if ChatActivityEnterView:
         try:
-            plugin.hook_all_methods(ChatActivityEnterView, "<init>", DisableNotificationsLockerHook(plugin))
+            plugin.hook_all_constructors(ChatActivityEnterView, DisableNotificationsLockerHook(plugin))
             classes.append("ChatActivityEnterView")
         except Exception:
             pass

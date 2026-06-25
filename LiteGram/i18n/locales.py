@@ -77,6 +77,12 @@ STRINGS = {
         "hide_stars_rating": "Скрыть рейтинг звёзд",
         "hide_star_reaction": "Скрыть звёздные реакции",
 
+        # --- Emoji Search Options ---
+        "emoji_search": "Поиск в панели эмодзи",
+        "hide_emoji_search": "Скрыть поиск эмодзи",
+        "hide_sticker_search": "Скрыть поиск стикеров",
+        "hide_gif_search": "Скрыть поиск GIF",
+
         # --- About Plugin ---
         "about_plugin": "О Плагине",
         "github_repository": "Репозиторий на Github (Поставьте ⭐!)",
@@ -163,6 +169,12 @@ STRINGS = {
         "hide_gift_hint": "Hide Gift Hint Above Emoji Status",
         "hide_stars_rating": "Hide Stars Rating",
         "hide_star_reaction": "Hide Star Reaction",
+
+        # --- Emoji Search Options ---
+        "emoji_search": "Emoji Panel Search",
+        "hide_emoji_search": "Hide Emoji Search",
+        "hide_sticker_search": "Hide Sticker Search",
+        "hide_gif_search": "Hide GIF Search",
 
         # --- About Plugin ---
         "about_plugin": "About Plugin",

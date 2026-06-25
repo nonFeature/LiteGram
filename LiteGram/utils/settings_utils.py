@@ -38,6 +38,15 @@ def toggle_settings_options(_: View | None = None) -> None:
         plugin_instance.set_setting(key, new_state, reload_settings=(i == len(row_keys) - 1))
 
 
+def toggle_emoji_search_options(_: View | None = None) -> None:
+    plugin_instance = LiteGramPlugin.get_instance()
+    row_keys = [key for key, _ in Keys.EMOJI_SEARCH_ROWS]
+
+    new_state = any(not bool(plugin_instance.get_setting(key, False)) for key in row_keys)
+    for i, key in enumerate(row_keys):
+        plugin_instance.set_setting(key, new_state, reload_settings=(i == len(row_keys) - 1))
+
+
 def open_extera_tab(tab_name: str) -> Callable[[View], None]:
     def callback(view: View):
         open_extera_setting(tab_name, plugin_id="litegram")
