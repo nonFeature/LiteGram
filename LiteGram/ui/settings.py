@@ -30,11 +30,6 @@ def _premium_emoji_settings() -> list[Any]:
             default=True,
         ),
         Switch(
-            text=t("hide_premium_recent"),
-            key=Keys.hide_premium_recent,
-            default=True,
-        ),
-        Switch(
             text=t("hide_premium_search"),
             key=Keys.hide_premium_search,
             default=True,
@@ -42,11 +37,6 @@ def _premium_emoji_settings() -> list[Any]:
         Switch(
             text=t("hide_premium_suggestions"),
             key=Keys.hide_premium_suggestions,
-            default=True,
-        ),
-        Switch(
-            text=t("hide_premium_reactions"),
-            key=Keys.hide_premium_reactions,
             default=True,
         ),
     ]

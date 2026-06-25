@@ -46,10 +46,8 @@ class Keys:
 
     hide_premium_emoji = "hidePremiumEmoji"
     hide_premium_emoji_packs = "hidePremiumEmojiPacks"
-    hide_premium_recent = "hidePremiumRecent"
     hide_premium_search = "hidePremiumSearch"
     hide_premium_suggestions = "hidePremiumSuggestions"
-    hide_premium_reactions = "hidePremiumReactions"
     switch_all_premium_emoji = "switchAllPremiumEmoji"
     premiumEmojiSettings = "premiumEmojiSettings"
 

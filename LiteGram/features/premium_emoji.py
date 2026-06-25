@@ -19,6 +19,7 @@ StickerEmojiCell = find_class("org.telegram.ui.Cells.StickerEmojiCell")
 ChatActivityEnterView = find_class("org.telegram.ui.Components.ChatActivityEnterView")
 MediaDataController = find_class("org.telegram.messenger.MediaDataController")
 EmojiSearchAdapterRunnable = find_class("org.telegram.ui.Components.EmojiView$EmojiSearchAdapter$5")
+EmojiTabsStrip = find_class("org.telegram.ui.Components.EmojiTabsStrip")
 
 # ============================================================
 # Module state
@@ -340,14 +341,11 @@ def _filter_search_packs(packs_list):
 # ============================================================
 
 HANDLERS = {
-    "TL_messages_getEmojiStickers": lambda r: (
-        _filter_list(r.sets, sub="documents", drop_empty=True, drop_non_stock=True) if _is_sub_enabled(Keys.hide_premium_emoji_packs) else None
-    ),
     "TL_messages_getFeaturedEmojiStickers": lambda r: _filter_featured_sets(r.sets) if _is_sub_enabled(Keys.hide_premium_emoji_packs) else None,
     "TL_messages_getFeaturedStickers": lambda r: _filter_featured_sticker_sets(r.sets) if _is_sub_enabled(Keys.hide_premium_stickers_grid) else None,
     "TL_messages_searchEmojiStickerSets": lambda r: _filter_list(r.sets, drop_non_stock=True) if _is_sub_enabled(Keys.hide_premium_emoji_packs) else None,
     "TL_messages_searchStickers": lambda r: _filter_list(r.stickers, is_sticker=True) if _is_sub_enabled(Keys.hide_premium_stickers_search) else None,
-    "TL_messages_getRecentReactions": lambda r: _filter_reactions_list(r.reactions) if _is_sub_enabled(Keys.hide_premium_reactions) else None,
+    "TL_messages_getRecentReactions": lambda r: _filter_reactions_list(r.reactions) if _is_sub_enabled(Keys.hide_premium_emoji_packs) else None,
     "TL_messages_getRecentStickers": lambda r: _filter_list(r.stickers, is_sticker=True) if _is_sub_enabled(Keys.hide_premium_stickers_recent) else None,
     "TL_messages_getStickers": lambda r: (
         _filter_list(getattr(r, "stickers", None), is_sticker=True) if _is_sub_enabled(Keys.hide_premium_stickers_search) else None
@@ -376,7 +374,7 @@ class BlockNonStockHook(BaseHook):
     def before_hooked_method(self, param):
         if not self.is_enabled():
             return
-        if not _is_sub_enabled(Keys.hide_premium_recent):
+        if not _is_sub_enabled(Keys.hide_premium_emoji_packs):
             return
         if not param.args:
             return
@@ -391,7 +389,7 @@ class FilterRecentEmojiHook(BaseHook):
     def after_hooked_method(self, param):
         if not self.is_enabled():
             return
-        if not _is_sub_enabled(Keys.hide_premium_recent):
+        if not _is_sub_enabled(Keys.hide_premium_emoji_packs):
             return
         recent = param.getResult()
         if not recent:
@@ -631,6 +629,8 @@ class SetAllowAnimatedEmojiFalseHook(BaseHook):
     def after_hooked_method(self, param):
         if not self.is_enabled():
             return
+        if not _is_sub_enabled(Keys.hide_premium_emoji_packs):
+            return
         try:
             param.thisObject.allowAnimatedEmoji = False
         except Exception:
@@ -644,7 +644,7 @@ class FilterReactionsListHook(BaseHook):
     def after_hooked_method(self, param):
         if not self.is_enabled():
             return
-        if not _is_sub_enabled(Keys.hide_premium_reactions):
+        if not _is_sub_enabled(Keys.hide_premium_emoji_packs):
             return
         reactions = param.getResult()
         if not reactions:
@@ -663,11 +663,12 @@ class ClearStickerSetsType5Hook(BaseHook):
     def after_hooked_method(self, param):
         if not self.is_enabled():
             return
+        if not _is_sub_enabled(Keys.hide_premium_emoji_packs):
+            return
         if not param.args or param.args[0] != 5:
             return
-        sets = param.getResult()
-        if sets:
-            sets.clear()
+        if ArrayList:
+            param.setResult(ArrayList())
 
 
 class ClearFeaturedEmojiSetsHook(BaseHook):
@@ -677,9 +678,23 @@ class ClearFeaturedEmojiSetsHook(BaseHook):
     def after_hooked_method(self, param):
         if not self.is_enabled():
             return
-        sets = param.getResult()
-        if sets:
-            sets.clear()
+        if not _is_sub_enabled(Keys.hide_premium_emoji_packs):
+            return
+        if ArrayList:
+            param.setResult(ArrayList())
+
+
+class EmojiTabsStripConstructorHook(BaseHook):
+    def __init__(self, plugin):
+        super().__init__(plugin, Keys.hide_premium_emoji)
+
+    def before_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        if not _is_sub_enabled(Keys.hide_premium_emoji_packs):
+            return
+        if param.args and len(param.args) >= 6:
+            param.args[5] = False
 
 
 # ============================================================
@@ -695,6 +710,13 @@ def register_premium_emoji(plugin):
         try:
             plugin.hook_all_methods(Emoji, "addRecentEmoji", BlockNonStockHook(plugin, Keys.hide_premium_emoji))
             classes.append("Emoji")
+        except Exception:
+            pass
+
+    if EmojiTabsStrip:
+        try:
+            plugin.hook_all_constructors(EmojiTabsStrip, EmojiTabsStripConstructorHook(plugin))
+            classes.append("EmojiTabsStrip")
         except Exception:
             pass
 

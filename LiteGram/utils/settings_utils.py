@@ -51,10 +51,8 @@ def toggle_premium_emoji_options(_: View | None = None) -> None:
     plugin_instance = LiteGramPlugin.get_instance()
     row_keys = [
         Keys.hide_premium_emoji_packs,
-        Keys.hide_premium_recent,
         Keys.hide_premium_search,
         Keys.hide_premium_suggestions,
-        Keys.hide_premium_reactions,
     ]
 
     new_state = any(not bool(plugin_instance.get_setting(key, True)) for key in row_keys)
