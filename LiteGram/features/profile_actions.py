@@ -1,3 +1,5 @@
+import time
+
 from hook_utils import find_class, get_private_field
 from java import jint
 
@@ -14,13 +16,20 @@ class ProfileActionsViewHook(BaseHook):
     def __init__(self, plugin, key_index: int):
         super().__init__(plugin)
         self.key_index = key_index
+        self._last_checked = 0.0
+        self._cached_gifts = False
+        self._cached_stories = False
+        self._cached_stream = False
 
     def before_hooked_method(self, param):
-        hide_gifts = self.plugin.get_setting(Keys.hide_profile_actions_gift_button, False)
-        hide_stories = self.plugin.get_setting(Keys.hide_profile_actions_stories_button, False)
-        hide_stream = self.plugin.get_setting(Keys.hide_profile_actions_stream_button, False)
+        now = time.time()
+        if now - self._last_checked > 2.0:
+            self._cached_gifts = bool(self.plugin.get_setting(Keys.hide_profile_actions_gift_button, False))
+            self._cached_stories = bool(self.plugin.get_setting(Keys.hide_profile_actions_stories_button, False))
+            self._cached_stream = bool(self.plugin.get_setting(Keys.hide_profile_actions_stream_button, False))
+            self._last_checked = now
 
-        if not hide_gifts and not hide_stories and not hide_stream:
+        if not self._cached_gifts and not self._cached_stories and not self._cached_stream:
             return
 
         try:
@@ -29,9 +38,9 @@ class ProfileActionsViewHook(BaseHook):
             return
 
         should_hide = (
-            (hide_gifts and current_key == KEY_GIFT)
-            or (hide_stories and current_key == KEY_STORY)
-            or (hide_stream and current_key in (KEY_VOICE_CHAT, KEY_STREAM))
+            (self._cached_gifts and current_key == KEY_GIFT)
+            or (self._cached_stories and current_key == KEY_STORY)
+            or (self._cached_stream and current_key in (KEY_VOICE_CHAT, KEY_STREAM))
         )
 
         if should_hide:
@@ -39,25 +48,45 @@ class ProfileActionsViewHook(BaseHook):
 
 
 class ProfileActionsApplyHook(BaseHook):
+    def __init__(self, plugin):
+        super().__init__(plugin)
+        self._last_checked = 0.0
+        self._cached_gifts = False
+        self._cached_stories = False
+        self._cached_stream = False
+
     def after_hooked_method(self, param):
         try:
+            now = time.time()
+            if now - self._last_checked > 2.0:
+                self._cached_gifts = bool(self.plugin.get_setting(Keys.hide_profile_actions_gift_button, False))
+                self._cached_stories = bool(self.plugin.get_setting(Keys.hide_profile_actions_stories_button, False))
+                self._cached_stream = bool(self.plugin.get_setting(Keys.hide_profile_actions_stream_button, False))
+                self._last_checked = now
+
+            if not self._cached_gifts and not self._cached_stories and not self._cached_stream:
+                return
+
             obj = param.thisObject
+
+            # Pre-filter target keys to remove
+            target_keys = []
+            if self._cached_gifts:
+                target_keys.append(KEY_GIFT)
+            if self._cached_stories:
+                target_keys.append(KEY_STORY)
+            if self._cached_stream:
+                target_keys.extend((KEY_VOICE_CHAT, KEY_STREAM))
+
             for coll in ("visibleActions", "actionsList", "allAvailableActions"):
                 actions = getattr(obj, coll, None)
                 if actions is not None and hasattr(actions, "remove"):
-                    settings_map = [
-                        (Keys.hide_profile_actions_gift_button, (KEY_GIFT,)),
-                        (Keys.hide_profile_actions_stories_button, (KEY_STORY,)),
-                        (Keys.hide_profile_actions_stream_button, (KEY_VOICE_CHAT, KEY_STREAM)),
-                    ]
-                    for setting_key, target_keys in settings_map:
-                        if self.plugin.get_setting(setting_key, False):
-                            for key in target_keys:
-                                for k in (key, jint(key)):
-                                    try:
-                                        actions.remove(k)
-                                    except Exception:
-                                        pass
+                    for key in target_keys:
+                        for k in (key, jint(key)):
+                            try:
+                                actions.remove(k)
+                            except Exception:
+                                pass
         except Exception:
             pass
 
@@ -75,29 +104,45 @@ class BlockProfileGiftViewHook(BaseHook):
 
 
 class ProfileActivityUpdateBottomButtonYHook(BaseHook):
+    def __init__(self, plugin, setting_key):
+        super().__init__(plugin, setting_key)
+        self._last_instance_hash = None
+
     def before_hooked_method(self, param):
         if self.is_enabled():
+            param.setResult(None)
             try:
                 instance = param.thisObject
+                instance_hash = instance.hashCode()
+                if self._last_instance_hash == instance_hash:
+                    return
                 bottom_buttons_container = get_private_field(instance, "bottomButtonsContainer")
                 if bottom_buttons_container:
                     bottom_buttons_container.setVisibility(8)  # GONE
+                    self._last_instance_hash = instance_hash
             except Exception:
                 pass
-            param.setResult(None)
 
 
 class ProfileGiftsContainerUpdateButtonHook(BaseHook):
+    def __init__(self, plugin, setting_key):
+        super().__init__(plugin, setting_key)
+        self._last_instance_hash = None
+
     def before_hooked_method(self, param):
         if self.is_enabled():
+            param.setResult(None)
             try:
                 instance = param.thisObject
+                instance_hash = instance.hashCode()
+                if self._last_instance_hash == instance_hash:
+                    return
                 button_container = get_private_field(instance, "buttonContainer")
                 if button_container:
                     button_container.setVisibility(8)  # GONE
+                    self._last_instance_hash = instance_hash
             except Exception:
                 pass
-            param.setResult(None)
 
 
 class ProfileGiftsContainerGetBottomOffsetHook(BaseHook):
@@ -107,13 +152,21 @@ class ProfileGiftsContainerGetBottomOffsetHook(BaseHook):
 
 
 class ProfileGiftsContainerPageUpdateEmptyViewHook(BaseHook):
+    def __init__(self, plugin, setting_key):
+        super().__init__(plugin, setting_key)
+        self._last_instance_hash = None
+
     def after_hooked_method(self, param):
         if self.is_enabled():
             try:
                 instance = param.thisObject
+                instance_hash = instance.hashCode()
+                if self._last_instance_hash == instance_hash:
+                    return
                 empty_view_button = get_private_field(instance, "emptyView1Button")
                 if empty_view_button:
                     empty_view_button.setVisibility(8)  # GONE
+                    self._last_instance_hash = instance_hash
             except Exception:
                 pass
 

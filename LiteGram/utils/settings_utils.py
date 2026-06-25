@@ -75,7 +75,7 @@ def toggle_premium_stickers_options(_: View | None = None) -> None:
 
 def open_extera_tab(tab_name: str) -> Callable[[View], None]:
     def callback(view: View):
-        open_extera_setting(tab_name, plugin_id="litegram")
+        open_extera_setting(tab_name)
 
     return callback
 

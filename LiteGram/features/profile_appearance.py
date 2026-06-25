@@ -16,6 +16,15 @@ class StarGiftPatternsDrawProfileAnimatedPatternHook(BaseHook):
         param.setResult(None)
 
 
+class ProfileGiftsViewConstructorHook(BaseHook):
+    def after_hooked_method(self, param):
+        if self.is_enabled():
+            try:
+                param.thisObject.setVisibility(8)  # GONE
+            except Exception:
+                pass
+
+
 class ProfileGiftsViewUpdateHook(BaseHook):
     """
     ProfileGiftsView.update()
@@ -23,18 +32,16 @@ class ProfileGiftsViewUpdateHook(BaseHook):
         -> Creates Gift objects and adds to gifts ArrayList
         -> dispatchDraw() renders them around avatar
 
-    so we just clear an array with gifts and redraw View
+    If enabled, we immediately set visibility to GONE and skip update logic.
     """
 
-    def after_hooked_method(self, param):
-        if not self.is_enabled():
-            return
-
-        instance = param.thisObject
-        instance.gifts.clear()
-
-        # redraw the view
-        instance.invalidate()
+    def before_hooked_method(self, param):
+        if self.is_enabled():
+            try:
+                param.thisObject.setVisibility(8)  # GONE
+            except Exception:
+                pass
+            param.setResult(None)
 
 
 class ChatMessageCellSetMessageObjectInternalHook(BaseHook):
@@ -109,17 +116,27 @@ class ProfileActivityGetBotVerificationDrawableHook(BaseHook):
 class ChatActivityUpdateTopPanelHook(BaseHook):
     """Remove a bot verification description in Top Panel by nullify bot_verification field"""
 
+    def __init__(self, plugin, setting_key):
+        super().__init__(plugin, setting_key)
+        self._last_instance_hash = None
+
     def before_hooked_method(self, param):
         if not self.is_enabled():
             return
 
         instance = param.thisObject
+        instance_hash = instance.hashCode()
+        if self._last_instance_hash == instance_hash:
+            return
+
         user_info = get_private_field(instance, "userInfo")
         chat_info = get_private_field(instance, "chatInfo")
         if user_info:
             user_info.bot_verification = None
         if chat_info:
             chat_info.bot_verification = None
+
+        self._last_instance_hash = instance_hash
 
 
 def register_profile_appearance(plugin) -> None:
@@ -136,6 +153,10 @@ def register_profile_appearance(plugin) -> None:
     # Profile Pinned Gifts
     ProfileGiftsView = find_class("org.telegram.ui.Stars.ProfileGiftsView")
     if ProfileGiftsView:
+        try:
+            plugin.hook_all_constructors(ProfileGiftsView, ProfileGiftsViewConstructorHook(plugin, Keys.hide_profile_pinned_gifts))
+        except Exception:
+            pass
         try:
             plugin.hook_all_methods(ProfileGiftsView, "update", ProfileGiftsViewUpdateHook(plugin, Keys.hide_profile_pinned_gifts))
         except Exception:

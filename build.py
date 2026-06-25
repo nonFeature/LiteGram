@@ -1,4 +1,5 @@
 import argparse
+import ast
 import re
 import subprocess
 import sys
@@ -37,6 +38,8 @@ captured_from_imports = defaultdict(set)
 def parse_args():
     parser = argparse.ArgumentParser(description="LiteGram Build Script")
     parser.add_argument("--no-bump", action="store_true", help="Compatibility flag; build no longer increments the version")
+    parser.add_argument("--no-minify", action="store_true", help="Disable AST minification (keep comments, docstrings, and type hints)")
+    parser.add_argument("--crlf", action="store_true", help="Use Windows CRLF line endings instead of Unix LF")
     return parser.parse_args()
 
 
@@ -240,8 +243,68 @@ def process_file_content(file_path: Path) -> list[str]:
     return [cleaned_code + "\n"]
 
 
+class ASTMinifier(ast.NodeTransformer):
+    """AST transformer that removes docstrings and type annotations to reduce file size."""
+
+    def visit_FunctionDef(self, node):
+        node.returns = None
+        for arg in node.args.posonlyargs:
+            arg.annotation = None
+        for arg in node.args.args:
+            arg.annotation = None
+        if node.args.vararg:
+            node.args.vararg.annotation = None
+        for arg in node.args.kwonlyargs:
+            arg.annotation = None
+        if node.args.kwarg:
+            node.args.kwarg.annotation = None
+        self.generic_visit(node)
+        return node
+
+    def visit_AsyncFunctionDef(self, node):
+        node.returns = None
+        for arg in node.args.posonlyargs:
+            arg.annotation = None
+        for arg in node.args.args:
+            arg.annotation = None
+        if node.args.vararg:
+            node.args.vararg.annotation = None
+        for arg in node.args.kwonlyargs:
+            arg.annotation = None
+        if node.args.kwarg:
+            node.args.kwarg.annotation = None
+        self.generic_visit(node)
+        return node
+
+    def visit_AnnAssign(self, node):
+        self.generic_visit(node)
+        if node.value is None:
+            return None  # Remove variable declarations that have only type hints (e.g. x: int)
+        new_node = ast.Assign(targets=[node.target], value=node.value)
+        return ast.copy_location(new_node, node)
+
+    def visit_Expr(self, node):
+        # Remove docstring statements
+        if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+            return None
+        self.generic_visit(node)
+        return node
+
+    def visit_Module(self, node):
+        self.generic_visit(node)
+        if node.body and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Constant) and isinstance(node.body[0].value.value, str):
+            node.body.pop(0)
+        return node
+
+    def visit_ClassDef(self, node):
+        self.generic_visit(node)
+        if node.body and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Constant) and isinstance(node.body[0].value.value, str):
+            node.body.pop(0)
+        return node
+
+
 def build():
-    parse_args()
+    args = parse_args()
     print(f"🚀 Starting build: {OUTPUT_FILENAME}...")
 
     if not SRC_DIR.exists():
@@ -272,13 +335,40 @@ def build():
         body_content.extend(process_file_content(file_path))
 
     imports_block = generate_imports_block()
-    full_code = COPYRIGHT_STRING + "\n" + imports_block + "".join(body_content)
+    combined_code = imports_block + "".join(body_content)
+
+    if args.no_minify:
+        print("ℹ️ Minification is disabled via --no-minify")
+        full_code = COPYRIGHT_STRING + "\n" + combined_code
+    else:
+        print("⚡ Minifying plugin...")
+        try:
+            tree = ast.parse(combined_code)
+            minifier = ASTMinifier()
+            minified_tree = minifier.visit(tree)
+            minified_code = ast.unparse(minified_tree)
+            full_code = COPYRIGHT_STRING + "\n" + minified_code
+        except Exception as e:
+            print(f"⚠️ Warning: AST minification failed ({e}). Falling back to unminified build.")
+            full_code = COPYRIGHT_STRING + "\n" + combined_code
 
     DIST_DIR.mkdir(exist_ok=True)
     out_path = DIST_DIR / OUTPUT_FILENAME
-    out_path.write_text(full_code, encoding="utf-8")
+
+    newline = "\r\n" if args.crlf else "\n"
+    out_path.write_text(full_code, encoding="utf-8", newline=newline)
+
+    # Calculate actual sizes
+    orig_bytes = (COPYRIGHT_STRING + "\n" + combined_code).replace("\n", newline).encode("utf-8")
+    orig_size = len(orig_bytes)
+    final_size = out_path.stat().st_size
 
     print(f"\n🎉 Build successful: {out_path}")
+
+    saved_bytes = orig_size - final_size
+    pct = (saved_bytes / orig_size) * 100 if orig_size > 0 else 0
+
+    print(f"📉 Size on disk: {final_size / 1024:.1f} KB (originally {orig_size / 1024:.1f} KB, saved {saved_bytes / 1024:.1f} KB / {pct:.1f}%)")
 
 
 if __name__ == "__main__":

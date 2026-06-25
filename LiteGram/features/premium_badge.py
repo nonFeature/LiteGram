@@ -28,32 +28,29 @@ hook ChatAvatarContainerSetTitleHook for hide premium badge in chat header (para
 """
 
 
-class UserObjectGetEmojiStatusDocumentIdHook(BaseHook):
-    def before_hooked_method(self, param):
+class TLUserDeserializeHook(BaseHook):
+    def after_hooked_method(self, param):
         if not self.is_enabled():
             return
-        param.setResult(None)
+        user = param.getResult()
+        if user:
+            try:
+                user.premium = False
+                user.emoji_status = None
+            except Exception:
+                pass
 
 
-class DialogObjectGetEmojiStatusDocumentIdHook(BaseHook):
-    """
-    Also fixes the issue when you click on badge in chat, you got wrong logic
-    ref: see didPressUserStatus in ChatActivity using JADX
-    if (!user.premium || DialogObject.getEmojiStatusDocumentId(user.emoji_status) == 0) {
-        BadgesController badgesController = BadgesController.INSTANCE;
-        BadgeDTO badge = badgesController.getBadge(user);
-        if (badge != null) {
-            // We are showing here stuff
-            return;
-        }
-        return;
-    }
-    """
-
-    def before_hooked_method(self, param):
+class TLChatDeserializeHook(BaseHook):
+    def after_hooked_method(self, param):
         if not self.is_enabled():
             return
-        param.setResult(0)
+        chat = param.getResult()
+        if chat:
+            try:
+                chat.emoji_status = None
+            except Exception:
+                pass
 
 
 class ChatMessageCellGetAuthorStatusHook(BaseHook):
@@ -89,13 +86,6 @@ class ChatMessageCellGetAuthorStatusHook(BaseHook):
             param.setResult(None)
 
 
-class MessagesControllerIsPremiumUserHook(BaseHook):
-    def before_hooked_method(self, param):
-        if not self.is_enabled():
-            return
-        param.setResult(False)
-
-
 def register_premium_badge(plugin) -> None:
     ChatMessageCell = find_class("org.telegram.ui.Cells.ChatMessageCell")
     if ChatMessageCell:
@@ -104,23 +94,17 @@ def register_premium_badge(plugin) -> None:
         except Exception:
             pass
 
-    DialogObject = find_class("org.telegram.messenger.DialogObject")
-    UserObject = find_class("org.telegram.messenger.UserObject")
-    if DialogObject:
+    TLRPC_User = find_class("org.telegram.tgnet.TLRPC$User")
+    if TLRPC_User:
         try:
-            plugin.hook_all_methods(DialogObject, "getEmojiStatusDocumentId", DialogObjectGetEmojiStatusDocumentIdHook(plugin, Keys.hide_premium_badge))
-        except Exception:
-            pass
-    if UserObject:
-        try:
-            plugin.hook_all_methods(UserObject, "getEmojiStatusDocumentId", UserObjectGetEmojiStatusDocumentIdHook(plugin, Keys.hide_premium_badge))
+            plugin.hook_all_methods(TLRPC_User, "TLdeserialize", TLUserDeserializeHook(plugin, Keys.hide_premium_badge))
         except Exception:
             pass
 
-    MessagesController = find_class("org.telegram.messenger.MessagesController")
-    if MessagesController:
+    TLRPC_Chat = find_class("org.telegram.tgnet.TLRPC$Chat")
+    if TLRPC_Chat:
         try:
-            plugin.hook_all_methods(MessagesController, "isPremiumUser", MessagesControllerIsPremiumUserHook(plugin, Keys.hide_premium_badge))
+            plugin.hook_all_methods(TLRPC_Chat, "TLdeserialize", TLChatDeserializeHook(plugin, Keys.hide_premium_badge))
         except Exception:
             pass
 
@@ -129,10 +113,21 @@ def register_premium_badge(plugin) -> None:
     _hook_particles(plugin)
 
 
+_disabled_particles_cache = set()
+
+
 def _disable_particles(drawable) -> None:
     try:
-        if drawable and hasattr(drawable, "setParticles"):
+        if drawable is None:
+            return
+
+        d_hash = drawable.hashCode()
+        if d_hash in _disabled_particles_cache:
+            return
+
+        if hasattr(drawable, "setParticles"):
             drawable.setParticles(False, True)
+            _disabled_particles_cache.add(d_hash)
     except Exception:
         pass
 
