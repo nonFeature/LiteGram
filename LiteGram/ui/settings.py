@@ -95,7 +95,6 @@ def _chat_settings() -> list[Any]:
         Switch(text=t("hide_bottom_gift_button"), key=Keys.hide_bottom_gift_button),
         Switch(text=t("hide_gift_cards"), subtext=t("hide_gift_cards_sub"), key=Keys.hide_gift_cards),
         Switch(text=t("hide_giveaway_cards"), subtext=t("hide_giveaway_cards_sub"), key=Keys.hide_giveaway_cards),
-        Switch(text=t("hide_stars_rating"), key=Keys.hide_stars_rating),
         Switch(text=t("hide_star_reaction"), key=Keys.hide_star_reaction),
         Header(text=t("emoji_search")),
         Text(text=t("switch_all"), link_alias=Keys.switch_all_emoji_search, on_click=toggle_emoji_search_options),
@@ -152,7 +151,9 @@ def _profile_settings() -> list[Any]:
         Switch(text=t("hide_boost_badge"), key=Keys.hide_boost_badge),
         Switch(text=t("hide_premium_badge"), subtext=t("hide_premium_badge_sub"), on_change=show_restart_bulletin, key=Keys.hide_premium_badge),
         Switch(text=t("hide_collectible_status"), subtext=t("hide_collectible_status_sub"), key=Keys.hide_collectible_status),
+        Switch(text=t("hide_stars_rating"), key=Keys.hide_stars_rating),
         Switch(text=t("hide_bot_verification"), key=Keys.hide_bot_verification),
+    ]
 
 
 def _interface_settings() -> list[Any]:

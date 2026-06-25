@@ -97,9 +97,6 @@ class MessagesControllerIsPremiumUserHook(BaseHook):
 
 
 def register_premium_badge(plugin) -> None:
-    ProfileActivity = find_class("org.telegram.ui.ProfileActivity")
-
-
     ChatMessageCell = find_class("org.telegram.ui.Cells.ChatMessageCell")
     if ChatMessageCell:
         try:

@@ -79,7 +79,7 @@ STRINGS = {
         "force_disable_particles_sub": "Принудительно отключает частицы у статуса в боковом меню",
 
         "hide_stars_rating": "Скрыть рейтинг звёзд",
-        "hide_star_reaction": "Скрыть звёздные реакции",
+        "hide_star_reaction": "Скрыть реакции за звёзды",
 
         # --- Emoji Search Options ---
         "emoji_search": "Эмодзи в поле поиска",
