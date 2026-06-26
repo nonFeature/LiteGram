@@ -178,6 +178,7 @@ def parse_import_line(line: str):
 
 def normalize_import_block(import_lines: list[str]) -> str:
     block = " ".join(line.strip() for line in import_lines)
+    block = re.sub(r"#.*", "", block)  # Strip inline comments
     block = re.sub(r"\s+", " ", block)
     block = block.replace("( ", "").replace("(", "").replace(" )", "").replace(")", "")
     return block.strip()

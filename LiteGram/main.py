@@ -14,6 +14,7 @@ from LiteGram.features.premium_badge import register_premium_badge
 from LiteGram.features.premium_emoji import filter_response, register_premium_emoji
 from LiteGram.features.profile_actions import register_profile_actions
 from LiteGram.features.profile_appearance import register_profile_appearance
+from LiteGram.features.settings_header import register_settings_header
 from LiteGram.features.settings_menu import register_settings_menu
 from LiteGram.features.star_rating import register_star_rating
 from LiteGram.features.star_reaction import register_star_reaction
@@ -181,6 +182,7 @@ class LiteGramPlugin(BasePlugin):
         register_premium_badge(self)
         register_star_reaction(self)
         register_hide_emoji_search(self)
+        register_settings_header(self)
 
     @classmethod
     def get_instance(cls) -> "LiteGramPlugin":

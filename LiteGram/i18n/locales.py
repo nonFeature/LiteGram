@@ -7,6 +7,8 @@ STRINGS = {
         "category_interface": "Интерфейс",
         "category_about": "О плагине",
 
+        "plugin_description": "Гибко настраиваемый плагин для удаления платных и лишних функций из Telegram",
+
         # --- Settings Options ---
         "settings_options": "Меню настроек",
         "manage_settings_options": "Настройка меню настроек",
@@ -117,7 +119,9 @@ STRINGS = {
         "category_chat": "Chat",
         "category_profile": "Profile",
         "category_interface": "Interface",
-        "category_about": "About Plugin",
+        "category_about": "About",
+
+        "plugin_description": "A highly customizable plugin to remove paid and bloated features from Telegram",
 
         # --- Settings Options ---
         "settings_options": "Settings Options",
