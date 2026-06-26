@@ -48,6 +48,13 @@ class LiteGramPlugin(BasePlugin):
             return val
         return cached[0]
 
+    def set_setting(self, key: str, value: Any, reload_settings: bool = False) -> None:
+        if hasattr(self, "_settings_cache"):
+            import time
+
+            self._settings_cache[key] = (value, time.time())
+        super().set_setting(key, value, reload_settings)
+
     def on_plugin_load(self) -> None:
         LiteGramPlugin._instance = self
         tl_hooks = [

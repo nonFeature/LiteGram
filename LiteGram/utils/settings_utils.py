@@ -94,3 +94,19 @@ def show_restart_bulletin(_enabled: bool) -> None:
 def show_restart_bulletin_if_disabled(enabled: bool) -> None:
     if not enabled:
         show_restart_bulletin(False)
+
+
+def reload_ui_on_change(key: str) -> Callable[[bool], None]:
+    def callback(enabled: bool):
+        LiteGramPlugin.get_instance().set_setting(key, enabled, reload_settings=True)
+
+    return callback
+
+
+def reload_ui_and_show_restart_bulletin_if_disabled(key: str) -> Callable[[bool], None]:
+    def callback(enabled: bool):
+        LiteGramPlugin.get_instance().set_setting(key, enabled, reload_settings=True)
+        if not enabled:
+            show_restart_bulletin(False)
+
+    return callback

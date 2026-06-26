@@ -1,6 +1,6 @@
 from typing import Any
 
-from ui.settings import Header, Text
+from ui.settings import Divider, Header, Text
 
 from LiteGram.data.constants import GITHUB_URL, Keys
 from LiteGram.i18n.i18n import t
@@ -10,6 +10,8 @@ from LiteGram.utils.settings_utils import (
     Switch,
     open_extera_tab,
     open_url_view,
+    reload_ui_and_show_restart_bulletin_if_disabled,
+    reload_ui_on_change,
     show_restart_bulletin,
     show_restart_bulletin_if_disabled,
     toggle_emoji_search_options,
@@ -92,7 +94,7 @@ def _chat_settings() -> list[Any]:
         Text(text=t("switch_all"), link_alias=Keys.switch_all_emoji_search, on_click=toggle_emoji_search_options),
         *[Switch(text=t(text_key), key=key) for key, text_key in Keys.EMOJI_SEARCH_ROWS],
         Header(text=t("keyboard")),
-        Switch(text=t("hide_premium_emoji"), key=Keys.hide_premium_emoji, on_change=show_restart_bulletin_if_disabled),
+        Switch(text=t("hide_premium_emoji"), key=Keys.hide_premium_emoji, on_change=reload_ui_and_show_restart_bulletin_if_disabled(Keys.hide_premium_emoji)),
         *(
             [
                 Text(
@@ -105,7 +107,7 @@ def _chat_settings() -> list[Any]:
             if bool(LiteGramPlugin.get_instance().get_setting(Keys.hide_premium_emoji, False))
             else []
         ),
-        Switch(text=t("hide_premium_stickers"), key=Keys.hide_premium_stickers),
+        Switch(text=t("hide_premium_stickers"), key=Keys.hide_premium_stickers, on_change=reload_ui_on_change(Keys.hide_premium_stickers)),
         *(
             [
                 Text(
@@ -167,7 +169,7 @@ def _about_settings() -> list[Any]:
     return [
         Header(text=t("about_plugin")),
         Text(text=t("github_repository"), icon="msg_link", on_click=open_url_view(GITHUB_URL)),
-        Text(text=t("github_sub")),
+        Divider(text=t("github_sub")),
     ]
 
 
