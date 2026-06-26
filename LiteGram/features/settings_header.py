@@ -81,7 +81,7 @@ def _create_litegram_settings_header(context):
             pass
 
         imageView = BackupImageView(context)
-        imageView.setRoundRadius(0)
+        imageView.setRoundRadius(AndroidUtilities.dp(16))
         imageView.setClickable(True)
 
         def try_load_sticker(img):
