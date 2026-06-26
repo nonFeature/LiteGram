@@ -1,4 +1,5 @@
-from hook_utils import find_class, get_private_field
+from hook_utils import find_class
+from java import jlong
 
 from LiteGram.data.constants import Keys
 from LiteGram.utils.xposed_utils import BaseHook
@@ -53,47 +54,7 @@ class TLChatDeserializeHook(BaseHook):
                 pass
 
 
-class ChatMessageCellGetAuthorStatusHook(BaseHook):
-    _BadgesController = None
-
-    def __init__(self, plugin, setting_key):
-        super().__init__(plugin, setting_key)
-        self._badge_cache = {}
-
-    def before_hooked_method(self, param):
-        if not self.is_enabled():
-            return
-
-        current_user = get_private_field(param.thisObject, "currentUser")
-
-        if current_user:
-            user_id = getattr(current_user, "id", None)
-            if user_id is not None and user_id in self._badge_cache:
-                param.setResult(self._badge_cache[user_id])
-                return
-
-            if self._BadgesController is None:
-                self._BadgesController = find_class("com.exteragram.messenger.badges.BadgesController")
-
-            if not self._BadgesController:
-                return
-
-            badge = self._BadgesController.INSTANCE.getBadge(current_user)
-            if user_id is not None:
-                self._badge_cache[user_id] = badge
-            param.setResult(badge)
-        else:
-            param.setResult(None)
-
-
 def register_premium_badge(plugin) -> None:
-    ChatMessageCell = find_class("org.telegram.ui.Cells.ChatMessageCell")
-    if ChatMessageCell:
-        try:
-            plugin.hook_all_methods(ChatMessageCell, "getAuthorStatus", ChatMessageCellGetAuthorStatusHook(plugin, Keys.hide_premium_badge))
-        except Exception:
-            pass
-
     TLRPC_User = find_class("org.telegram.tgnet.TLRPC$User")
     if TLRPC_User:
         try:
@@ -108,111 +69,30 @@ def register_premium_badge(plugin) -> None:
         except Exception:
             pass
 
+    UserObject = find_class("org.telegram.messenger.UserObject")
+    if UserObject:
+        try:
+            plugin.hook_all_methods(UserObject, "getEmojiStatusDocumentId", EmojiStatusDocumentIdHook(plugin, Keys.hide_premium_badge))
+        except Exception:
+            pass
+
+    DialogObject = find_class("org.telegram.messenger.DialogObject")
+    if DialogObject:
+        try:
+            plugin.hook_all_methods(DialogObject, "getEmojiStatusDocumentId", EmojiStatusDocumentIdHook(plugin, Keys.hide_premium_badge))
+        except Exception:
+            pass
+
+    ChatAvatarContainer = find_class("org.telegram.ui.ActionBar.ChatAvatarContainer")
+    if ChatAvatarContainer:
+        try:
+            plugin.hook_all_methods(ChatAvatarContainer, "setTitle", ChatAvatarContainerSetTitleHook(plugin, Keys.hide_premium_badge))
+        except Exception:
+            pass
+
     # === Collectible status ===
     _hook_collectible_status(plugin)
     _hook_particles(plugin)
-
-
-_disabled_particles_cache = set()
-
-
-def _disable_particles(drawable) -> None:
-    try:
-        if drawable is None:
-            return
-
-        d_hash = drawable.hashCode()
-        if d_hash in _disabled_particles_cache:
-            return
-
-        if hasattr(drawable, "setParticles"):
-            drawable.setParticles(False, True)
-            _disabled_particles_cache.add(d_hash)
-    except Exception:
-        pass
-
-
-class IsEmojiStatusCollectibleHook(BaseHook):
-    def before_hooked_method(self, param):
-        if self.is_enabled():
-            param.setResult(False)
-
-
-class ProfileEmojiStatusDrawableHook(BaseHook):
-    def after_hooked_method(self, param):
-        if not self.is_enabled():
-            return
-        _disable_particles(param.getResult())
-
-
-class DialogsStatusNeutralizeHook(BaseHook):
-    def after_hooked_method(self, param):
-        if not self.is_enabled():
-            return
-        try:
-            obj = param.thisObject
-            if hasattr(obj, "statusDrawableGiftId"):
-                obj.statusDrawableGiftId = None
-            _disable_particles(getattr(obj, "statusDrawable", None))
-        except Exception:
-            pass
-
-
-class DialogCellStatusNeutralizeHook(BaseHook):
-    def after_hooked_method(self, param):
-        if not self.is_enabled():
-            return
-        try:
-            obj = param.thisObject
-            for field in ("statusDrawableGiftId", "emojiStatusGiftId"):
-                if hasattr(obj, field):
-                    setattr(obj, field, None)
-            _disable_particles(getattr(obj, "statusDrawable", None))
-            _disable_particles(getattr(obj, "emojiStatus", None))
-        except Exception:
-            pass
-
-
-class DrawerProfileStatusNeutralizeHook(BaseHook):
-    def after_hooked_method(self, param):
-        if not self.is_enabled():
-            return
-        try:
-            obj = param.thisObject
-            if hasattr(obj, "statusGiftId"):
-                obj.statusGiftId = None
-            _disable_particles(getattr(obj, "status", None))
-        except Exception:
-            pass
-
-
-class DrawerUserStatusNeutralizeHook(BaseHook):
-    def after_hooked_method(self, param):
-        if not self.is_enabled():
-            return
-        try:
-            obj = param.thisObject
-            for field in ("statusGiftId", "statusDrawableGiftId", "emojiStatusGiftId"):
-                try:
-                    if hasattr(obj, field):
-                        setattr(obj, field, None)
-                except Exception:
-                    pass
-            _disable_particles(getattr(obj, "status", None))
-        except Exception:
-            pass
-
-
-class DrawerHeaderViewStatusNeutralizeHook(BaseHook):
-    def after_hooked_method(self, param):
-        if not self.is_enabled():
-            return
-        try:
-            obj = param.thisObject
-            _disable_particles(getattr(obj, "premiumStatusDrawable", None))
-            _disable_particles(getattr(obj, "exteraBadgeDrawable", None))
-        except Exception:
-            pass
 
 
 class ForceParticlesOffHook(BaseHook):
@@ -233,55 +113,39 @@ class ForceParticlesOffHook(BaseHook):
         ForceParticlesOffHook._active = False
 
 
+class IsEmojiStatusCollectibleHook(BaseHook):
+    def before_hooked_method(self, param):
+        if self.is_enabled():
+            param.setResult(False)
+
+
+class EmojiStatusDocumentIdHook(BaseHook):
+    def before_hooked_method(self, param):
+        if self.is_enabled():
+            param.setResult(jlong(0))
+
+
+class ChatAvatarContainerSetTitleHook(BaseHook):
+    def before_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        # We look for the showPremiumBadge boolean.
+        # In 8.7.4 it was arg[4]. In modern it's arg[1].
+        # The safest approach is to set all booleans up to arg[4] to False ONLY if we know it's exactly the premium one.
+        # But wait, we can just forcefully remove the premium star from the user object right before the call?
+        # Actually, let's just set param.args[1] = False and param.args[4] = False if they are booleans!
+        args = param.args
+        if args and len(args) >= 2 and isinstance(args[1], bool):
+            args[1] = False
+        if args and len(args) >= 5 and isinstance(args[4], bool):
+            args[4] = False
+
+
 def _hook_collectible_status(plugin) -> None:
     DialogObject = find_class("org.telegram.messenger.DialogObject")
     if DialogObject:
         try:
             plugin.hook_all_methods(DialogObject, "isEmojiStatusCollectible", IsEmojiStatusCollectibleHook(plugin, Keys.hide_collectible_status))
-        except Exception:
-            pass
-
-    ProfileActivity = find_class("org.telegram.ui.ProfileActivity")
-    if ProfileActivity:
-        try:
-            plugin.hook_all_methods(ProfileActivity, "getEmojiStatusDrawable", ProfileEmojiStatusDrawableHook(plugin, Keys.hide_collectible_status))
-        except Exception:
-            pass
-
-    DialogsActivity = find_class("org.telegram.ui.DialogsActivity")
-    if DialogsActivity:
-        try:
-            plugin.hook_all_methods(DialogsActivity, "updateStatus", DialogsStatusNeutralizeHook(plugin, Keys.hide_collectible_status))
-        except Exception:
-            pass
-
-    DialogCell = find_class("org.telegram.ui.Cells.DialogCell")
-    if DialogCell:
-        for m in ("buildLayout", "update"):
-            try:
-                plugin.hook_all_methods(DialogCell, m, DialogCellStatusNeutralizeHook(plugin, Keys.hide_collectible_status))
-            except Exception:
-                pass
-
-    DrawerProfileCell = find_class("org.telegram.ui.Cells.DrawerProfileCell")
-    if DrawerProfileCell:
-        try:
-            plugin.hook_all_methods(DrawerProfileCell, "setUser", DrawerProfileStatusNeutralizeHook(plugin, Keys.hide_collectible_status))
-        except Exception:
-            pass
-
-    DrawerUserCell = find_class("org.telegram.ui.Cells.DrawerUserCell")
-    if DrawerUserCell:
-        for m in ("setAccount", "didReceivedNotification"):
-            try:
-                plugin.hook_all_methods(DrawerUserCell, m, DrawerUserStatusNeutralizeHook(plugin, Keys.hide_collectible_status))
-            except Exception:
-                pass
-
-    DrawerHeaderView = find_class("com.exteragram.messenger.drawer.DrawerHeaderView")
-    if DrawerHeaderView:
-        try:
-            plugin.hook_all_methods(DrawerHeaderView, "updateUserInfo", DrawerHeaderViewStatusNeutralizeHook(plugin, Keys.hide_collectible_status))
         except Exception:
             pass
 

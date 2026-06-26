@@ -31,6 +31,36 @@ COPYRIGHT_STRING = (
     "# Repository: https://github.com/nonFeature/LegacyGram\n"
 )
 
+HEADER_WATERMARK = """
+#          @@@@@@@@@@
+#        @@@@@@@@@@@@
+#       @@@@@
+#       @@@@
+# @@@@@@@@@@@@@@@@@@@
+# @@@@@@@@@@@@@@@@@@@
+#       @@@@
+#       @@@@
+#       @@@@
+#       @@@@
+#       @@@@
+#       @@@@
+# @@@@@@@@@@@@@@@@@@@
+# @@@@@@@@@@@@@@@@@@@
+"""
+
+FOOTER_WATERMARK = """
+#       @@@@
+# @@@@@@@@@@@@@@@@
+# @@@@@@@@@@@@@@@@
+# @@@@@@@@@@@@@@@@
+# @@@@@@@@@@@@@@@
+# @@@@@@@@@@@@@@@
+# @@@@@@@@@@@@@@@
+# @@@@@@@@@@@@@@@@
+# @@@@@@@@@@@@@@@@
+# @@@@@@@@@@@@@@@@
+"""
+
 captured_imports = defaultdict(set)
 captured_from_imports = defaultdict(set)
 
@@ -352,6 +382,8 @@ def build():
             print(f"⚠️ Warning: AST minification failed ({e}). Falling back to unminified build.")
             full_code = COPYRIGHT_STRING + "\n" + combined_code
 
+    full_code = HEADER_WATERMARK + "\n" + full_code + "\n\n" + FOOTER_WATERMARK
+
     DIST_DIR.mkdir(exist_ok=True)
     out_path = DIST_DIR / OUTPUT_FILENAME
 
@@ -359,7 +391,7 @@ def build():
     out_path.write_text(full_code, encoding="utf-8", newline=newline)
 
     # Calculate actual sizes
-    orig_bytes = (COPYRIGHT_STRING + "\n" + combined_code).replace("\n", newline).encode("utf-8")
+    orig_bytes = (HEADER_WATERMARK + "\n" + COPYRIGHT_STRING + "\n" + combined_code + "\n\n" + FOOTER_WATERMARK).replace("\n", newline).encode("utf-8")
     orig_size = len(orig_bytes)
     final_size = out_path.stat().st_size
 

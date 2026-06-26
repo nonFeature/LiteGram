@@ -1,5 +1,3 @@
-import time
-
 from hook_utils import find_class, get_private_field
 from java import jint
 from java.lang.reflect import Modifier
@@ -119,56 +117,26 @@ def _get_valid_row_fields(instance):
 class ProfileActivityUpdateRowsIdsHook(BaseHook):
     def __init__(self, plugin):
         super().__init__(plugin)
-        self._last_checked = 0.0
-        self._cached_hide_bot_verification = False
-        self._cached_rows_to_remove = []
 
     def get_rows_to_remove(self) -> list[str]:
-        now = time.time()
-        if now - self._last_checked > 2.0:
-            self._cached_hide_bot_verification = bool(self.plugin.get_setting(Keys.hide_bot_verification, False))
+        rows_to_remove = []
+        hidden_premium_rows_count = 0
+        for key, row_name in PROFILE_SETTINGS_ROW_FIELDS.items():
+            if self.plugin.get_setting(key, False):
+                rows_to_remove.append(row_name)
+                hidden_premium_rows_count += 1
 
-            rows_to_remove = []
-            hidden_premium_rows_count = 0
-            for key, row_name in PROFILE_SETTINGS_ROW_FIELDS.items():
-                if self.plugin.get_setting(key, False):
-                    rows_to_remove.append(row_name)
-                    hidden_premium_rows_count += 1
+        if hidden_premium_rows_count == len(PROFILE_SETTINGS_ROW_FIELDS):
+            rows_to_remove.append(PREMIUM_SECTIONS_ROW)
 
-            if hidden_premium_rows_count == len(PROFILE_SETTINGS_ROW_FIELDS):
-                rows_to_remove.append(PREMIUM_SECTIONS_ROW)
+        if self.plugin.get_setting(Keys.hide_help_section, False):
+            rows_to_remove.extend(PROFILE_HELP_ROW_FIELDS)
 
-            if self.plugin.get_setting(Keys.hide_help_section, False):
-                rows_to_remove.extend(PROFILE_HELP_ROW_FIELDS)
-
-            self._cached_rows_to_remove = rows_to_remove
-            self._last_checked = now
-
-        return self._cached_rows_to_remove
+        return rows_to_remove
 
     def before_hooked_method(self, param):
         """Remove a bot verification description in Profile by nullify bot_verification field"""
-        now = time.time()
-        if now - self._last_checked > 2.0:
-            self._cached_hide_bot_verification = bool(self.plugin.get_setting(Keys.hide_bot_verification, False))
-
-            rows_to_remove = []
-            hidden_premium_rows_count = 0
-            for key, row_name in PROFILE_SETTINGS_ROW_FIELDS.items():
-                if self.plugin.get_setting(key, False):
-                    rows_to_remove.append(row_name)
-                    hidden_premium_rows_count += 1
-
-            if hidden_premium_rows_count == len(PROFILE_SETTINGS_ROW_FIELDS):
-                rows_to_remove.append(PREMIUM_SECTIONS_ROW)
-
-            if self.plugin.get_setting(Keys.hide_help_section, False):
-                rows_to_remove.extend(PROFILE_HELP_ROW_FIELDS)
-
-            self._cached_rows_to_remove = rows_to_remove
-            self._last_checked = now
-
-        if not self._cached_hide_bot_verification:
+        if not self.plugin.get_setting(Keys.hide_bot_verification, False):
             return
 
         instance = param.thisObject

@@ -1,5 +1,3 @@
-import time
-
 from hook_utils import find_class, get_private_field
 from java import jint
 
@@ -16,20 +14,13 @@ class ProfileActionsViewHook(BaseHook):
     def __init__(self, plugin, key_index: int):
         super().__init__(plugin)
         self.key_index = key_index
-        self._last_checked = 0.0
-        self._cached_gifts = False
-        self._cached_stories = False
-        self._cached_stream = False
 
     def before_hooked_method(self, param):
-        now = time.time()
-        if now - self._last_checked > 2.0:
-            self._cached_gifts = bool(self.plugin.get_setting(Keys.hide_profile_actions_gift_button, False))
-            self._cached_stories = bool(self.plugin.get_setting(Keys.hide_profile_actions_stories_button, False))
-            self._cached_stream = bool(self.plugin.get_setting(Keys.hide_profile_actions_stream_button, False))
-            self._last_checked = now
+        gifts = bool(self.plugin.get_setting(Keys.hide_profile_actions_gift_button, False))
+        stories = bool(self.plugin.get_setting(Keys.hide_profile_actions_stories_button, False))
+        stream = bool(self.plugin.get_setting(Keys.hide_profile_actions_stream_button, False))
 
-        if not self._cached_gifts and not self._cached_stories and not self._cached_stream:
+        if not gifts and not stories and not stream:
             return
 
         try:
@@ -37,11 +28,7 @@ class ProfileActionsViewHook(BaseHook):
         except (IndexError, ValueError, TypeError):
             return
 
-        should_hide = (
-            (self._cached_gifts and current_key == KEY_GIFT)
-            or (self._cached_stories and current_key == KEY_STORY)
-            or (self._cached_stream and current_key in (KEY_VOICE_CHAT, KEY_STREAM))
-        )
+        should_hide = (gifts and current_key == KEY_GIFT) or (stories and current_key == KEY_STORY) or (stream and current_key in (KEY_VOICE_CHAT, KEY_STREAM))
 
         if should_hide:
             param.setResult(None)
@@ -50,32 +37,25 @@ class ProfileActionsViewHook(BaseHook):
 class ProfileActionsApplyHook(BaseHook):
     def __init__(self, plugin):
         super().__init__(plugin)
-        self._last_checked = 0.0
-        self._cached_gifts = False
-        self._cached_stories = False
-        self._cached_stream = False
 
     def after_hooked_method(self, param):
         try:
-            now = time.time()
-            if now - self._last_checked > 2.0:
-                self._cached_gifts = bool(self.plugin.get_setting(Keys.hide_profile_actions_gift_button, False))
-                self._cached_stories = bool(self.plugin.get_setting(Keys.hide_profile_actions_stories_button, False))
-                self._cached_stream = bool(self.plugin.get_setting(Keys.hide_profile_actions_stream_button, False))
-                self._last_checked = now
+            gifts = bool(self.plugin.get_setting(Keys.hide_profile_actions_gift_button, False))
+            stories = bool(self.plugin.get_setting(Keys.hide_profile_actions_stories_button, False))
+            stream = bool(self.plugin.get_setting(Keys.hide_profile_actions_stream_button, False))
 
-            if not self._cached_gifts and not self._cached_stories and not self._cached_stream:
+            if not gifts and not stories and not stream:
                 return
 
             obj = param.thisObject
 
             # Pre-filter target keys to remove
             target_keys = []
-            if self._cached_gifts:
+            if gifts:
                 target_keys.append(KEY_GIFT)
-            if self._cached_stories:
+            if stories:
                 target_keys.append(KEY_STORY)
-            if self._cached_stream:
+            if stream:
                 target_keys.extend((KEY_VOICE_CHAT, KEY_STREAM))
 
             for coll in ("visibleActions", "actionsList", "allAvailableActions"):

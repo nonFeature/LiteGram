@@ -1,4 +1,3 @@
-import time
 from typing import Any
 
 from hook_utils import find_class, get_private_field, set_private_field
@@ -30,9 +29,6 @@ class SharedMediaLayoutHook(BaseHook):
     def __init__(self, plugin, is_constructor: bool):
         super().__init__(plugin)
         self.is_constructor = is_constructor
-        self._last_checked = 0.0
-        self._cached_gifts = False
-        self._cached_stories = False
 
     def _get_info_objects(self, param) -> tuple[Any, Any]:
         if self.is_constructor:
@@ -48,31 +44,24 @@ class SharedMediaLayoutHook(BaseHook):
             return chat_info, user_info
 
     def before_hooked_method(self, param):
-        now = time.time()
-        if now - self._last_checked > 2.0:
-            self._cached_gifts = bool(self.plugin.get_setting(Keys.hide_gifts_tab, False))
-            self._cached_stories = bool(self.plugin.get_setting(Keys.hide_stories_tab, False))
-            self._last_checked = now
+        gifts = bool(self.plugin.get_setting(Keys.hide_gifts_tab, False))
+        stories = bool(self.plugin.get_setting(Keys.hide_stories_tab, False))
 
-        if not self._cached_gifts and not self._cached_stories:
+        if not gifts and not stories:
             return
 
         chat_info, user_info = self._get_info_objects(param)
 
         for target in [chat_info, user_info]:
-            if self._cached_gifts:
+            if gifts:
                 remove_gifts(target)
-            if self._cached_stories:
+            if stories:
                 remove_stories(target)
 
     def after_hooked_method(self, param):
-        now = time.time()
-        if now - self._last_checked > 2.0:
-            self._cached_gifts = bool(self.plugin.get_setting(Keys.hide_gifts_tab, False))
-            self._cached_stories = bool(self.plugin.get_setting(Keys.hide_stories_tab, False))
-            self._last_checked = now
+        stories = bool(self.plugin.get_setting(Keys.hide_stories_tab, False))
 
-        if self.is_constructor or not self._cached_stories:
+        if self.is_constructor or not stories:
             return
 
         try:
