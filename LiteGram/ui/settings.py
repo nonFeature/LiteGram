@@ -123,8 +123,20 @@ def _chat_settings() -> list[Any]:
     ]
 
 
+def _on_premium_badge_toggle(val: bool):
+    plugin = LiteGramPlugin.get_instance()
+    # Force update the python cache for premium badge so the UI rebuild sees the new value instantly
+    plugin.set_setting(Keys.hide_premium_badge, val, reload_settings=False)
+    # Update collectible status and trigger UI rebuild
+    plugin.set_setting(Keys.hide_collectible_status, val, reload_settings=True)
+    show_restart_bulletin(val)
+
+
 def _profile_settings() -> list[Any]:
-    return [
+    plugin = LiteGramPlugin.get_instance()
+    hide_premium = bool(plugin.get_setting(Keys.hide_premium_badge, False))
+
+    elements = [
         Header(text=t("profile_buttons")),
         Switch(text=t("hide_profile_actions_stories_button"), key=Keys.hide_profile_actions_stories_button),
         Switch(text=t("hide_profile_actions_gift_button"), key=Keys.hide_profile_actions_gift_button),
@@ -143,11 +155,20 @@ def _profile_settings() -> list[Any]:
         Switch(text=t("hide_profile_pinned_gifts"), key=Keys.hide_profile_pinned_gifts),
         Switch(text=t("hide_profile_colorful_background"), key=Keys.hide_profile_colorful_background),
         Switch(text=t("hide_boost_badge"), key=Keys.hide_boost_badge),
-        Switch(text=t("hide_premium_badge"), subtext=t("hide_premium_badge_sub"), on_change=show_restart_bulletin, key=Keys.hide_premium_badge),
-        Switch(text=t("hide_collectible_status"), subtext=t("hide_collectible_status_sub"), key=Keys.hide_collectible_status),
-        Switch(text=t("hide_stars_rating"), key=Keys.hide_stars_rating),
-        Switch(text=t("hide_bot_verification"), key=Keys.hide_bot_verification),
+        Switch(text=t("hide_premium_badge"), subtext=t("hide_premium_badge_sub"), on_change=_on_premium_badge_toggle, key=Keys.hide_premium_badge),
     ]
+
+    if not hide_premium:
+        elements.append(Switch(text=t("hide_collectible_status"), subtext=t("hide_collectible_status_sub"), key=Keys.hide_collectible_status))
+
+    elements.extend(
+        [
+            Switch(text=t("hide_stars_rating"), key=Keys.hide_stars_rating),
+            Switch(text=t("hide_bot_verification"), key=Keys.hide_bot_verification),
+        ]
+    )
+
+    return elements
 
 
 def _interface_settings() -> list[Any]:
