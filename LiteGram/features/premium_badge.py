@@ -104,6 +104,20 @@ class MessagesControllerIsPremiumUserHook(BaseHook):
         param.setResult(False)
 
 
+class DrawerMenuHidePremiumHook(BaseHook):
+    def after_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        try:
+            obj = param.thisObject
+            if hasattr(obj, "premiumStatusDrawable"):
+                drawable = obj.premiumStatusDrawable
+                if drawable and hasattr(drawable, "set"):
+                    drawable.set(None, False)
+        except Exception:
+            pass
+
+
 class FalseMethodReplacement(MethodReplacement):
     def replace_hooked_method(self, param):
         return False
@@ -131,6 +145,15 @@ def register_premium_badge(plugin) -> None:
             if MessagesController:
                 is_premium_hook = MessagesControllerIsPremiumUserHook(plugin, Keys.hide_premium_badge)
                 plugin.hook_all_methods(MessagesController, "isPremiumUser", is_premium_hook)
+
+            DrawerHeaderView = find_class("com.exteragram.messenger.drawer.DrawerHeaderView")
+            AccountRowView = find_class("com.exteragram.messenger.drawer.DrawerAccountPickerView$AccountRowView")
+
+            drawer_hook = DrawerMenuHidePremiumHook(plugin, Keys.hide_premium_badge)
+            if DrawerHeaderView:
+                plugin.hook_all_methods(DrawerHeaderView, "updateUserInfo", drawer_hook)
+            if AccountRowView:
+                plugin.hook_all_methods(AccountRowView, "bind", drawer_hook)
         except Exception:
             pass
 
