@@ -97,6 +97,13 @@ class ZeroHook(BaseHook):
         param.setResult(0)
 
 
+class MessagesControllerIsPremiumUserHook(BaseHook):
+    def before_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        param.setResult(False)
+
+
 class FalseMethodReplacement(MethodReplacement):
     def replace_hooked_method(self, param):
         return False
@@ -119,6 +126,11 @@ def register_premium_badge(plugin) -> None:
             DialogObject = find_class("org.telegram.messenger.DialogObject")
             if DialogObject:
                 plugin.hook_all_methods(DialogObject, "getEmojiStatusDocumentId", zero_hook)
+
+            MessagesController = find_class("org.telegram.messenger.MessagesController")
+            if MessagesController:
+                is_premium_hook = MessagesControllerIsPremiumUserHook(plugin, Keys.hide_premium_badge)
+                plugin.hook_all_methods(MessagesController, "isPremiumUser", is_premium_hook)
         except Exception:
             pass
 

@@ -76,7 +76,7 @@ STRINGS = {
         "hide_giveaway_cards": "Скрыть розыгрыши",
         "hide_giveaway_cards_sub": "Скрывает сообщения с розыгрышами в чатах",
         "hide_collectible_status": "Скрыть collectible-статус",
-        "hide_collectible_status_sub": "Скрывает эффекты и частицы collectible-статуса",
+        "hide_collectible_status_sub": "Если в статусе стоит подарок",
         "force_disable_particles": "Отключить частицы у статуса",
         "force_disable_particles_sub": "Принудительно отключает частицы у статуса в боковом меню",
 
@@ -190,7 +190,7 @@ STRINGS = {
         "hide_giveaway_cards": "Hide Giveaways",
         "hide_giveaway_cards_sub": "Hides giveaway messages in chats",
         "hide_collectible_status": "Hide Collectible Status",
-        "hide_collectible_status_sub": "Hides collectible status effects and particles",
+        "hide_collectible_status_sub": "If there is a gift in the status",
         "force_disable_particles": "Disable Status Particles",
         "force_disable_particles_sub": "Forces particle effects off in status menus",
 
