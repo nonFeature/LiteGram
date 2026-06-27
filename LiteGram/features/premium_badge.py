@@ -45,6 +45,8 @@ class ProfileCollectibleHintBlockHook(BaseHook):
                 obj.collectibleHintVisible = False
             if hasattr(obj, "collectibleStatus"):
                 obj.collectibleStatus = None
+            if hasattr(obj, "emojiStatusGiftId"):
+                obj.emojiStatusGiftId = None
         except Exception:
             pass
         param.setResult(None)
@@ -53,7 +55,6 @@ class ProfileCollectibleHintBlockHook(BaseHook):
 class ProfileEmojiStatusDrawableHook(BaseHook):
     def before_hooked_method(self, param):
         # If premium badge hiding is fully enabled, hide the drawable completely
-        # Since this hook uses hide_collectible_status setting, we need to check the premium setting manually
         if self.plugin.get_setting(Keys.hide_premium_badge, False):
             param.setResult(None)
 
@@ -66,71 +67,53 @@ class ProfileEmojiStatusDrawableHook(BaseHook):
                 res.setParticles(False, True)
         except Exception:
             pass
-        try:
-            obj = param.thisObject
-            if hasattr(obj, "emojiStatusGiftId"):
-                obj.emojiStatusGiftId = None
-        except Exception:
-            pass
 
 
 def register_premium_badge(plugin) -> None:
-    UserObject = find_class("org.telegram.messenger.UserObject")
-    if UserObject:
+    if plugin.get_setting(Keys.hide_premium_badge, False):
         try:
-            plugin.hook_all_methods(UserObject, "getEmojiStatusDocumentId", EmojiStatusDocumentIdHook(plugin, Keys.hide_premium_badge))
-        except Exception:
-            pass
+            from java import jclass
+            from java.lang import Long
 
-    DialogObject = find_class("org.telegram.messenger.DialogObject")
-    if DialogObject:
-        try:
-            plugin.hook_all_methods(DialogObject, "getEmojiStatusDocumentId", EmojiStatusDocumentIdHook(plugin, Keys.hide_premium_badge))
+            XC_MethodReplacement = jclass("de.robv.android.xposed.XC_MethodReplacement")
+            XposedBridge = jclass("de.robv.android.xposed.XposedBridge")
+            # Create a native Java replacement that returns 0L (no emoji ID) instantly
+            return_zero = XC_MethodReplacement.returnConstant(Long(0))  # ty: ignore
+
+            UserObject = find_class("org.telegram.messenger.UserObject")
+            if UserObject:
+                XposedBridge.hookAllMethods(UserObject, "getEmojiStatusDocumentId", return_zero)
+
+            DialogObject = find_class("org.telegram.messenger.DialogObject")
+            if DialogObject:
+                XposedBridge.hookAllMethods(DialogObject, "getEmojiStatusDocumentId", return_zero)
         except Exception:
             pass
 
     # === Collectible status ===
     _hook_collectible_status(plugin)
-    _hook_particles(plugin)
-
-
-class ForceParticlesOffHook(BaseHook):
-    def before_hooked_method(self, param):
-        if self.is_enabled() and param.args:
-            param.args[0] = False
-
-
-class IsEmojiStatusCollectibleHook(BaseHook):
-    def before_hooked_method(self, param):
-        if self.is_enabled():
-            param.setResult(False)
-
-
-class EmojiStatusDocumentIdHook(BaseHook):
-    def before_hooked_method(self, param):
-        if self.is_enabled():
-            param.setResult(0)
 
 
 def _hook_collectible_status(plugin) -> None:
-    hook = IsEmojiStatusCollectibleHook(plugin, Keys.hide_collectible_status)
-    try:
-        UserObject = find_class("org.telegram.messenger.UserObject")
-        plugin.hook_all_methods(UserObject, "isEmojiStatusCollectible", hook)
-    except Exception:
-        pass
+    if plugin.get_setting(Keys.hide_collectible_status, False):
+        try:
+            from java import jclass
+            from java.lang import Boolean
 
-    try:
-        DialogObject = find_class("org.telegram.messenger.DialogObject")
-        plugin.hook_all_methods(DialogObject, "isEmojiStatusCollectible", hook)
-    except Exception:
-        pass
+            XC_MethodReplacement = jclass("de.robv.android.xposed.XC_MethodReplacement")
+            XposedBridge = jclass("de.robv.android.xposed.XposedBridge")
+            # Create a native Java replacement that returns false instantly
+            return_false = XC_MethodReplacement.returnConstant(Boolean(False))  # ty: ignore
 
-    try:
-        MessageObject = find_class("org.telegram.messenger.MessageObject")
-        plugin.hook_all_methods(MessageObject, "isEmojiStatusCollectible", hook)
-    except Exception:
-        pass
+            for class_name in ["org.telegram.messenger.UserObject", "org.telegram.messenger.DialogObject", "org.telegram.messenger.MessageObject"]:
+                try:
+                    cls = find_class(class_name)
+                    if cls:
+                        XposedBridge.hookAllMethods(cls, "isEmojiStatusCollectible", return_false)
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
     try:
         ProfileActivity = find_class("org.telegram.ui.ProfileActivity")
@@ -138,12 +121,3 @@ def _hook_collectible_status(plugin) -> None:
         plugin.hook_all_methods(ProfileActivity, "getEmojiStatusDrawable", ProfileEmojiStatusDrawableHook(plugin, Keys.hide_collectible_status))
     except Exception:
         pass
-
-
-def _hook_particles(plugin) -> None:
-    SwapAnimatedEmojiDrawable = find_class("org.telegram.ui.Components.AnimatedEmojiDrawable$SwapAnimatedEmojiDrawable")
-    if SwapAnimatedEmojiDrawable:
-        try:
-            plugin.hook_all_methods(SwapAnimatedEmojiDrawable, "setParticles", ForceParticlesOffHook(plugin, Keys.hide_collectible_status))
-        except Exception:
-            pass

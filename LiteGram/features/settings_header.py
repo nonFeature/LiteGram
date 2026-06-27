@@ -127,7 +127,7 @@ def _create_litegram_settings_header(context):
 
         try:
             from android.view import MotionEvent, View  # ty: ignore
-            from java import dynamic_proxy  # ty: ignore
+            from java import dynamic_proxy
 
             class BounceTouchListener(dynamic_proxy(View.OnTouchListener)):  # ty: ignore
                 def onTouch(self, v, event):
