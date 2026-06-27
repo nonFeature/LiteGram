@@ -1,3 +1,4 @@
+from base_plugin import MethodReplacement
 from hook_utils import find_class
 
 from LiteGram.data.constants import Keys
@@ -69,24 +70,55 @@ class ProfileEmojiStatusDrawableHook(BaseHook):
             pass
 
 
+class SmartEmojiStatusHook(BaseHook):
+    def before_hooked_method(self, param):
+        arg = param.args[0] if param.args else None
+        if arg is None:
+            param.setResult(0)
+            return
+
+        class_name = str(arg.getClass().getName()).lower()
+        if "user" in class_name or "chat" in class_name:
+            try:
+                BadgesController = find_class("com.exteragram.messenger.badges.BadgesController")
+                if BadgesController and BadgesController.INSTANCE.hasBadge(arg):
+                    # Let it fall through to BadgesController
+                    param.setResult(None)
+                    return
+            except Exception:
+                pass
+
+        # Hide standard premium/custom emoji statuses
+        param.setResult(0)
+
+
+class ZeroHook(BaseHook):
+    def before_hooked_method(self, param):
+        param.setResult(0)
+
+
+class FalseMethodReplacement(MethodReplacement):
+    def replace_hooked_method(self, param):
+        return False
+
+
+class NullMethodReplacement(MethodReplacement):
+    def replace_hooked_method(self, param):
+        return None
+
+
 def register_premium_badge(plugin) -> None:
     if plugin.get_setting(Keys.hide_premium_badge, False):
         try:
-            from java import jclass
-            from java.lang import Long
-
-            XC_MethodReplacement = jclass("de.robv.android.xposed.XC_MethodReplacement")
-            XposedBridge = jclass("de.robv.android.xposed.XposedBridge")
-            # Create a native Java replacement that returns 0L (no emoji ID) instantly
-            return_zero = XC_MethodReplacement.returnConstant(Long(0))  # ty: ignore
-
+            smart_hook = SmartEmojiStatusHook(plugin)
+            zero_hook = ZeroHook(plugin)
             UserObject = find_class("org.telegram.messenger.UserObject")
             if UserObject:
-                XposedBridge.hookAllMethods(UserObject, "getEmojiStatusDocumentId", return_zero)
+                plugin.hook_all_methods(UserObject, "getEmojiStatusDocumentId", smart_hook)
 
             DialogObject = find_class("org.telegram.messenger.DialogObject")
             if DialogObject:
-                XposedBridge.hookAllMethods(DialogObject, "getEmojiStatusDocumentId", return_zero)
+                plugin.hook_all_methods(DialogObject, "getEmojiStatusDocumentId", zero_hook)
         except Exception:
             pass
 
@@ -97,19 +129,12 @@ def register_premium_badge(plugin) -> None:
 def _hook_collectible_status(plugin) -> None:
     if plugin.get_setting(Keys.hide_collectible_status, False):
         try:
-            from java import jclass
-            from java.lang import Boolean
-
-            XC_MethodReplacement = jclass("de.robv.android.xposed.XC_MethodReplacement")
-            XposedBridge = jclass("de.robv.android.xposed.XposedBridge")
-            # Create a native Java replacement that returns false instantly
-            return_false = XC_MethodReplacement.returnConstant(Boolean(False))  # ty: ignore
-
+            return_false = FalseMethodReplacement()
             for class_name in ["org.telegram.messenger.UserObject", "org.telegram.messenger.DialogObject", "org.telegram.messenger.MessageObject"]:
                 try:
                     cls = find_class(class_name)
                     if cls:
-                        XposedBridge.hookAllMethods(cls, "isEmojiStatusCollectible", return_false)
+                        plugin.hook_all_methods(cls, "isEmojiStatusCollectible", return_false)
                 except Exception:
                     pass
         except Exception:

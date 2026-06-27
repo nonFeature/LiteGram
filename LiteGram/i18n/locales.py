@@ -168,7 +168,7 @@ STRINGS = {
         "hide_boost_badge": "Hide Boost Badge",
         "hide_premium_badge": "Hide Premium Badge",
         "hide_premium_badge_sub": "Also disables video avatars in chat lists and chats",
-        "hide_bot_verification": "Hide Bot Verification Badge",
+        "hide_bot_verification": "Hide organization verification badge",
 
         # --- Action Bar ---
         "action_bar": "Three dots",
