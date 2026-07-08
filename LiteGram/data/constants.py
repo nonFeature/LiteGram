@@ -49,14 +49,24 @@ class Keys:
     hide_premium_search = "hidePremiumSearch"
     hide_premium_suggestions = "hidePremiumSuggestions"
     switch_all_premium_emoji = "switchAllPremiumEmoji"
-    premiumEmojiSettings = "premiumEmojiSettings"
+
+    PREMIUM_EMOJI_ROWS = (
+        (hide_premium_emoji_packs, "hide_premium_emoji_packs"),
+        (hide_premium_search, "hide_premium_search"),
+        (hide_premium_suggestions, "hide_premium_suggestions"),
+    )
 
     hide_premium_stickers = "hidePremiumStickers"
     hide_premium_stickers_recent = "hidePremiumStickersRecent"
     hide_premium_stickers_search = "hidePremiumStickersSearch"
     hide_premium_stickers_grid = "hidePremiumStickersGrid"
     switch_all_premium_stickers = "switchAllPremiumStickers"
-    premiumStickersSettings = "premiumStickersSettings"
+
+    PREMIUM_STICKERS_ROWS = (
+        (hide_premium_stickers_recent, "hide_premium_stickers_recent"),
+        (hide_premium_stickers_search, "hide_premium_stickers_search"),
+        (hide_premium_stickers_grid, "hide_premium_stickers_grid"),
+    )
 
     hide_premium_badge = "hidePremiumBadge"
     hide_bot_verification = "hideBotVerification"

@@ -9,7 +9,7 @@ from LiteGram.data.constants import Keys
 from LiteGram.i18n.i18n import t
 from LiteGram.main import LiteGramPlugin
 from LiteGram.utils.extera_utils import open_extera_setting
-from LiteGram.utils.utils import open_url, restart_app
+from LiteGram.utils.utils import get_client_version, open_url, parse_version, restart_app
 
 
 def Switch(
@@ -29,6 +29,18 @@ def Switch(
     return BaseSwitch(key=key, text=text, default=default, subtext=subtext, icon=icon, on_change=on_change, on_long_click=on_long_click, link_alias=link_alias)
 
 
+def show_reenter_bulletin(_enabled: bool = True) -> None:
+    BulletinHelper.show_simple(text=t("reenter_required"), icon_res_id=R_tg.raw.info)
+
+
+def _show_restart_bulletin_if_at_least_12_8_1() -> None:
+    try:
+        if parse_version(get_client_version()) >= (12, 8, 1):
+            show_reenter_bulletin()
+    except Exception:
+        pass
+
+
 def toggle_settings_options(_: View | None = None) -> None:
     plugin_instance = LiteGramPlugin.get_instance()
     row_keys = [key for key, _ in Keys.SETTINGS_OPTION_ROWS]
@@ -36,6 +48,7 @@ def toggle_settings_options(_: View | None = None) -> None:
     new_state = any(not bool(plugin_instance.get_setting(key, False)) for key in row_keys)
     for i, key in enumerate(row_keys):
         plugin_instance.set_setting(key, new_state, reload_settings=(i == len(row_keys) - 1))
+    _show_restart_bulletin_if_at_least_12_8_1()
 
 
 def toggle_emoji_search_options(_: View | None = None) -> None:
@@ -45,6 +58,7 @@ def toggle_emoji_search_options(_: View | None = None) -> None:
     new_state = any(not bool(plugin_instance.get_setting(key, False)) for key in row_keys)
     for i, key in enumerate(row_keys):
         plugin_instance.set_setting(key, new_state, reload_settings=(i == len(row_keys) - 1))
+    _show_restart_bulletin_if_at_least_12_8_1()
 
 
 def toggle_premium_emoji_options(_: View | None = None) -> None:
@@ -58,6 +72,7 @@ def toggle_premium_emoji_options(_: View | None = None) -> None:
     new_state = any(not bool(plugin_instance.get_setting(key, True)) for key in row_keys)
     for i, key in enumerate(row_keys):
         plugin_instance.set_setting(key, new_state, reload_settings=(i == len(row_keys) - 1))
+    _show_restart_bulletin_if_at_least_12_8_1()
 
 
 def toggle_premium_stickers_options(_: View | None = None) -> None:
@@ -71,6 +86,7 @@ def toggle_premium_stickers_options(_: View | None = None) -> None:
     new_state = any(not bool(plugin_instance.get_setting(key, True)) for key in row_keys)
     for i, key in enumerate(row_keys):
         plugin_instance.set_setting(key, new_state, reload_settings=(i == len(row_keys) - 1))
+    _show_restart_bulletin_if_at_least_12_8_1()
 
 
 def open_extera_tab(tab_name: str) -> Callable[[View], None]:
@@ -99,6 +115,7 @@ def show_restart_bulletin_if_disabled(enabled: bool) -> None:
 def reload_ui_on_change(key: str) -> Callable[[bool], None]:
     def callback(enabled: bool):
         LiteGramPlugin.get_instance().set_setting(key, enabled, reload_settings=True)
+        _show_restart_bulletin_if_at_least_12_8_1()
 
     return callback
 
@@ -106,6 +123,7 @@ def reload_ui_on_change(key: str) -> Callable[[bool], None]:
 def reload_ui_and_show_restart_bulletin_if_disabled(key: str) -> Callable[[bool], None]:
     def callback(enabled: bool):
         LiteGramPlugin.get_instance().set_setting(key, enabled, reload_settings=True)
+        _show_restart_bulletin_if_at_least_12_8_1()
         if not enabled:
             show_restart_bulletin(False)
 

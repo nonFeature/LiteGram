@@ -10,10 +10,7 @@ from LiteGram.utils.settings_utils import (
     Switch,
     open_extera_tab,
     open_url_view,
-    reload_ui_and_show_restart_bulletin_if_disabled,
-    reload_ui_on_change,
     show_restart_bulletin,
-    show_restart_bulletin_if_disabled,
     toggle_emoji_search_options,
     toggle_premium_emoji_options,
     toggle_premium_stickers_options,
@@ -21,51 +18,6 @@ from LiteGram.utils.settings_utils import (
 )
 
 SETTINGS_OPTION_ROWS = Keys.SETTINGS_OPTION_ROWS
-
-
-def _premium_emoji_settings() -> list[Any]:
-    return [
-        Header(text=t("premium_emoji_settings_header")),
-        Text(text=t("switch_all"), link_alias=Keys.switch_all_premium_emoji, on_click=toggle_premium_emoji_options),
-        Switch(
-            text=t("hide_premium_emoji_packs"),
-            key=Keys.hide_premium_emoji_packs,
-            on_change=show_restart_bulletin_if_disabled,
-            default=True,
-        ),
-        Switch(
-            text=t("hide_premium_search"),
-            key=Keys.hide_premium_search,
-            default=True,
-        ),
-        Switch(
-            text=t("hide_premium_suggestions"),
-            key=Keys.hide_premium_suggestions,
-            default=True,
-        ),
-    ]
-
-
-def _premium_stickers_settings() -> list[Any]:
-    return [
-        Header(text=t("premium_stickers_settings_header")),
-        Text(text=t("switch_all"), link_alias=Keys.switch_all_premium_stickers, on_click=toggle_premium_stickers_options),
-        Switch(
-            text=t("hide_premium_stickers_recent"),
-            key=Keys.hide_premium_stickers_recent,
-            default=True,
-        ),
-        Switch(
-            text=t("hide_premium_stickers_search"),
-            key=Keys.hide_premium_stickers_search,
-            default=True,
-        ),
-        Switch(
-            text=t("hide_premium_stickers_grid"),
-            key=Keys.hide_premium_stickers_grid,
-            default=True,
-        ),
-    ]
 
 
 def _chat_settings() -> list[Any]:
@@ -93,33 +45,12 @@ def _chat_settings() -> list[Any]:
         Header(text=t("emoji_search")),
         Text(text=t("switch_all"), link_alias=Keys.switch_all_emoji_search, on_click=toggle_emoji_search_options),
         *[Switch(text=t(text_key), key=key) for key, text_key in Keys.EMOJI_SEARCH_ROWS],
-        Header(text=t("keyboard")),
-        Switch(text=t("hide_premium_emoji"), key=Keys.hide_premium_emoji, on_change=reload_ui_and_show_restart_bulletin_if_disabled(Keys.hide_premium_emoji)),
-        *(
-            [
-                Text(
-                    text=t("premium_detailed_settings"),
-                    link_alias=Keys.premiumEmojiSettings,
-                    create_sub_fragment=_premium_emoji_settings,
-                    icon="msg_settings_old",
-                ),
-            ]
-            if bool(LiteGramPlugin.get_instance().get_setting(Keys.hide_premium_emoji, False))
-            else []
-        ),
-        Switch(text=t("hide_premium_stickers"), key=Keys.hide_premium_stickers, on_change=reload_ui_on_change(Keys.hide_premium_stickers)),
-        *(
-            [
-                Text(
-                    text=t("premium_detailed_settings"),
-                    link_alias=Keys.premiumStickersSettings,
-                    create_sub_fragment=_premium_stickers_settings,
-                    icon="msg_settings_old",
-                ),
-            ]
-            if bool(LiteGramPlugin.get_instance().get_setting(Keys.hide_premium_stickers, False))
-            else []
-        ),
+        Header(text=t("premium_emoji_settings_header")),
+        Text(text=t("switch_all"), link_alias=Keys.switch_all_premium_emoji, on_click=toggle_premium_emoji_options),
+        *[Switch(text=t(text_key), key=key, default=True) for key, text_key in Keys.PREMIUM_EMOJI_ROWS],
+        Header(text=t("premium_stickers_settings_header")),
+        Text(text=t("switch_all"), link_alias=Keys.switch_all_premium_stickers, on_click=toggle_premium_stickers_options),
+        *[Switch(text=t(text_key), key=key, default=True) for key, text_key in Keys.PREMIUM_STICKERS_ROWS],
     ]
 
 

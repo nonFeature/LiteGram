@@ -91,14 +91,10 @@ STRINGS = {
         "hide_saved_messages_tags": "Скрыть теги в сохранённых сообщениях",
 
         # --- Keyboard Options ---
-        "keyboard": "Клавиатура",
-        "premium_detailed_settings": "Подробная настройка",
-        "hide_premium_emoji": "Скрыть кастомные эмодзи",
-        "premium_emoji_settings_header": "Скрытие премиум-эмодзи",
+        "premium_emoji_settings_header": "Скрытие кастомных эмодзи",
         "hide_premium_emoji_packs": "Скрыть в клавиатуре и в реакциях",
         "hide_premium_search": "Скрыть в поиске",
         "hide_premium_suggestions": "Скрыть в подсказках",
-        "hide_premium_stickers": "Скрыть премиум-стикеры",
         "premium_stickers_settings_header": "Скрытие премиум-стикеров",
         "hide_premium_stickers_recent": "Скрыть из недавних",
         "hide_premium_stickers_search": "Скрыть в поиске",
@@ -113,6 +109,8 @@ STRINGS = {
         # --- Bulletins ---
         "restart_required": "Перезапустите приложение, чтобы изменения вступили в силу.",
         "restart": "ПЕРЕЗАПУСТИТЬ",
+        "reenter_required": "Выйдите и зайдите в этот раздел снова, чтобы изменения вступили в силу.",
+        "reenter": "НАЗАД",
     },
     "en": {
         # --- Categories ---
@@ -204,14 +202,10 @@ STRINGS = {
         "hide_gif_search": "Hide GIF Search",
 
         # --- Keyboard Options ---
-        "keyboard": "Keyboard",
-        "premium_detailed_settings": "Detailed Settings",
-        "hide_premium_emoji": "Hide Premium Emoji",
-        "premium_emoji_settings_header": "Hide Premium Emoji",
+        "premium_emoji_settings_header": "Hide Custom Emoji",
         "hide_premium_emoji_packs": "Hide in Keyboard and Reactions",
         "hide_premium_search": "Hide in Search",
         "hide_premium_suggestions": "Hide in Suggestions",
-        "hide_premium_stickers": "Hide Premium Stickers",
         "premium_stickers_settings_header": "Hide Premium Stickers",
         "hide_premium_stickers_recent": "Hide from Recents",
         "hide_premium_stickers_search": "Hide in Search",
@@ -226,6 +220,8 @@ STRINGS = {
         # --- Bulletins ---
         "restart_required": "Restart the app for changes to take effect.",
         "restart": "RESTART",
+        "reenter_required": "Go back and re-enter this section for changes to take effect.",
+        "reenter": "GO BACK",
     }
 }
 # fmt: on
