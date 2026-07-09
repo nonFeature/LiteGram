@@ -109,8 +109,7 @@ STRINGS = {
         # --- Bulletins ---
         "restart_required": "Перезапустите приложение, чтобы изменения вступили в силу.",
         "restart": "ПЕРЕЗАПУСТИТЬ",
-        "reenter_required": "Выйдите и зайдите в этот раздел снова, чтобы изменения вступили в силу.",
-        "reenter": "НАЗАД",
+        "reenter_required": "Изменения применились, они отобразятся при перезаходе сюда",
     },
     "en": {
         # --- Categories ---
@@ -220,8 +219,7 @@ STRINGS = {
         # --- Bulletins ---
         "restart_required": "Restart the app for changes to take effect.",
         "restart": "RESTART",
-        "reenter_required": "Go back and re-enter this section for changes to take effect.",
-        "reenter": "GO BACK",
+        "reenter_required": "Changes applied, they will be displayed when you re-enter here",
     }
 }
 # fmt: on
