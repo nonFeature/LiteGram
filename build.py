@@ -68,7 +68,18 @@ captured_from_imports = defaultdict(set)
 def parse_args():
     parser = argparse.ArgumentParser(description="LiteGram Build Script")
     parser.add_argument("--no-bump", action="store_true", help="Compatibility flag; build no longer increments the version")
-    parser.add_argument("--no-minify", action="store_true", help="Disable AST minification (keep comments, docstrings, and type hints)")
+    parser.add_argument("--no-minify", action="store_true", help="Disable minification entirely (keep comments, docstrings, and type hints)")
+    parser.add_argument(
+        "--minify-level",
+        choices=["light", "medium", "max"],
+        default="max",
+        help=(
+            "Minification level (default: max). "
+            "light = remove comments/docstrings/annotations only (AST); "
+            "medium = + whitespace compression, no variable renaming; "
+            "max = + rename locals, hoist literals (smallest size)"
+        ),
+    )
     parser.add_argument("--no-lint", action="store_true", help="Disable linter check")
     parser.add_argument("--crlf", action="store_true", help="Use Windows CRLF line endings instead of Unix LF")
     return parser.parse_args()
@@ -374,32 +385,49 @@ def build():
         print("ℹ️ Minification is disabled via --no-minify")
         full_code = COPYRIGHT_STRING + "\n" + combined_code
     else:
-        print("⚡ Minifying plugin...")
-        try:
-            import python_minifier
+        level = args.minify_level
+        print(f"⚡ Minifying plugin (level: {level})...")
 
-            minified_code = python_minifier.minify(
-                combined_code,
-                rename_globals=False,
-                rename_locals=True,
-                hoist_literals=True,
-                remove_annotations=True,
-                remove_pass=True,
-                remove_literal_statements=True,
-                combine_imports=True,
-            )
-            full_code = COPYRIGHT_STRING + "\n" + minified_code
-        except Exception as e:
-            print(f"⚠️ Warning: python-minifier failed ({e}). Falling back to AST minification.")
+        if level == "light":
+            # AST-only: strip docstrings, type annotations, pass statements
             try:
                 tree = ast.parse(combined_code)
                 minifier = ASTMinifier()
                 minified_tree = minifier.visit(tree)
                 minified_code = ast.unparse(minified_tree)
                 full_code = COPYRIGHT_STRING + "\n" + minified_code
-            except Exception as e2:
-                print(f"⚠️ Warning: AST minification failed ({e2}). Falling back to unminified build.")
+            except Exception as e:
+                print(f"⚠️ Warning: AST minification failed ({e}). Falling back to unminified build.")
                 full_code = COPYRIGHT_STRING + "\n" + combined_code
+        else:
+            # medium / max: use python-minifier
+            rename_locals = level == "max"
+            hoist_literals = level == "max"
+            try:
+                import python_minifier
+
+                minified_code = python_minifier.minify(
+                    combined_code,
+                    rename_globals=False,
+                    rename_locals=rename_locals,
+                    hoist_literals=hoist_literals,
+                    remove_annotations=True,
+                    remove_pass=True,
+                    remove_literal_statements=True,
+                    combine_imports=True,
+                )
+                full_code = COPYRIGHT_STRING + "\n" + minified_code
+            except Exception as e:
+                print(f"⚠️ Warning: python-minifier failed ({e}). Falling back to AST minification.")
+                try:
+                    tree = ast.parse(combined_code)
+                    minifier = ASTMinifier()
+                    minified_tree = minifier.visit(tree)
+                    minified_code = ast.unparse(minified_tree)
+                    full_code = COPYRIGHT_STRING + "\n" + minified_code
+                except Exception as e2:
+                    print(f"⚠️ Warning: AST minification failed ({e2}). Falling back to unminified build.")
+                    full_code = COPYRIGHT_STRING + "\n" + combined_code
 
     full_code = HEADER_WATERMARK + "\n" + full_code + "\n\n" + FOOTER_WATERMARK
 
