@@ -48,10 +48,10 @@ def _chat_settings() -> list[Any]:
         *[Switch(text=t(text_key), key=key) for key, text_key in Keys.EMOJI_SEARCH_ROWS],
         Header(text=t("premium_emoji_settings_header")),
         Text(text=t("switch_all"), link_alias=Keys.switch_all_premium_emoji, on_click=toggle_premium_emoji_options),
-        *[Switch(text=t(text_key), key=key, default=True) for key, text_key in Keys.PREMIUM_EMOJI_ROWS],
+        *[Switch(text=t(text_key), key=key, default=False) for key, text_key in Keys.PREMIUM_EMOJI_ROWS],
         Header(text=t("premium_stickers_settings_header")),
         Text(text=t("switch_all"), link_alias=Keys.switch_all_premium_stickers, on_click=toggle_premium_stickers_options),
-        *[Switch(text=t(text_key), key=key, default=True) for key, text_key in Keys.PREMIUM_STICKERS_ROWS],
+        *[Switch(text=t(text_key), key=key, default=False) for key, text_key in Keys.PREMIUM_STICKERS_ROWS],
     ]
 
     show_ai = False

@@ -91,7 +91,14 @@ class LiteGramPlugin(BasePlugin):
     def post_request_hook(self, request_name: str, account: int, response: Any, error: Any) -> HookResult:
         if error is not None or response is None:
             return HookResult()
-        if self.get_setting(Keys.hide_premium_emoji, False):
+        if (
+            self.get_setting(Keys.hide_premium_emoji_packs, False)
+            or self.get_setting(Keys.hide_premium_search, False)
+            or self.get_setting(Keys.hide_premium_suggestions, False)
+            or self.get_setting(Keys.hide_premium_stickers_recent, False)
+            or self.get_setting(Keys.hide_premium_stickers_search, False)
+            or self.get_setting(Keys.hide_premium_stickers_grid, False)
+        ):
             filter_response(request_name, response)
         if self.get_setting(Keys.hide_gifts_tab, False):
             if self._is_gift_request(request_name):

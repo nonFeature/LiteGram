@@ -31,28 +31,6 @@ def _init(plugin):
 
 
 # ============================================================
-# Sub-setting helper
-# ============================================================
-
-
-def _is_sub_enabled(sub_key: str) -> bool:
-    plugin = LiteGramPlugin.get_instance()
-
-    sticker_keys = {
-        Keys.hide_premium_stickers_recent,
-        Keys.hide_premium_stickers_search,
-        Keys.hide_premium_stickers_grid,
-    }
-
-    parent_key = Keys.hide_premium_stickers if sub_key in sticker_keys else Keys.hide_premium_emoji
-
-    parent = bool(plugin.get_setting(parent_key, False))
-    if not parent:
-        return False
-    return bool(plugin.get_setting(sub_key, True))
-
-
-# ============================================================
 # Core checks
 # ============================================================
 
@@ -341,17 +319,21 @@ def _filter_search_packs(packs_list):
 # ============================================================
 
 HANDLERS = {
-    "TL_messages_getFeaturedEmojiStickers": lambda r: _filter_featured_sets(r.sets) if _is_sub_enabled(Keys.hide_premium_emoji_packs) else None,
-    "TL_messages_getFeaturedStickers": lambda r: _filter_featured_sticker_sets(r.sets) if _is_sub_enabled(Keys.hide_premium_stickers_grid) else None,
-    "TL_messages_searchEmojiStickerSets": lambda r: _filter_list(r.sets, drop_non_stock=True) if _is_sub_enabled(Keys.hide_premium_emoji_packs) else None,
-    "TL_messages_searchStickers": lambda r: _filter_list(r.stickers, is_sticker=True) if _is_sub_enabled(Keys.hide_premium_stickers_search) else None,
-    "TL_messages_getRecentReactions": lambda r: _filter_reactions_list(r.reactions) if _is_sub_enabled(Keys.hide_premium_emoji_packs) else None,
-    "TL_messages_getRecentStickers": lambda r: _filter_list(r.stickers, is_sticker=True) if _is_sub_enabled(Keys.hide_premium_stickers_recent) else None,
-    "TL_messages_getStickers": lambda r: (
-        _filter_list(getattr(r, "stickers", None), is_sticker=True) if _is_sub_enabled(Keys.hide_premium_stickers_search) else None
+    "TL_messages_getFeaturedEmojiStickers": lambda r, p: _filter_featured_sets(r.sets) if p.get_setting(Keys.hide_premium_emoji_packs, False) else None,
+    "TL_messages_getFeaturedStickers": lambda r, p: _filter_featured_sticker_sets(r.sets) if p.get_setting(Keys.hide_premium_stickers_grid, False) else None,
+    "TL_messages_searchEmojiStickerSets": lambda r, p: (
+        _filter_list(r.sets, drop_non_stock=True) if p.get_setting(Keys.hide_premium_emoji_packs, False) else None
     ),
-    "TL_messages_getStickerSet": lambda r: (
-        _filter_list(getattr(r, "documents", None), is_sticker=True) if _is_sub_enabled(Keys.hide_premium_stickers_search) else None
+    "TL_messages_searchStickers": lambda r, p: _filter_list(r.stickers, is_sticker=True) if p.get_setting(Keys.hide_premium_stickers_search, False) else None,
+    "TL_messages_getRecentReactions": lambda r, p: _filter_reactions_list(r.reactions) if p.get_setting(Keys.hide_premium_emoji_packs, False) else None,
+    "TL_messages_getRecentStickers": lambda r, p: (
+        _filter_list(r.stickers, is_sticker=True) if p.get_setting(Keys.hide_premium_stickers_recent, False) else None
+    ),
+    "TL_messages_getStickers": lambda r, p: (
+        _filter_list(getattr(r, "stickers", None), is_sticker=True) if p.get_setting(Keys.hide_premium_stickers_search, False) else None
+    ),
+    "TL_messages_getStickerSet": lambda r, p: (
+        _filter_list(getattr(r, "documents", None), is_sticker=True) if p.get_setting(Keys.hide_premium_stickers_search, False) else None
     ),
 }
 
@@ -360,7 +342,8 @@ def filter_response(request_name, response):
     handler = HANDLERS.get(request_name)
     if handler is None:
         return
-    handler(response)
+    plugin = LiteGramPlugin.get_instance()
+    handler(response, plugin)
 
 
 # ============================================================
@@ -374,8 +357,6 @@ class BlockNonStockHook(BaseHook):
     def before_hooked_method(self, param):
         if not self.is_enabled():
             return
-        if not _is_sub_enabled(Keys.hide_premium_emoji_packs):
-            return
         if not param.args:
             return
         source = param.args[0]
@@ -388,8 +369,6 @@ class FilterRecentEmojiHook(BaseHook):
 
     def after_hooked_method(self, param):
         if not self.is_enabled():
-            return
-        if not _is_sub_enabled(Keys.hide_premium_emoji_packs):
             return
         recent = param.getResult()
         if not recent:
@@ -410,8 +389,6 @@ class FilterSearchResultsHook(BaseHook):
     def before_hooked_method(self, param):
         if not self.is_enabled():
             return
-        if not _is_sub_enabled(Keys.hide_premium_search):
-            return
         if not param.args or len(param.args) < 3:
             return
         _filter_search_results(param.args[1])
@@ -420,14 +397,12 @@ class FilterSearchResultsHook(BaseHook):
 
 class FilterSuggestResultsHook(BaseHook):
     def __init__(self, plugin, arg_index, label):
-        super().__init__(plugin, Keys.hide_premium_emoji)
+        super().__init__(plugin, Keys.hide_premium_suggestions)
         self._arg_index = arg_index
         self._label = label
 
     def before_hooked_method(self, param):
         if not self.is_enabled():
-            return
-        if not _is_sub_enabled(Keys.hide_premium_suggestions):
             return
         if not param.args or len(param.args) <= self._arg_index:
             return
@@ -490,8 +465,6 @@ class CheckDocumentsHook(BaseHook):
     def after_hooked_method(self, param):
         if not self.is_enabled():
             return
-        if not _is_sub_enabled(Keys.hide_premium_stickers_recent):
-            return
         obj = param.thisObject
         for field in ("favouriteStickers", "recentStickers"):
             lst = get_private_field(obj, field)
@@ -509,8 +482,6 @@ class HidePremiumStickerCellHook(BaseHook):
 
     def before_hooked_method(self, param):
         if not self.is_enabled():
-            return
-        if not _is_sub_enabled(Keys.hide_premium_stickers_grid):
             return
         if not param.args:
             return
@@ -530,24 +501,20 @@ class HidePremiumStickerCellHook(BaseHook):
 
 class SkipEmojiPacksHook(BaseHook):
     def __init__(self, plugin):
-        super().__init__(plugin, Keys.hide_premium_emoji)
+        super().__init__(plugin, Keys.hide_premium_emoji_packs)
 
     def before_hooked_method(self, param):
         if not self.is_enabled():
-            return
-        if not _is_sub_enabled(Keys.hide_premium_emoji_packs):
             return
         param.setResult(None)
 
 
 class EmptyEmojiPacksHook(BaseHook):
     def __init__(self, plugin):
-        super().__init__(plugin, Keys.hide_premium_emoji)
+        super().__init__(plugin, Keys.hide_premium_emoji_packs)
 
     def before_hooked_method(self, param):
         if not self.is_enabled():
-            return
-        if not _is_sub_enabled(Keys.hide_premium_emoji_packs):
             return
         if ArrayList:
             param.setResult(ArrayList())
@@ -555,12 +522,10 @@ class EmptyEmojiPacksHook(BaseHook):
 
 class FilterSearchV7Hook(BaseHook):
     def __init__(self, plugin):
-        super().__init__(plugin, Keys.hide_premium_emoji)
+        super().__init__(plugin, Keys.hide_premium_search)
 
     def before_hooked_method(self, param):
         if not self.is_enabled():
-            return
-        if not _is_sub_enabled(Keys.hide_premium_search):
             return
         if not param.args or len(param.args) < 3:
             return
@@ -571,8 +536,6 @@ class FilterSearchV7Hook(BaseHook):
 class FilterSearchV12_8_1Hook(BaseHook):
     def before_hooked_method(self, param):
         if not self.is_enabled():
-            return
-        if not _is_sub_enabled(Keys.hide_premium_search):
             return
         if not param.args or len(param.args) < 5:
             return
@@ -593,8 +556,6 @@ class BlockGlobalSearchHook(BaseHook):
     def before_hooked_method(self, param):
         if not self.is_enabled():
             return
-        if not _is_sub_enabled(Keys.hide_premium_search):
-            return
         if not param.args:
             return
         method_name = param.method.getName()
@@ -609,7 +570,7 @@ class BlockGlobalSearchHook(BaseHook):
 
 class DisableNotificationsLockerHook(BaseHook):
     def __init__(self, plugin):
-        super().__init__(plugin, Keys.hide_premium_emoji)
+        super().__init__(plugin, Keys.hide_premium_emoji_packs)
 
     def after_hooked_method(self, param):
         if not self.is_enabled():
@@ -624,12 +585,10 @@ class DisableNotificationsLockerHook(BaseHook):
 
 class SetAllowAnimatedEmojiFalseHook(BaseHook):
     def __init__(self, plugin):
-        super().__init__(plugin, Keys.hide_premium_emoji)
+        super().__init__(plugin, Keys.hide_premium_emoji_packs)
 
     def after_hooked_method(self, param):
         if not self.is_enabled():
-            return
-        if not _is_sub_enabled(Keys.hide_premium_emoji_packs):
             return
         try:
             param.thisObject.allowAnimatedEmoji = False
@@ -639,12 +598,10 @@ class SetAllowAnimatedEmojiFalseHook(BaseHook):
 
 class FilterReactionsListHook(BaseHook):
     def __init__(self, plugin):
-        super().__init__(plugin, Keys.hide_premium_emoji)
+        super().__init__(plugin, Keys.hide_premium_emoji_packs)
 
     def after_hooked_method(self, param):
         if not self.is_enabled():
-            return
-        if not _is_sub_enabled(Keys.hide_premium_emoji_packs):
             return
         reactions = param.getResult()
         if not reactions:
@@ -658,12 +615,10 @@ class FilterReactionsListHook(BaseHook):
 
 class ClearStickerSetsType5Hook(BaseHook):
     def __init__(self, plugin):
-        super().__init__(plugin, Keys.hide_premium_emoji)
+        super().__init__(plugin, Keys.hide_premium_emoji_packs)
 
     def after_hooked_method(self, param):
         if not self.is_enabled():
-            return
-        if not _is_sub_enabled(Keys.hide_premium_emoji_packs):
             return
         if not param.args or param.args[0] != 5:
             return
@@ -673,12 +628,10 @@ class ClearStickerSetsType5Hook(BaseHook):
 
 class ClearFeaturedEmojiSetsHook(BaseHook):
     def __init__(self, plugin):
-        super().__init__(plugin, Keys.hide_premium_emoji)
+        super().__init__(plugin, Keys.hide_premium_emoji_packs)
 
     def after_hooked_method(self, param):
         if not self.is_enabled():
-            return
-        if not _is_sub_enabled(Keys.hide_premium_emoji_packs):
             return
         if ArrayList:
             param.setResult(ArrayList())
@@ -686,12 +639,10 @@ class ClearFeaturedEmojiSetsHook(BaseHook):
 
 class EmojiTabsStripConstructorHook(BaseHook):
     def __init__(self, plugin):
-        super().__init__(plugin, Keys.hide_premium_emoji)
+        super().__init__(plugin, Keys.hide_premium_emoji_packs)
 
     def before_hooked_method(self, param):
         if not self.is_enabled():
-            return
-        if not _is_sub_enabled(Keys.hide_premium_emoji_packs):
             return
         if param.args and len(param.args) >= 6:
             param.args[5] = False
@@ -708,7 +659,7 @@ def register_premium_emoji(plugin):
 
     if Emoji:
         try:
-            plugin.hook_all_methods(Emoji, "addRecentEmoji", BlockNonStockHook(plugin, Keys.hide_premium_emoji))
+            plugin.hook_all_methods(Emoji, "addRecentEmoji", BlockNonStockHook(plugin, Keys.hide_premium_emoji_packs))
             classes.append("Emoji")
         except Exception:
             pass
@@ -722,11 +673,11 @@ def register_premium_emoji(plugin):
 
     if EmojiView:
         try:
-            plugin.hook_all_methods(EmojiView, "getRecentEmoji", FilterRecentEmojiHook(plugin, Keys.hide_premium_emoji))
+            plugin.hook_all_methods(EmojiView, "getRecentEmoji", FilterRecentEmojiHook(plugin, Keys.hide_premium_emoji_packs))
         except Exception:
             pass
         try:
-            plugin.hook_all_methods(EmojiView, "checkDocuments", CheckDocumentsHook(plugin, Keys.hide_premium_stickers))
+            plugin.hook_all_methods(EmojiView, "checkDocuments", CheckDocumentsHook(plugin, Keys.hide_premium_stickers_recent))
         except Exception:
             pass
         try:
@@ -748,7 +699,7 @@ def register_premium_emoji(plugin):
 
     if EmojiSearchAdapter:
         try:
-            plugin.hook_all_methods(EmojiSearchAdapter, "lambda$search$5", FilterSearchResultsHook(plugin, Keys.hide_premium_emoji))
+            plugin.hook_all_methods(EmojiSearchAdapter, "lambda$search$5", FilterSearchResultsHook(plugin, Keys.hide_premium_search))
         except Exception:
             pass
         try:
@@ -756,18 +707,18 @@ def register_premium_emoji(plugin):
         except Exception:
             pass
         try:
-            plugin.hook_all_methods(EmojiSearchAdapter, "lambda$search$3", BlockGlobalSearchHook(plugin, Keys.hide_premium_emoji))
+            plugin.hook_all_methods(EmojiSearchAdapter, "lambda$search$3", BlockGlobalSearchHook(plugin, Keys.hide_premium_search))
         except Exception:
             pass
         try:
-            plugin.hook_all_methods(EmojiSearchAdapter, "searchEmoji", BlockGlobalSearchHook(plugin, Keys.hide_premium_emoji))
+            plugin.hook_all_methods(EmojiSearchAdapter, "searchEmoji", BlockGlobalSearchHook(plugin, Keys.hide_premium_search))
         except Exception:
             pass
         classes.append("EmojiSearchAdapter")
 
     if EmojiSearchAdapterRunnable:
         try:
-            plugin.hook_all_methods(EmojiSearchAdapterRunnable, "lambda$run$7", FilterSearchV12_8_1Hook(plugin, Keys.hide_premium_emoji))
+            plugin.hook_all_methods(EmojiSearchAdapterRunnable, "lambda$run$7", FilterSearchV12_8_1Hook(plugin, Keys.hide_premium_search))
             classes.append("EmojiSearchAdapterRunnable")
         except Exception:
             pass
@@ -785,7 +736,7 @@ def register_premium_emoji(plugin):
 
     if StickerEmojiCell:
         try:
-            plugin.hook_all_methods(StickerEmojiCell, "setSticker", HidePremiumStickerCellHook(plugin, Keys.hide_premium_stickers))
+            plugin.hook_all_methods(StickerEmojiCell, "setSticker", HidePremiumStickerCellHook(plugin, Keys.hide_premium_stickers_grid))
             classes.append("StickerEmojiCell")
         except Exception:
             pass
