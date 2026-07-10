@@ -1,4 +1,3 @@
-# бтв кстати
 # fmt: off
 STRINGS = {
     "ru": {
