@@ -27,6 +27,10 @@ jobs:
       - name: Install the project
         run: uv sync --locked --all-extras --dev
 
+      - name: Extract Version
+        id: version
+        run: echo "tag=v$(grep '__version__' LiteGram/header.py | cut -d'"' -f2)" >> $GITHUB_ENV
+
       - name: Build Plugin
         run: uv run build.py --no-bump --no-minify
 
@@ -35,4 +39,12 @@ jobs:
         with:
           name: LiteGram.Plugin
           path: dist/LiteGram.plugin
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: LiteGram ${{ env.tag }}
+          tag_name: ${{ env.tag }}
+          files: dist/LiteGram.plugin
+          generate_release_notes: true
 
