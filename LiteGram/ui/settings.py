@@ -58,7 +58,7 @@ def _chat_settings() -> list[Any]:
     try:
         from LiteGram.utils.utils import get_client_version, parse_version
 
-        if parse_version(get_client_version()) >= (12, 6, 1):
+        if parse_version(get_client_version()) >= (12, 6, 0):
             from hook_utils import find_class
 
             if find_class("com.exteragram.messenger.ai.AiController") is not None:

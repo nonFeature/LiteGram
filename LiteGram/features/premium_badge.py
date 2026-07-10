@@ -141,6 +141,10 @@ def register_premium_badge(plugin) -> None:
             if DialogObject:
                 plugin.hook_all_methods(DialogObject, "getEmojiStatusDocumentId", zero_hook)
 
+            MessageObject = find_class("org.telegram.messenger.MessageObject")
+            if MessageObject:
+                plugin.hook_all_methods(MessageObject, "getEmojiStatusDocumentId", zero_hook)
+
             MessagesController = find_class("org.telegram.messenger.MessagesController")
             if MessagesController:
                 is_premium_hook = MessagesControllerIsPremiumUserHook(plugin, Keys.hide_premium_badge)
@@ -154,6 +158,16 @@ def register_premium_badge(plugin) -> None:
                 plugin.hook_all_methods(DrawerHeaderView, "updateUserInfo", drawer_hook)
             if AccountRowView:
                 plugin.hook_all_methods(AccountRowView, "bind", drawer_hook)
+
+            # Also block collectible emoji statuses when premium badge is hidden
+            return_false = FalseMethodReplacement()
+            for class_name in ["org.telegram.messenger.UserObject", "org.telegram.messenger.DialogObject", "org.telegram.messenger.MessageObject"]:
+                try:
+                    cls = find_class(class_name)
+                    if cls:
+                        plugin.hook_all_methods(cls, "isEmojiStatusCollectible", return_false)
+                except Exception:
+                    pass
         except Exception:
             pass
 
