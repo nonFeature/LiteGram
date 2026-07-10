@@ -6,6 +6,7 @@ on:
 
 jobs:
   build:
+    if: "contains(github.event.head_commit.message, 'бурмалда')"
     runs-on: ubuntu-latest
 
     steps:
@@ -27,7 +28,7 @@ jobs:
         run: uv sync --locked --all-extras --dev
 
       - name: Build Plugin
-        run: uv run build.py --no-bump
+        run: uv run build.py --no-bump --no-minify
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v6
