@@ -71,18 +71,6 @@ class ProfileActionsApplyHook(BaseHook):
             pass
 
 
-class ProfileActivityGiftBlockHook(BaseHook):
-    def before_hooked_method(self, param):
-        if self.is_enabled():
-            param.setResult(None)
-
-
-class BlockProfileGiftViewHook(BaseHook):
-    def before_hooked_method(self, param):
-        if self.is_enabled():
-            param.setResult(None)
-
-
 class ProfileActivityUpdateBottomButtonYHook(BaseHook):
     def __init__(self, plugin, setting_key):
         super().__init__(plugin, setting_key)
@@ -165,19 +153,6 @@ def register_profile_actions(plugin) -> None:
 
     ProfileActivity = find_class("org.telegram.ui.ProfileActivity")
     if ProfileActivity:
-        for m in ("showGifts", "openGifts", "openStarGifts", "onGiftClick", "onGiftPermiumClicked"):
-            try:
-                plugin.hook_all_methods(ProfileActivity, m, BlockProfileGiftViewHook(plugin, Keys.hide_profile_actions_gift_button))
-            except Exception:
-                pass
-        try:
-            plugin.hook_all_methods(
-                ProfileActivity,
-                "updateGiftState",
-                ProfileActivityGiftBlockHook(plugin, Keys.hide_profile_actions_gift_button),
-            )
-        except Exception:
-            pass
         try:
             plugin.hook_all_methods(
                 ProfileActivity,

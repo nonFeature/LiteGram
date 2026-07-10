@@ -8,7 +8,9 @@ from LiteGram.features.action_bar import register_action_bar
 from LiteGram.features.gift_button import register_gift_button
 from LiteGram.features.gift_cards import register_gift_cards
 from LiteGram.features.greeting_button import register_greeting_button
+from LiteGram.features.hide_ai_features import register_hide_ai_features
 from LiteGram.features.hide_emoji_search import register_hide_emoji_search
+from LiteGram.features.hide_premium_features import register_hide_premium_features
 from LiteGram.features.media_layout import register_media_layout
 from LiteGram.features.premium_badge import register_premium_badge
 from LiteGram.features.premium_emoji import filter_response, register_premium_emoji
@@ -182,6 +184,8 @@ class LiteGramPlugin(BasePlugin):
         register_premium_badge(self)
         register_star_reaction(self)
         register_hide_emoji_search(self)
+        register_hide_premium_features(self)
+        register_hide_ai_features(self)
         register_settings_header(self)
 
     @classmethod

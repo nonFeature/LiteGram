@@ -41,52 +41,46 @@ def _show_restart_bulletin_if_at_least_12_8_1() -> None:
         pass
 
 
-def toggle_settings_options(_: View | None = None) -> None:
+def toggle_group_options(row_keys: list[str], default_val: bool = False) -> None:
     plugin_instance = LiteGramPlugin.get_instance()
-    row_keys = [key for key, _ in Keys.SETTINGS_OPTION_ROWS]
-
-    new_state = any(not bool(plugin_instance.get_setting(key, False)) for key in row_keys)
+    new_state = any(not bool(plugin_instance.get_setting(key, default_val)) for key in row_keys)
     for i, key in enumerate(row_keys):
         plugin_instance.set_setting(key, new_state, reload_settings=(i == len(row_keys) - 1))
     _show_restart_bulletin_if_at_least_12_8_1()
+
+
+def toggle_settings_options(_: View | None = None) -> None:
+    toggle_group_options([key for key, _ in Keys.SETTINGS_OPTION_ROWS])
 
 
 def toggle_emoji_search_options(_: View | None = None) -> None:
-    plugin_instance = LiteGramPlugin.get_instance()
-    row_keys = [key for key, _ in Keys.EMOJI_SEARCH_ROWS]
-
-    new_state = any(not bool(plugin_instance.get_setting(key, False)) for key in row_keys)
-    for i, key in enumerate(row_keys):
-        plugin_instance.set_setting(key, new_state, reload_settings=(i == len(row_keys) - 1))
-    _show_restart_bulletin_if_at_least_12_8_1()
+    toggle_group_options([key for key, _ in Keys.EMOJI_SEARCH_ROWS])
 
 
 def toggle_premium_emoji_options(_: View | None = None) -> None:
-    plugin_instance = LiteGramPlugin.get_instance()
-    row_keys = [
-        Keys.hide_premium_emoji_packs,
-        Keys.hide_premium_search,
-        Keys.hide_premium_suggestions,
-    ]
-
-    new_state = any(not bool(plugin_instance.get_setting(key, True)) for key in row_keys)
-    for i, key in enumerate(row_keys):
-        plugin_instance.set_setting(key, new_state, reload_settings=(i == len(row_keys) - 1))
-    _show_restart_bulletin_if_at_least_12_8_1()
+    toggle_group_options(
+        [
+            Keys.hide_premium_emoji_packs,
+            Keys.hide_premium_search,
+            Keys.hide_premium_suggestions,
+        ],
+        default_val=True,
+    )
 
 
 def toggle_premium_stickers_options(_: View | None = None) -> None:
-    plugin_instance = LiteGramPlugin.get_instance()
-    row_keys = [
-        Keys.hide_premium_stickers_recent,
-        Keys.hide_premium_stickers_search,
-        Keys.hide_premium_stickers_grid,
-    ]
+    toggle_group_options(
+        [
+            Keys.hide_premium_stickers_recent,
+            Keys.hide_premium_stickers_search,
+            Keys.hide_premium_stickers_grid,
+        ],
+        default_val=True,
+    )
 
-    new_state = any(not bool(plugin_instance.get_setting(key, True)) for key in row_keys)
-    for i, key in enumerate(row_keys):
-        plugin_instance.set_setting(key, new_state, reload_settings=(i == len(row_keys) - 1))
-    _show_restart_bulletin_if_at_least_12_8_1()
+
+def toggle_premium_hide_options(_: View | None = None) -> None:
+    toggle_group_options([key for key, _ in Keys.PREMIUM_HIDE_ROWS])
 
 
 def open_extera_tab(tab_name: str) -> Callable[[View], None]:

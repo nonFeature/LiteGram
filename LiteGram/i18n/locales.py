@@ -68,13 +68,7 @@ STRINGS = {
         "gifts": "Подарки",
         "hide_bottom_gift_button": "Скрыть кнопку подарка в поле ввода",
         "hide_gift_cards": "Скрыть карточки подарков в чате",
-        "hide_gift_cards_sub": "Скрывает карточки подарков и звёзд в сообщениях",
-        "hide_gift_dialogs_send": "Блокировать диалоги отправки",
-        "hide_gift_dialogs_send_sub": "Блокирует открытие диалогов отправки подарков",
-        "hide_gift_dialogs_view": "Блокировать диалоги просмотра",
-        "hide_gift_dialogs_view_sub": "Блокирует открытие диалогов просмотра подарков",
-        "hide_giveaway_cards": "Скрыть розыгрыши",
-        "hide_giveaway_cards_sub": "Скрывает сообщения с розыгрышами в чатах",
+        "hide_giveaway_cards": "Скрыть розыгрыши в чатах",
         "hide_collectible_status": "Скрыть collectible-статус",
         "hide_collectible_status_sub": "Если в статусе стоит подарок",
         "force_disable_particles": "Отключить частицы у статуса",
@@ -99,6 +93,18 @@ STRINGS = {
         "hide_premium_stickers_recent": "Скрыть из недавних",
         "hide_premium_stickers_search": "Скрыть в поиске",
         "hide_premium_stickers_grid": "Скрыть на панели выбора",
+
+        # --- Premium Features Hiding ---
+        "hide_premium_features_header": "Скрытие премиум-функций",
+        "hide_privacy_voices": "Скрыть настройки голосовых",
+        "hide_privacy_pay": "Скрыть платные сообщения",
+        "hide_language_translate": "Скрыть перевод чатов",
+        "hide_folder_tags": "Скрыть теги папок",
+
+        # --- AI Features ---
+        "ai_features_header": "ИИ-Функции",
+        "hide_ai_button": "Скрыть кнопку 'AI' в поле ввода",
+        "hide_ai_summarize": "Скрыть кнопку саммари",
 
         # --- About Plugin ---
         "about_plugin": "О Плагине",
@@ -179,13 +185,7 @@ STRINGS = {
         "gifts": "Gifts",
         "hide_bottom_gift_button": "Hide Gift Button from Input Field",
         "hide_gift_cards": "Hide Gift Cards in Chat",
-        "hide_gift_cards_sub": "Hides gift and star cards in messages",
-        "hide_gift_dialogs_send": "Block Send Dialogs",
-        "hide_gift_dialogs_send_sub": "Blocks gift sending dialogs from opening",
-        "hide_gift_dialogs_view": "Block View Dialogs",
-        "hide_gift_dialogs_view_sub": "Blocks gift viewing dialogs from opening",
         "hide_giveaway_cards": "Hide Giveaways",
-        "hide_giveaway_cards_sub": "Hides giveaway messages in chats",
         "hide_collectible_status": "Hide Collectible Status",
         "hide_collectible_status_sub": "If there is a gift in the status",
         "force_disable_particles": "Disable Status Particles",
@@ -209,6 +209,18 @@ STRINGS = {
         "hide_premium_stickers_recent": "Hide from Recents",
         "hide_premium_stickers_search": "Hide in Search",
         "hide_premium_stickers_grid": "Hide in Picker Grid",
+
+        # --- Premium Features Hiding ---
+        "hide_premium_features_header": "Hide Premium Features",
+        "hide_privacy_voices": "Hide Voice Messages Privacy",
+        "hide_privacy_pay": "Hide Paid Messages Option",
+        "hide_language_translate": "Hide Chat Translation",
+        "hide_folder_tags": "Hide Folder Tags",
+
+        # --- AI Features ---
+        "ai_features_header": "AI Features",
+        "hide_ai_button": "Hide 'AI' Button in Message Input",
+        "hide_ai_summarize": "Hide Summarize Button",
 
         # --- About Plugin ---
         "about_plugin": "About Plugin",

@@ -71,6 +71,24 @@ class Keys:
     hide_premium_badge = "hidePremiumBadge"
     hide_bot_verification = "hideBotVerification"
 
+    # --- Premium Features Hiding ---
+    hide_privacy_voices = "hidePrivacyVoices"
+    hide_privacy_pay = "hidePrivacyPay"
+    hide_language_translate = "hideLanguageTranslate"
+    hide_folder_tags = "hideFolderTags"
+    switch_all_premium_hide = "switchAllPremiumHide"
+
+    PREMIUM_HIDE_ROWS = (
+        (hide_privacy_voices, "hide_privacy_voices"),
+        (hide_privacy_pay, "hide_privacy_pay"),
+        (hide_language_translate, "hide_language_translate"),
+        (hide_folder_tags, "hide_folder_tags"),
+    )
+
+    # --- AI Features ---
+    hide_ai_button = "hideAiButton"
+    hide_ai_summarize = "hideAiSummarize"
+
     # --- Action Bar ---
     hide_action_bar_live_stream = "hideActionBarLiveStream"
     hide_action_bar_archived_stories = "hideActionBarArchivedStories"

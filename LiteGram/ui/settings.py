@@ -13,6 +13,7 @@ from LiteGram.utils.settings_utils import (
     show_restart_bulletin,
     toggle_emoji_search_options,
     toggle_premium_emoji_options,
+    toggle_premium_hide_options,
     toggle_premium_stickers_options,
     toggle_settings_options,
 )
@@ -21,7 +22,7 @@ SETTINGS_OPTION_ROWS = Keys.SETTINGS_OPTION_ROWS
 
 
 def _chat_settings() -> list[Any]:
-    return [
+    settings = [
         Header(text=t("chat_list")),
         Text(text=t("hide_stories"), link_alias=Keys.hide_stories, on_click=open_extera_tab(Keys.hide_stories), icon=resolve_icon("extera_outline")),
         Text(
@@ -30,7 +31,27 @@ def _chat_settings() -> list[Any]:
             on_click=open_extera_tab(Keys.hide_action_bar_status),
             icon=resolve_icon("extera_outline"),
         ),
-        Switch(text=t("hide_greeting_button"), subtext=t("hide_greeting_button_sub"), key=Keys.hide_greeting_button),
+        Switch(text=t("hide_greeting_button"), key=Keys.hide_greeting_button, subtext=t("hide_greeting_button_sub")),
+        Header(text=t("profile_buttons")),
+        Switch(text=t("hide_profile_actions_gift_button"), key=Keys.hide_profile_actions_gift_button),
+        Switch(text=t("hide_profile_actions_stories_button"), key=Keys.hide_profile_actions_stories_button),
+        Switch(text=t("hide_profile_actions_stream_button"), key=Keys.hide_profile_actions_stream_button),
+        Header(text=t("profile_tabs")),
+        Switch(text=t("hide_stories_tab"), key=Keys.hide_stories_tab, subtext=t("hide_stories_tab_sub")),
+        Switch(text=t("hide_gifts_tab"), key=Keys.hide_gifts_tab),
+        Header(text=t("profile_appearance")),
+        Text(
+            text=t("manage_reply_elements"),
+            link_alias=Keys.reply_elements,
+            on_click=open_extera_tab(Keys.reply_elements),
+            icon=resolve_icon("extera_outline"),
+        ),
+        Switch(text=t("hide_profile_background_emoji"), key=Keys.hide_profile_background_emoji, subtext=t("hide_profile_background_emoji_sub")),
+        Switch(text=t("hide_profile_pinned_gifts"), key=Keys.hide_profile_pinned_gifts),
+        Switch(text=t("hide_profile_colorful_background"), key=Keys.hide_profile_colorful_background),
+        Switch(text=t("hide_boost_badge"), key=Keys.hide_boost_badge),
+        Switch(text=t("hide_premium_badge"), key=Keys.hide_premium_badge, subtext=t("hide_premium_badge_sub")),
+        Switch(text=t("hide_bot_verification"), key=Keys.hide_bot_verification),
         Header(text=t("action_bar")),
         Switch(text=t("hide_action_bar_live_stream"), key=Keys.hide_action_bar_live_stream),
         Switch(text=t("hide_action_bar_archived_stories"), key=Keys.hide_action_bar_archived_stories),
@@ -39,8 +60,11 @@ def _chat_settings() -> list[Any]:
         Switch(text=t("hide_action_bar_add_shortcut"), key=Keys.hide_action_bar_add_shortcut),
         Header(text=t("gifts")),
         Switch(text=t("hide_bottom_gift_button"), key=Keys.hide_bottom_gift_button),
-        Switch(text=t("hide_gift_cards"), subtext=t("hide_gift_cards_sub"), key=Keys.hide_gift_cards),
-        Switch(text=t("hide_giveaway_cards"), subtext=t("hide_giveaway_cards_sub"), key=Keys.hide_giveaway_cards),
+        Switch(text=t("hide_gift_cards"), key=Keys.hide_gift_cards),
+        Switch(text=t("hide_giveaway_cards"), key=Keys.hide_giveaway_cards),
+        Switch(text=t("hide_collectible_status"), key=Keys.hide_collectible_status, subtext=t("hide_collectible_status_sub")),
+        Switch(text=t("force_disable_particles"), key=Keys.force_disable_particles, subtext=t("force_disable_particles_sub")),
+        Switch(text=t("hide_stars_rating"), key=Keys.hide_stars_rating),
         Switch(text=t("hide_star_reaction"), key=Keys.hide_star_reaction),
         Header(text=t("emoji_search")),
         Text(text=t("switch_all"), link_alias=Keys.switch_all_emoji_search, on_click=toggle_emoji_search_options),
@@ -52,6 +76,29 @@ def _chat_settings() -> list[Any]:
         Text(text=t("switch_all"), link_alias=Keys.switch_all_premium_stickers, on_click=toggle_premium_stickers_options),
         *[Switch(text=t(text_key), key=key, default=True) for key, text_key in Keys.PREMIUM_STICKERS_ROWS],
     ]
+
+    show_ai = False
+    try:
+        from LiteGram.utils.utils import get_client_version, parse_version
+
+        if parse_version(get_client_version()) >= (12, 6, 1):
+            from hook_utils import find_class
+
+            if find_class("com.exteragram.messenger.ai.AiController") is not None:
+                show_ai = True
+    except Exception:
+        pass
+
+    if show_ai:
+        settings.extend(
+            [
+                Header(text=t("ai_features_header")),
+                Switch(text=t("hide_ai_button"), key=Keys.hide_ai_button),
+                Switch(text=t("hide_ai_summarize"), key=Keys.hide_ai_summarize),
+            ]
+        )
+
+    return settings
 
 
 def _on_premium_badge_toggle(val: bool):
@@ -114,6 +161,9 @@ def _interface_settings() -> list[Any]:
             on_click=open_extera_tab(Keys.drawer_options),
             icon=resolve_icon("extera_outline"),
         ),
+        Header(text=t("hide_premium_features_header")),
+        Text(text=t("switch_all"), link_alias=Keys.switch_all_premium_hide, on_click=toggle_premium_hide_options),
+        *[Switch(text=t(text_key), key=key) for key, text_key in Keys.PREMIUM_HIDE_ROWS],
     ]
 
 
