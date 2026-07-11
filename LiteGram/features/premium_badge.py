@@ -72,24 +72,9 @@ class ProfileEmojiStatusDrawableHook(BaseHook):
 
 class SmartEmojiStatusHook(BaseHook):
     def before_hooked_method(self, param):
-        arg = param.args[0] if param.args else None
-        if arg is None:
-            param.setResult(0)
+        if not self.is_enabled():
             return
-
-        class_name = str(arg.getClass().getName()).lower()
-        if "user" in class_name or "chat" in class_name:
-            try:
-                BadgesController = find_class("com.exteragram.messenger.badges.BadgesController")
-                if BadgesController and BadgesController.INSTANCE.hasBadge(arg):
-                    # Let it fall through to BadgesController
-                    param.setResult(None)
-                    return
-            except Exception:
-                pass
-
-        # Hide standard premium/custom emoji statuses
-        param.setResult(0)
+        param.setResult(None)
 
 
 class ZeroHook(BaseHook):
@@ -116,6 +101,161 @@ class DrawerMenuHidePremiumHook(BaseHook):
                     drawable.set(None, False)
         except Exception:
             pass
+
+
+_premium_gradient_class = None
+_status_badge_component_class = None
+_badge_dto_class = None
+_tlrpc_user_class = None
+_badges_controller_class = None
+
+
+def find_premium_gradient_class():
+    global _premium_gradient_class
+    if _premium_gradient_class is not None:
+        return _premium_gradient_class
+    for pkg in [
+        "org.telegram.ui.Components.Premium.PremiumGradient",
+        "org.telegram.p035ui.Components.Premium.PremiumGradient",
+        "org.telegram.p022ui.Components.Premium.PremiumGradient",
+        "org.telegram.p031ui.Components.Premium.PremiumGradient",
+    ]:
+        try:
+            cls = find_class(pkg)
+            if cls:
+                _premium_gradient_class = cls
+                return cls
+        except Exception:
+            pass
+    return None
+
+
+def find_status_badge_component_class():
+    global _status_badge_component_class
+    if _status_badge_component_class is not None:
+        return _status_badge_component_class
+    for pkg in [
+        "org.telegram.ui.Components.StatusBadgeComponent",
+        "org.telegram.p035ui.Components.StatusBadgeComponent",
+        "org.telegram.p022ui.Components.StatusBadgeComponent",
+        "org.telegram.p031ui.Components.StatusBadgeComponent",
+    ]:
+        try:
+            cls = find_class(pkg)
+            if cls:
+                _status_badge_component_class = cls
+                return cls
+        except Exception:
+            pass
+    return None
+
+
+class ChatMessageCellGetAuthorStatusHook(BaseHook):
+    def after_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        res = param.getResult()
+        if res is not None:
+            if isinstance(res, (int, float)):
+                param.setResult(None)
+                return
+            if hasattr(res, "getClass"):
+                try:
+                    global _badge_dto_class
+                    if _badge_dto_class is None:
+                        _badge_dto_class = find_class("com.exteragram.messenger.api.dto.BadgeDTO")
+                    if _badge_dto_class and _badge_dto_class.isInstance(res):
+                        return
+                except Exception:
+                    pass
+
+                try:
+                    clazz_name = res.getClass().getName()
+                    if "Drawable" in clazz_name or "Long" in clazz_name or "Integer" in clazz_name or "Number" in clazz_name:
+                        param.setResult(None)
+                except Exception:
+                    pass
+
+
+class SwapAnimatedEmojiDrawableSetHook(BaseHook):
+    def before_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        arg = param.args[0] if param.args else None
+        if arg is not None and hasattr(arg, "getClass"):
+            try:
+                clazz_name = arg.getClass().getName()
+                if "Drawable" in clazz_name:
+                    if "Premium" in clazz_name or "Star" in clazz_name or "liststar" in clazz_name.lower():
+                        param.args[0] = None
+                        return
+                    PremiumGradient_cls = find_premium_gradient_class()
+                    if PremiumGradient_cls:
+                        instance = PremiumGradient_cls.getInstance()
+                        if instance:
+                            star_drawable = instance.premiumStarDrawableMini
+                            if arg == star_drawable or (
+                                hasattr(arg, "getConstantState")
+                                and hasattr(star_drawable, "getConstantState")
+                                and arg.getConstantState() == star_drawable.getConstantState()
+                            ):
+                                param.args[0] = None
+                                return
+            except Exception:
+                pass
+
+
+class StatusBadgeComponentUpdateDrawableHook(BaseHook):
+    def after_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+
+        global _tlrpc_user_class
+        if _tlrpc_user_class is None:
+            try:
+                _tlrpc_user_class = find_class("org.telegram.tgnet.TLRPC$User")
+            except Exception:
+                pass
+
+        if _tlrpc_user_class is None:
+            return
+
+        user = None
+        for arg in param.args:
+            if arg is not None and _tlrpc_user_class.isInstance(arg):
+                user = arg
+                break
+
+        if user:
+            try:
+                if hasattr(user, "verified") and user.verified:
+                    return
+                global _badges_controller_class
+                if _badges_controller_class is None:
+                    _badges_controller_class = find_class("com.exteragram.messenger.badges.BadgesController")
+                if _badges_controller_class:
+                    has_badge = False
+                    try:
+                        if _badges_controller_class.INSTANCE.getBadge(user) is not None:
+                            has_badge = True
+                    except Exception:
+                        pass
+                    try:
+                        if _badges_controller_class.INSTANCE.hasBadge(user):
+                            has_badge = True
+                    except Exception:
+                        pass
+                    if has_badge:
+                        return
+            except Exception:
+                pass
+
+            res = param.getResult()
+            if res is not None:
+                try:
+                    res.set(None, False)
+                except Exception:
+                    pass
 
 
 class FalseMethodReplacement(MethodReplacement):
@@ -149,6 +289,21 @@ def register_premium_badge(plugin) -> None:
             if MessagesController:
                 is_premium_hook = MessagesControllerIsPremiumUserHook(plugin, Keys.hide_premium_badge)
                 plugin.hook_all_methods(MessagesController, "isPremiumUser", is_premium_hook)
+
+            ChatMessageCell = find_class("org.telegram.ui.Cells.ChatMessageCell")
+            if ChatMessageCell:
+                get_author_status_hook = ChatMessageCellGetAuthorStatusHook(plugin, Keys.hide_premium_badge)
+                plugin.hook_all_methods(ChatMessageCell, "getAuthorStatus", get_author_status_hook)
+
+            SwapAnimatedEmojiDrawable = find_class("org.telegram.ui.Components.AnimatedEmojiDrawable$SwapAnimatedEmojiDrawable")
+            if SwapAnimatedEmojiDrawable:
+                swap_set_hook = SwapAnimatedEmojiDrawableSetHook(plugin, Keys.hide_premium_badge)
+                plugin.hook_all_methods(SwapAnimatedEmojiDrawable, "set", swap_set_hook)
+
+            StatusBadgeComponent = find_status_badge_component_class()
+            if StatusBadgeComponent:
+                status_badge_hook = StatusBadgeComponentUpdateDrawableHook(plugin, Keys.hide_premium_badge)
+                plugin.hook_all_methods(StatusBadgeComponent, "updateDrawable", status_badge_hook)
 
             DrawerHeaderView = find_class("com.exteragram.messenger.drawer.DrawerHeaderView")
             AccountRowView = find_class("com.exteragram.messenger.drawer.DrawerAccountPickerView$AccountRowView")
