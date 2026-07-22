@@ -95,11 +95,8 @@ STRINGS = {
         "hide_premium_stickers_grid": "Скрыть на панели выбора",
 
         # --- Premium Features Hiding ---
-        "hide_premium_features_header": "Скрытие премиум-функций",
-        "hide_privacy_voices": "Скрыть настройки голосовых",
-        "hide_privacy_pay": "Скрыть платные сообщения",
-        "hide_language_translate": "Скрыть перевод чатов",
-        "hide_folder_tags": "Скрыть теги папок",
+        "hide_premium_features": "Скрыть премиум-функции",
+        "hide_premium_features_sub": "Скрывает некоторые настройки конфиденциальности, теги папок, и перевод чатов",
 
         # --- AI Features ---
         "ai_features_header": "ИИ-Функции",
@@ -115,7 +112,6 @@ STRINGS = {
         # --- Bulletins ---
         "restart_required": "Перезапустите приложение, чтобы изменения вступили в силу.",
         "restart": "ПЕРЕЗАПУСТИТЬ",
-        "reenter_required": "Изменения применились, они отобразятся при перезаходе сюда",
     },
     "en": {
         # --- Categories ---
@@ -211,11 +207,8 @@ STRINGS = {
         "hide_premium_stickers_grid": "Hide in Picker Grid",
 
         # --- Premium Features Hiding ---
-        "hide_premium_features_header": "Hide Premium Features",
-        "hide_privacy_voices": "Hide Voice Messages Privacy",
-        "hide_privacy_pay": "Hide Paid Messages Option",
-        "hide_language_translate": "Hide Chat Translation",
-        "hide_folder_tags": "Hide Folder Tags",
+        "hide_premium_features": "Hide premium features",
+        "hide_premium_features_sub": "Hides some privacy settings, folder tags, and chat translation",
 
         # --- AI Features ---
         "ai_features_header": "AI Features",
@@ -231,7 +224,6 @@ STRINGS = {
         # --- Bulletins ---
         "restart_required": "Restart the app for changes to take effect.",
         "restart": "RESTART",
-        "reenter_required": "Changes applied, they will be displayed when you re-enter here",
     }
 }
 # fmt: on

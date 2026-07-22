@@ -1,48 +1,109 @@
 from hook_utils import find_class
+from java import jint
 from java.lang.reflect import Modifier
 
 from LiteGram.data.constants import Keys
 from LiteGram.utils.xposed_utils import BaseHook
 
+_fields_cache = {}
+_field_cache = {}
+
+
+def get_row_fields(clazz):
+    class_name = clazz.getName()
+    if class_name not in _fields_cache:
+        fields = clazz.getDeclaredFields()
+        row_fields = []
+        for field in fields:
+            try:
+                if field.getType().toString() == "int" and "row" in field.getName().lower():
+                    if not (field.getModifiers() & Modifier.STATIC):
+                        field.setAccessible(True)
+                        row_fields.append(field)
+            except Exception:
+                pass
+        _fields_cache[class_name] = row_fields
+    return _fields_cache[class_name]
+
+
+def get_cached_field(clazz, field_name):
+    class_name = clazz.getName()
+    key = (class_name, field_name)
+    if key not in _field_cache:
+        try:
+            field = clazz.getDeclaredField(field_name)
+            field.setAccessible(True)
+            _field_cache[key] = field
+        except Exception:
+            _field_cache[key] = None
+    return _field_cache[key]
+
+
+def hide_row(clazz, instance, field_name):
+    try:
+        field = get_cached_field(clazz, field_name)
+        if field is None:
+            return
+        row_idx = field.getInt(instance)
+        if row_idx != -1:
+            row_count_field = get_cached_field(clazz, "rowCount")
+            if row_count_field is None:
+                return
+            row_count = row_count_field.getInt(instance)
+
+            row_fields = get_row_fields(clazz)
+
+            field.setInt(instance, jint(-1))
+            for f in row_fields:
+                val = f.getInt(instance)
+                if row_idx < val < row_count:
+                    f.setInt(instance, jint(val - 1))
+            row_count_field.setInt(instance, jint(row_count - 1))
+    except Exception:
+        pass
+
 
 class PrivacySettingsActivityUpdateRowsHook(BaseHook):
     def after_hooked_method(self, param):
-        if not self.plugin.get_setting(Keys.hide_privacy_voices, False):
+        if not self.plugin.get_setting(Keys.hide_premium_features, False):
             return
         instance = param.thisObject
         try:
-            PrivacySettingsActivity = find_class("org.telegram.ui.PrivacySettingsActivity")
-            if PrivacySettingsActivity is None:
+            clazz = instance.getClass()
+            voices_row_field = get_cached_field(clazz, "voicesRow")
+            if voices_row_field is None:
                 return
-            voices_row_field = PrivacySettingsActivity.getDeclaredField("voicesRow")
-            voices_row_field.setAccessible(True)
             voices_row = voices_row_field.getInt(instance)
             if voices_row != -1:
-                row_count_field = PrivacySettingsActivity.getDeclaredField("rowCount")
-                row_count_field.setAccessible(True)
+                row_count_field = get_cached_field(clazz, "rowCount")
+                if row_count_field is None:
+                    return
                 row_count = row_count_field.getInt(instance)
 
-                fields = PrivacySettingsActivity.getDeclaredFields()
-                valid_row_fields = []
-                for field in fields:
-                    if field.getType().toString() == "int" and "row" in field.getName().lower():
-                        if not (field.getModifiers() & Modifier.STATIC):
-                            field.setAccessible(True)
-                            valid_row_fields.append(field)
+                row_fields = get_row_fields(clazz)
 
-                voices_row_field.setInt(instance, -1)
-                for f in valid_row_fields:
+                voices_row_field.setInt(instance, jint(-1))
+                for f in row_fields:
                     val = f.getInt(instance)
                     if voices_row < val < row_count:
-                        f.setInt(instance, val - 1)
-                row_count_field.setInt(instance, row_count - 1)
+                        f.setInt(instance, jint(val - 1))
+                row_count_field.setInt(instance, jint(row_count - 1))
+
+                try:
+                    list_adapter_field = get_cached_field(clazz, "listAdapter")
+                    if list_adapter_field is not None:
+                        list_adapter = list_adapter_field.get(instance)
+                        if list_adapter is not None:
+                            list_adapter.notifyDataSetChanged()
+                except Exception:
+                    pass
         except Exception:
             pass
 
 
 class PrivacySettingsActivityAddPremiumStarHook(BaseHook):
     def before_hooked_method(self, param):
-        if not self.plugin.get_setting(Keys.hide_privacy_pay, False):
+        if not self.plugin.get_setting(Keys.hide_premium_features, False):
             return
         text = param.args[0]
         if text:
@@ -60,59 +121,36 @@ class PrivacySettingsActivityAddPremiumStarHook(BaseHook):
                 pass
 
 
-class PrivacyControlActivityUpdateRowsHook(BaseHook):
-    def after_hooked_method(self, param):
-        if not self.plugin.get_setting(Keys.hide_privacy_pay, False):
+class PrivacyControlActivitySetMessageTextHook(BaseHook):
+    def before_hooked_method(self, param):
+        if not self.plugin.get_setting(Keys.hide_premium_features, False):
             return
         instance = param.thisObject
         try:
-            PrivacyControlActivity = find_class("org.telegram.ui.PrivacyControlActivity")
-            if PrivacyControlActivity is None:
+            clazz = instance.getClass()
+            rules_type_field = get_cached_field(clazz, "rulesType")
+            if rules_type_field is None:
                 return
-            rules_type_field = PrivacyControlActivity.getDeclaredField("rulesType")
-            rules_type_field.setAccessible(True)
             rules_type = rules_type_field.getInt(instance)
             if rules_type == 10:  # PRIVACY_RULES_TYPE_MESSAGES
-                pay_row_field = PrivacyControlActivity.getDeclaredField("payRow")
-                pay_row_field.setAccessible(True)
-                pay_row = pay_row_field.getInt(instance)
-                if pay_row != -1:
-                    row_count_field = PrivacyControlActivity.getDeclaredField("rowCount")
-                    row_count_field.setAccessible(True)
-                    row_count = row_count_field.getInt(instance)
-
-                    fields = PrivacyControlActivity.getDeclaredFields()
-                    valid_row_fields = []
-                    for field in fields:
-                        if field.getType().toString() == "int" and "row" in field.getName().lower():
-                            if not (field.getModifiers() & Modifier.STATIC):
-                                field.setAccessible(True)
-                                valid_row_fields.append(field)
-
-                    pay_row_field.setInt(instance, -1)
-                    for f in valid_row_fields:
-                        val = f.getInt(instance)
-                        if pay_row < val < row_count:
-                            f.setInt(instance, val - 1)
-                    row_count_field.setInt(instance, row_count - 1)
+                hide_row(clazz, instance, "payRow")
+                hide_row(clazz, instance, "priceButtonRow")
         except Exception:
             pass
 
 
 class FiltersSetupActivityUpdateRowsHook(BaseHook):
     def after_hooked_method(self, param):
-        if not self.plugin.get_setting(Keys.hide_folder_tags, False):
+        if not self.plugin.get_setting(Keys.hide_premium_features, False):
             return
         instance = param.thisObject
         try:
-            FiltersSetupActivity = find_class("org.telegram.ui.FiltersSetupActivity")
-            if FiltersSetupActivity is None:
-                return
-            show_tags_row_field = FiltersSetupActivity.getDeclaredField("showTagsRow")
+            clazz = instance.getClass()
+            show_tags_row_field = clazz.getDeclaredField("showTagsRow")
             show_tags_row_field.setAccessible(True)
             show_tags_row = show_tags_row_field.getInt(instance)
             if show_tags_row != -1:
-                items_field = FiltersSetupActivity.getDeclaredField("items")
+                items_field = clazz.getDeclaredField("items")
                 items_field.setAccessible(True)
                 items = items_field.get(instance)
                 if items and show_tags_row < items.size():
@@ -131,15 +169,15 @@ class FiltersSetupActivityUpdateRowsHook(BaseHook):
                             except Exception:
                                 pass
 
-                    show_tags_row_field.setInt(instance, -1)
+                    show_tags_row_field.setInt(instance, jint(-1))
                     try:
-                        folder_tags_position_field = FiltersSetupActivity.getDeclaredField("folderTagsPosition")
+                        folder_tags_position_field = clazz.getDeclaredField("folderTagsPosition")
                         folder_tags_position_field.setAccessible(True)
-                        folder_tags_position_field.setInt(instance, -1)
+                        folder_tags_position_field.setInt(instance, jint(-1))
                     except Exception:
                         pass
 
-                    adapter_field = FiltersSetupActivity.getDeclaredField("adapter")
+                    adapter_field = clazz.getDeclaredField("adapter")
                     adapter_field.setAccessible(True)
                     adapter = adapter_field.get(instance)
                     if adapter:
@@ -150,21 +188,19 @@ class FiltersSetupActivityUpdateRowsHook(BaseHook):
 
 class FilterCreateActivityUpdateRowsHook(BaseHook):
     def after_hooked_method(self, param):
-        if not self.plugin.get_setting(Keys.hide_folder_tags, False):
+        if not self.plugin.get_setting(Keys.hide_premium_features, False):
             return
         instance = param.thisObject
         try:
-            FilterCreateActivity = find_class("org.telegram.ui.FilterCreateActivity")
-            if FilterCreateActivity is None:
-                return
-            items_field = FilterCreateActivity.getDeclaredField("items")
+            clazz = instance.getClass()
+            items_field = clazz.getDeclaredField("items")
             items_field.setAccessible(True)
             items = items_field.get(instance)
             if items:
                 vt_preview = 9
                 vt_color = 10
                 try:
-                    f_preview = FilterCreateActivity.getDeclaredField("VIEW_TYPE_HEADER_COLOR_PREVIEW")
+                    f_preview = clazz.getDeclaredField("VIEW_TYPE_HEADER_COLOR_PREVIEW")
                     f_preview.setAccessible(True)
                     val = f_preview.get(None)
                     if val is not None:
@@ -172,7 +208,7 @@ class FilterCreateActivityUpdateRowsHook(BaseHook):
                 except Exception:
                     pass
                 try:
-                    f_color = FilterCreateActivity.getDeclaredField("VIEW_TYPE_COLOR")
+                    f_color = clazz.getDeclaredField("VIEW_TYPE_COLOR")
                     f_color.setAccessible(True)
                     val = f_color.get(None)
                     if val is not None:
@@ -205,7 +241,7 @@ class FilterCreateActivityUpdateRowsHook(BaseHook):
                                 items.remove(i)
                     i -= 1
 
-                adapter_field = FilterCreateActivity.getDeclaredField("adapter")
+                adapter_field = clazz.getDeclaredField("adapter")
                 adapter_field.setAccessible(True)
                 adapter = adapter_field.get(instance)
                 if adapter:
@@ -216,7 +252,7 @@ class FilterCreateActivityUpdateRowsHook(BaseHook):
 
 class ListAdapterOnCreateViewHolderHook(BaseHook):
     def after_hooked_method(self, param):
-        if not self.plugin.get_setting(Keys.hide_folder_tags, False):
+        if not self.plugin.get_setting(Keys.hide_premium_features, False):
             return
 
         holder = param.getResult()
@@ -238,7 +274,7 @@ class ListAdapterOnCreateViewHolderHook(BaseHook):
 
 class ListAdapterOnBindViewHolderHook(BaseHook):
     def after_hooked_method(self, param):
-        if not self.plugin.get_setting(Keys.hide_folder_tags, False):
+        if not self.plugin.get_setting(Keys.hide_premium_features, False):
             return
 
         holder = param.args[0]
@@ -261,13 +297,11 @@ class ListAdapterOnBindViewHolderHook(BaseHook):
                 view_type = holder.getItemViewType()
                 if view_type in (3, 6):
                     adapter_instance = param.thisObject
-                    FilterCreateActivity = find_class("org.telegram.ui.FilterCreateActivity")
-                    if FilterCreateActivity is not None:
-                        outer_field = adapter_instance.getClass().getDeclaredField("this$0")
-                        outer_field.setAccessible(True)
-                        outer_instance = outer_field.get(adapter_instance)
-
-                        items_field = FilterCreateActivity.getDeclaredField("items")
+                    outer_field = adapter_instance.getClass().getDeclaredField("this$0")
+                    outer_field.setAccessible(True)
+                    outer_instance = outer_field.get(adapter_instance)
+                    if outer_instance is not None:
+                        items_field = outer_instance.getClass().getDeclaredField("items")
                         items_field.setAccessible(True)
                         items = items_field.get(outer_instance)
 
@@ -296,19 +330,19 @@ class ListAdapterOnBindViewHolderHook(BaseHook):
 
 class MessagesControllerIsTranslationsAutoEnabledHook(BaseHook):
     def before_hooked_method(self, param):
-        if self.plugin.get_setting(Keys.hide_language_translate, False):
+        if self.plugin.get_setting(Keys.hide_premium_features, False):
             param.setResult(False)
 
 
 class SettingsRegistryCreateEntriesHook(BaseHook):
     def after_hooked_method(self, param):
-        if self.plugin.get_setting(Keys.hide_language_translate, False):
+        if self.plugin.get_setting(Keys.hide_premium_features, False):
             remove_extera_setting_entry(param.thisObject, "showTranslateChatButton")
 
 
 class MessagesControllerConstructorHook(BaseHook):
     def after_hooked_method(self, param):
-        if self.plugin.get_setting(Keys.hide_folder_tags, False):
+        if self.plugin.get_setting(Keys.hide_premium_features, False):
             instance = param.thisObject
             try:
                 field = instance.getClass().getField("folderTags")
@@ -320,29 +354,34 @@ class MessagesControllerConstructorHook(BaseHook):
 
 class MessagesControllerSetFolderTagsHook(BaseHook):
     def before_hooked_method(self, param):
-        if self.plugin.get_setting(Keys.hide_folder_tags, False):
+        if self.plugin.get_setting(Keys.hide_premium_features, False):
             try:
                 param.args[0] = False
             except Exception:
                 pass
 
 
+class FilterCreateActivityConstructorHook(BaseHook):
+    def after_hooked_method(self, param):
+        self.plugin.in_filter_create = True
+
+
+class FilterCreateActivityOnFragmentDestroyHook(BaseHook):
+    def before_hooked_method(self, param):
+        self.plugin.in_filter_create = False
+
+
 class UserConfigIsPremiumHook(BaseHook):
     def before_hooked_method(self, param):
-        if not self.plugin.get_setting(Keys.hide_folder_tags, False):
+        if not self.plugin.get_setting(Keys.hide_premium_features, False):
             return
-        from java.lang import Thread
-
-        for element in Thread.currentThread().getStackTrace():
-            class_name = element.getClassName()
-            if "FilterCreateActivity" in class_name:
-                param.setResult(True)
-                return
+        if getattr(self.plugin, "in_filter_create", False):
+            param.setResult(True)
 
 
 class GeneralPreferencesActivityFillItemsHook(BaseHook):
     def after_hooked_method(self, param):
-        if self.plugin.get_setting(Keys.hide_language_translate, False):
+        if self.plugin.get_setting(Keys.hide_premium_features, False):
             arrayList = param.args[0]
             if arrayList:
                 i = arrayList.size() - 1
@@ -427,6 +466,25 @@ def remove_extera_setting_entry(registry, alias_to_remove):
         pass
 
 
+class TextInfoPrivacyCellSetTextHook(BaseHook):
+    def before_hooked_method(self, param):
+        if not self.plugin.get_setting(Keys.hide_premium_features, False):
+            return
+        text = param.args[0]
+        if text is not None:
+            text_str = str(text)
+            if "Вы можете запретить входящие сообщения" in text_str or "You can restrict who can send you messages" in text_str:
+                if "\n" in text_str:
+                    text_str = text_str.split("\n")[0].strip()
+                elif "**" in text_str:
+                    text_str = text_str.split("**")[0].strip()
+                elif "Premium" in text_str:
+                    parts = text_str.split(".")
+                    if len(parts) > 1:
+                        text_str = parts[0].strip() + "."
+                param.args[0] = text_str
+
+
 def register_hide_premium_features(plugin) -> None:
     # 1. Privacy settings: voice messages
     try:
@@ -441,7 +499,15 @@ def register_hide_premium_features(plugin) -> None:
     try:
         PrivacyControlActivity = find_class("org.telegram.ui.PrivacyControlActivity")
         if PrivacyControlActivity:
-            plugin.hook_all_methods(PrivacyControlActivity, "updateRows", PrivacyControlActivityUpdateRowsHook(plugin))
+            plugin.hook_all_methods(PrivacyControlActivity, "setMessageText", PrivacyControlActivitySetMessageTextHook(plugin))
+    except Exception:
+        pass
+
+    # 2.1 TextInfoPrivacyCell hook to hide details links
+    try:
+        TextInfoPrivacyCell = find_class("org.telegram.ui.Cells.TextInfoPrivacyCell")
+        if TextInfoPrivacyCell:
+            plugin.hook_all_methods(TextInfoPrivacyCell, "setText", TextInfoPrivacyCellSetTextHook(plugin))
     except Exception:
         pass
 
@@ -461,7 +527,7 @@ def register_hide_premium_features(plugin) -> None:
             plugin.hook_all_constructors(MessagesController, MessagesControllerConstructorHook(plugin))
             plugin.hook_all_methods(MessagesController, "setFolderTags", MessagesControllerSetFolderTagsHook(plugin))
             # Proactively update existing instances of MessagesController
-            if plugin.get_setting(Keys.hide_folder_tags, False):
+            if plugin.get_setting(Keys.hide_premium_features, False):
                 for i in range(4):  # Support up to 4 accounts
                     try:
                         instance = MessagesController.getInstance(i)
@@ -507,6 +573,8 @@ def register_hide_premium_features(plugin) -> None:
         FilterCreateActivity = find_class("org.telegram.ui.FilterCreateActivity")
         if FilterCreateActivity:
             plugin.hook_all_methods(FilterCreateActivity, "updateRows", FilterCreateActivityUpdateRowsHook(plugin))
+            plugin.hook_all_constructors(FilterCreateActivity, FilterCreateActivityConstructorHook(plugin))
+            plugin.hook_all_methods(FilterCreateActivity, "onFragmentDestroy", FilterCreateActivityOnFragmentDestroyHook(plugin))
 
         ListAdapter = find_class("org.telegram.ui.FilterCreateActivity$ListAdapter")
         if ListAdapter:

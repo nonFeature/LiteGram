@@ -66,10 +66,6 @@ def toggle_premium_stickers_options(_: View | None = None) -> None:
     )
 
 
-def toggle_premium_hide_options(_: View | None = None) -> None:
-    toggle_group_options([key for key, _ in Keys.PREMIUM_HIDE_ROWS])
-
-
 def open_extera_tab(tab_name: str) -> Callable[[View], None]:
     def callback(view: View):
         open_extera_setting(tab_name)

@@ -13,7 +13,6 @@ from LiteGram.utils.settings_utils import (
     show_restart_bulletin,
     toggle_emoji_search_options,
     toggle_premium_emoji_options,
-    toggle_premium_hide_options,
     toggle_premium_stickers_options,
     toggle_settings_options,
 )
@@ -138,9 +137,8 @@ def _interface_settings() -> list[Any]:
             on_click=open_extera_tab(Keys.drawer_options),
             icon=resolve_icon("extera_outline"),
         ),
-        Header(text=t("hide_premium_features_header")),
-        Text(text=t("switch_all"), link_alias=Keys.switch_all_premium_hide, on_click=toggle_premium_hide_options),
-        *[Switch(text=t(text_key), key=key) for key, text_key in Keys.PREMIUM_HIDE_ROWS],
+        Divider(),
+        Switch(text=t("hide_premium_features"), subtext=t("hide_premium_features_sub"), key=Keys.hide_premium_features),
     ]
 
 
