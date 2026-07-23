@@ -15,9 +15,10 @@ pd - priority dir
 """
 
 # CONFIGURATION
-DIST_DIR = Path("dist")
+SCRIPT_DIR = Path(__file__).parent.resolve()
+DIST_DIR = SCRIPT_DIR.parent.parent
 OUTPUT_FILENAME = "LiteGram.plugin"
-SRC_DIR = Path("LiteGram")
+SRC_DIR = SCRIPT_DIR / "LiteGram"
 HEADER_FILE = SRC_DIR / "header.py"
 
 PRIORITY_FILES = ["header.py"]
