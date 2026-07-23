@@ -1,6 +1,6 @@
+# type: ignore
 import weakref
 
-from android_utils import run_on_ui_thread
 from hook_utils import find_class, get_private_field
 
 from LiteGram.header import __icon__, __name__
@@ -54,35 +54,20 @@ class LiteGramSettingsHeaderHook(BaseHook):
 
 def _create_litegram_settings_header(context):
     try:
-        from android.util import TypedValue  # ty: ignore
-        from android.view import Gravity  # ty: ignore
-        from android.widget import FrameLayout, TextView  # ty: ignore
-        from org.telegram.messenger import AndroidUtilities, ImageLocation, MediaDataController  # ty: ignore
-        from org.telegram.ui.ActionBar import Theme  # ty: ignore
-        from org.telegram.ui.Components import BackupImageView, LayoutHelper  # ty: ignore
-
+        FrameLayout = find_class("android.widget.FrameLayout")
         container = FrameLayout(context)
 
-        try:
-            from org.telegram.ui.Components.Premium import StarParticlesView  # ty: ignore
+        Theme = find_class("org.telegram.ui.ActionBar.Theme")
+        AndroidUtilities = find_class("org.telegram.messenger.AndroidUtilities")
+        LayoutHelper = find_class("org.telegram.ui.Components.LayoutHelper")
+        Gravity = find_class("android.view.Gravity")
 
-            particlesView = StarParticlesView(context)
-            particlesView.setClipWithGradient()
-            particlesView.drawable.colorKey = Theme.key_premiumStarGradient2
-            particlesView.drawable.isCircle = True
-            particlesView.drawable.centerOffsetY = AndroidUtilities.dp(0)
-            particlesView.drawable.minLifeTime = 2000
-            particlesView.drawable.randLifeTime = 3000
-            particlesView.drawable.useRotate = False
-            particlesView.drawable.updateColors()
-            container.addView(particlesView, LayoutHelper.createFrame(-1, 220, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 0, 0, 0))
-            run_on_ui_thread(lambda: particlesView.flingParticles(360), 200)
-        except Exception:
-            pass
-
+        BackupImageView = find_class("org.telegram.ui.Components.BackupImageView")
         imageView = BackupImageView(context)
         imageView.setRoundRadius(AndroidUtilities.dp(16))
-        imageView.setClickable(True)
+
+        MediaDataController = find_class("org.telegram.messenger.MediaDataController")
+        ImageLocation = find_class("org.telegram.messenger.ImageLocation")
 
         def try_load_sticker(img):
             try:
@@ -103,11 +88,16 @@ def _create_litegram_settings_header(context):
             try:
                 pack_name, _ = __icon__.split("/")
                 MediaDataController.getInstance(0).loadStickersByEmojiOrName(pack_name, False, False)
+                from LiteGram.utils.utils import run_on_ui_thread
+
                 run_on_ui_thread(lambda: try_load_sticker(imageView), 1500)
             except Exception:
                 pass
 
         container.addView(imageView, LayoutHelper.createFrame(108, 108, Gravity.CENTER | Gravity.TOP, 0, 20, 0, 0))
+
+        TextView = find_class("android.widget.TextView")
+        TypedValue = find_class("android.util.TypedValue")
 
         title = TextView(context)
         title.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText))
@@ -124,23 +114,6 @@ def _create_litegram_settings_header(context):
         subtitle.setText(t("plugin_description"))
         subtitle.setGravity(Gravity.CENTER)
         container.addView(subtitle, LayoutHelper.createFrame(-2, -2, Gravity.CENTER | Gravity.TOP, 60, 180, 60, 27))
-
-        try:
-            from android.view import MotionEvent, View  # ty: ignore
-            from java import dynamic_proxy
-
-            class BounceTouchListener(dynamic_proxy(View.OnTouchListener)):  # ty: ignore
-                def onTouch(self, v, event):
-                    action = event.getAction()
-                    if action == MotionEvent.ACTION_DOWN:
-                        v.animate().scaleX(0.9).scaleY(0.9).setDuration(100).start()
-                    elif action == MotionEvent.ACTION_UP or action == MotionEvent.ACTION_CANCEL:
-                        v.animate().scaleX(1.0).scaleY(1.0).setDuration(100).start()
-                    return False
-
-            imageView.setOnTouchListener(BounceTouchListener())
-        except Exception:
-            pass
 
         return container
     except Exception:

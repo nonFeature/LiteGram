@@ -1,6 +1,6 @@
 from typing import Any
 
-from ui.settings import Divider, Header, Text
+from ui.settings import Divider, Header, Text  # type: ignore
 
 from LiteGram.data.constants import GITHUB_URL, Keys
 from LiteGram.i18n.i18n import t

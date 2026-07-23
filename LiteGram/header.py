@@ -3,5 +3,5 @@ __description__ = "A highly customizable plugin to **remove paid and bloated fea
 __version__ = "1.6"
 __id__ = "litegram"
 __author__ = "fork: @nonPlugins, origin author: @wepinek"
-__icon__ = "nonPlugins/2"
+__icon__ = "feature_plugins/8"
 __min_version__ = "12.1.1"
