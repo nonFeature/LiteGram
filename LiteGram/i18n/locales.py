@@ -55,6 +55,9 @@ STRINGS = {
         "hide_premium_badge": "Скрыть премиум значок",
         "hide_premium_badge_sub": "Также отключает видеоаватары в списке чатов и чате",
         "hide_bot_verification": "Скрыть значок верификации от организации",
+        "hide_profile_music": "Скрыть музыкальный трек",
+        "hide_profile_business": "Скрыть бизнес-информацию",
+        "hide_profile_business_sub": "Гео/часы работы",
 
         # --- Action Bar ---
         "action_bar": "Три точки",
@@ -168,6 +171,9 @@ STRINGS = {
         "hide_premium_badge": "Hide Premium Badge",
         "hide_premium_badge_sub": "Also disables video avatars in chat lists and chats",
         "hide_bot_verification": "Hide organization verification badge",
+        "hide_profile_music": "Hide music track",
+        "hide_profile_business": "Hide business info",
+        "hide_profile_business_sub": "Geo/working hours",
 
         # --- Action Bar ---
         "action_bar": "Three dots",

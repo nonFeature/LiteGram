@@ -139,6 +139,37 @@ class ChatActivityUpdateTopPanelHook(BaseHook):
         self._last_instance_hash = instance_hash
 
 
+class UserFullTLdeserializeHook(BaseHook):
+    def after_hooked_method(self, param):
+        from de.robv.android.xposed import XposedBridge  # type: ignore
+
+        try:
+            user_info = param.getResult()
+            if not user_info:
+                return
+
+            if self.plugin.get_setting(Keys.hide_profile_music, False):
+                try:
+                    user_info.saved_music = None
+                except Exception as e:
+                    XposedBridge.log(f"LiteGram [UserFullHook] error setting saved_music: {e}")
+
+            if self.plugin.get_setting(Keys.hide_profile_business, False):
+                try:
+                    user_info.business_work_hours = None
+                    user_info.business_location = None
+                except Exception as e:
+                    XposedBridge.log(f"LiteGram [UserFullHook] error setting business fields: {e}")
+        except Exception as e:
+            XposedBridge.log(f"LiteGram [UserFullHook] error: {e}")
+
+
+class NowPlayingControllerShouldShowCardHook(BaseHook):
+    def before_hooked_method(self, param):
+        if self.is_enabled():
+            param.setResult(False)
+
+
 def register_profile_appearance(plugin) -> None:
     # Profile Background Emoji
     StarGiftPatterns = find_class("org.telegram.ui.Stars.StarGiftPatterns")
@@ -211,6 +242,22 @@ def register_profile_appearance(plugin) -> None:
             )
         except Exception:
             pass
+    # UserFull fields (saved_music, business_work_hours, business_location)
+    UserFull = find_class("org.telegram.tgnet.TLRPC$UserFull")
+    if UserFull:
+        try:
+            plugin.hook_all_methods(UserFull, "TLdeserialize", UserFullTLdeserializeHook(plugin))
+        except Exception:
+            pass
+
+    # Now Playing Card Hiding
+    NowPlayingController = find_class("com.exteragram.messenger.nowplaying.NowPlayingController")
+    if NowPlayingController:
+        try:
+            plugin.hook_all_methods(NowPlayingController, "shouldShowCard", NowPlayingControllerShouldShowCardHook(plugin, Keys.hide_profile_music))
+        except Exception:
+            pass
+
     ChatActivity = find_class("org.telegram.ui.ChatActivity")
     if ChatActivity:
         try:

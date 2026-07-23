@@ -119,6 +119,8 @@ def _profile_settings() -> list[Any]:
         [
             Switch(text=t("hide_stars_rating"), key=Keys.hide_stars_rating),
             Switch(text=t("hide_bot_verification"), key=Keys.hide_bot_verification),
+            Switch(text=t("hide_profile_music"), key=Keys.hide_profile_music),
+            Switch(text=t("hide_profile_business"), subtext=t("hide_profile_business_sub"), key=Keys.hide_profile_business),
         ]
     )
 
