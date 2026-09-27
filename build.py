@@ -6,6 +6,14 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
+if sys.platform == "win32":
+    _reconf = getattr(sys.stdout, "reconfigure", None)
+    if callable(_reconf):
+        _reconf(encoding="utf-8", errors="replace")
+    _reconf_err = getattr(sys.stderr, "reconfigure", None)
+    if callable(_reconf_err):
+        _reconf_err(encoding="utf-8", errors="replace")
+
 """
 I don't love using vars like: a b c
 but it's really needed here

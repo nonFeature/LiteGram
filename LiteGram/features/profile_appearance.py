@@ -1,4 +1,4 @@
-from hook_utils import find_class, get_private_field
+from hook_utils import find_class, get_private_field, set_private_field
 from java import jint
 
 from LiteGram.data.constants import Keys
@@ -170,6 +170,118 @@ class NowPlayingControllerShouldShowCardHook(BaseHook):
             param.setResult(False)
 
 
+class PeerColorActivityConstructorHook(BaseHook):
+    def after_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        try:
+            activity = param.thisObject
+            gifts = get_private_field(activity, "gifts")
+            if gifts is not None:
+                try:
+                    gifts.cancel()
+                except Exception:
+                    pass
+            gifts_with_color = get_private_field(activity, "giftsWithPeerColor")
+            if gifts_with_color is not None:
+                try:
+                    gifts_with_color.cancel()
+                except Exception:
+                    pass
+            set_private_field(activity, "gifts", None)
+            set_private_field(activity, "giftsWithPeerColor", None)
+        except Exception:
+            pass
+
+
+class PeerColorActivityCreateViewHook(BaseHook):
+    def before_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        try:
+            activity = param.thisObject
+            set_private_field(activity, "gifts", None)
+            set_private_field(activity, "giftsWithPeerColor", None)
+        except Exception:
+            pass
+
+
+class PeerColorActivityPageUpdateRowsHook(BaseHook):
+    def before_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        try:
+            page = param.thisObject
+            outer = get_private_field(page, "this$0")
+            if outer is not None:
+                set_private_field(outer, "gifts", None)
+                set_private_field(outer, "giftsWithPeerColor", None)
+        except Exception:
+            pass
+
+    def after_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        try:
+            page = param.thisObject
+            set_private_field(page, "giftsHeaderRow", -1)
+            set_private_field(page, "giftsStartRow", -1)
+            set_private_field(page, "giftsLoadingStartRow", -1)
+            set_private_field(page, "giftsLoadingEndRow", -1)
+            set_private_field(page, "giftsEndRow", -1)
+            set_private_field(page, "giftsInfoRow", -1)
+            set_private_field(page, "giftsTabsRow", -1)
+            set_private_field(page, "giftsEmptyRow", -1)
+            set_private_field(page, "giftsEmptyRowGap", -1)
+            set_private_field(page, "giftsCount", 0)
+
+            unique_gifts = get_private_field(page, "uniqueGifts")
+            if unique_gifts is not None:
+                try:
+                    unique_gifts.clear()
+                except Exception:
+                    pass
+
+            gift_tabs = get_private_field(page, "giftTabsView")
+            if gift_tabs is not None:
+                try:
+                    gift_tabs.setVisibility(8)
+                except Exception:
+                    pass
+
+            type_val = get_private_field(page, "type")
+            if type_val is None:
+                type_val = 0
+            selected_color = get_private_field(page, "selectedColor")
+            if selected_color is None:
+                selected_color = -1
+            selected_emoji_coll = get_private_field(page, "selectedEmojiCollectible")
+            selected_peer_coll = get_private_field(page, "selectedPeerCollectible")
+
+            row_count = 0
+            set_private_field(page, "colorPickerRow", row_count)
+            row_count += 1
+            set_private_field(page, "iconRow", row_count)
+            row_count += 1
+            set_private_field(page, "infoRow", row_count)
+            row_count += 1
+
+            if type_val == 0 and (selected_color >= 0 or selected_emoji_coll is not None or selected_peer_coll is not None):
+                set_private_field(page, "clearRow", row_count)
+                row_count += 1
+                set_private_field(page, "shadowRow", row_count)
+                row_count += 1
+            else:
+                set_private_field(page, "clearRow", -1)
+                set_private_field(page, "shadowRow", -1)
+
+            set_private_field(page, "buttonRow", row_count)
+            row_count += 1
+            set_private_field(page, "rowCount", row_count)
+        except Exception:
+            pass
+
+
 def register_profile_appearance(plugin) -> None:
     # Profile Background Emoji
     StarGiftPatterns = find_class("org.telegram.ui.Stars.StarGiftPatterns")
@@ -262,5 +374,24 @@ def register_profile_appearance(plugin) -> None:
     if ChatActivity:
         try:
             plugin.hook_all_methods(ChatActivity, "updateTopPanelView", ChatActivityUpdateTopPanelHook(plugin, Keys.hide_bot_verification))
+        except Exception:
+            pass
+
+    # Profile Appearance Editor Gifts Hiding
+    PeerColorActivity = find_class("org.telegram.ui.PeerColorActivity")
+    if PeerColorActivity:
+        try:
+            plugin.hook_all_constructors(PeerColorActivity, PeerColorActivityConstructorHook(plugin, Keys.hide_profile_editor_gifts))
+        except Exception:
+            pass
+        try:
+            plugin.hook_all_methods(PeerColorActivity, "createView", PeerColorActivityCreateViewHook(plugin, Keys.hide_profile_editor_gifts))
+        except Exception:
+            pass
+
+    PeerColorActivityPage = find_class("org.telegram.ui.PeerColorActivity$Page")
+    if PeerColorActivityPage:
+        try:
+            plugin.hook_all_methods(PeerColorActivityPage, "updateRows", PeerColorActivityPageUpdateRowsHook(plugin, Keys.hide_profile_editor_gifts))
         except Exception:
             pass

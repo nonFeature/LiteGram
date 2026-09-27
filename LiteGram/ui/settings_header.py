@@ -2,6 +2,7 @@
 import weakref
 
 from hook_utils import find_class, get_private_field
+from java import jint
 
 from LiteGram.header import __icon__, __name__
 from LiteGram.i18n.i18n import t
@@ -37,8 +38,8 @@ class LiteGramSettingsHeaderHook(BaseHook):
 
             header = _create_litegram_settings_header(activity.getContext())
             if header:
-                from com.exteragram.messenger.plugins.models import HeaderSetting  # ty: ignore
-                from org.telegram.ui.Components import UItem  # ty: ignore
+                from com.exteragram.messenger.plugins.models import HeaderSetting
+                from org.telegram.ui.Components import UItem
 
                 item = UItem.asCustom(header)
                 item.settingItem = HeaderSetting("litegram_header")
@@ -66,31 +67,56 @@ def _create_litegram_settings_header(context):
         imageView = BackupImageView(context)
         imageView.setRoundRadius(AndroidUtilities.dp(16))
 
-        MediaDataController = find_class("org.telegram.messenger.MediaDataController")
-        ImageLocation = find_class("org.telegram.messenger.ImageLocation")
+        try:
+            receiver = imageView.getImageReceiver()
+            if receiver:
+                receiver.setAutoRepeat(1)
+        except Exception:
+            pass
 
-        def try_load_sticker(img):
+        if __icon__ and "/" in __icon__:
             try:
-                pack_name, sticker_index_str = __icon__.split("/")
-                sticker_index = int(sticker_index_str)
-                ss = MediaDataController.getInstance(0).getStickerSetByName(pack_name) or MediaDataController.getInstance(0).getStickerSetByEmojiOrName(
-                    pack_name
-                )
-                if ss and ss.documents and ss.documents.size() > 0:
-                    sticker_index = min(sticker_index, ss.documents.size() - 1)
-                    img.setImage(ImageLocation.getForDocument(ss.documents.get(sticker_index)), "108_108", None, None, 0, 1)
-                    return True
-            except Exception:
-                pass
-            return False
+                pack_name, sticker_index_str = __icon__.rsplit("/", 1)
+                sticker_index = int(sticker_index_str.strip())
 
-        if not try_load_sticker(imageView):
-            try:
-                pack_name, _ = __icon__.split("/")
-                MediaDataController.getInstance(0).loadStickersByEmojiOrName(pack_name, False, False)
-                from LiteGram.utils.utils import run_on_ui_thread
+                MediaDataController = find_class("org.telegram.messenger.MediaDataController")
+                UserConfig = find_class("org.telegram.messenger.UserConfig")
+                account = int(getattr(UserConfig, "selectedAccount", 0))
 
-                run_on_ui_thread(lambda: try_load_sticker(imageView), 1500)
+                loaded = False
+                if MediaDataController:
+                    mdc = MediaDataController.getInstance(account)
+                    if mdc:
+                        try:
+                            mdc.setPlaceholderImageByIndex(imageView, pack_name, jint(sticker_index), "108_108")
+                            loaded = True
+                        except Exception:
+                            try:
+                                mdc.setPlaceholderImageByIndex(imageView, pack_name, sticker_index, "108_108")
+                                loaded = True
+                            except Exception:
+                                pass
+
+                        if not loaded:
+                            try:
+                                ss = mdc.getStickerSetByName(pack_name) or mdc.getStickerSetByEmojiOrName(pack_name)
+                                if ss and ss.documents and ss.documents.size() > 0:
+                                    idx = min(sticker_index, ss.documents.size() - 1)
+                                    doc = ss.documents.get(idx)
+                                    if doc:
+                                        ImageLocation = find_class("org.telegram.messenger.ImageLocation")
+                                        DocumentObject = find_class("org.telegram.messenger.DocumentObject")
+                                        thumb = DocumentObject.getSvgThumb(doc, Theme.key_windowBackgroundWhiteGrayIcon, 0.2) if DocumentObject else None
+                                        if ImageLocation:
+                                            imageView.setImage(
+                                                ImageLocation.getForDocument(doc),
+                                                "108_108",
+                                                thumb,
+                                                0,
+                                                doc,
+                                            )
+                            except Exception:
+                                pass
             except Exception:
                 pass
 

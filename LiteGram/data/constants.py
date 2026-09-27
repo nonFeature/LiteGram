@@ -43,6 +43,7 @@ class Keys:
     hide_profile_background_emoji = "hideProfileBackgroundEmoji"
     hide_profile_pinned_gifts = "hideProfilePinnedGifts"
     hide_profile_colorful_background = "hideProfileColorfulBackground"
+    hide_profile_editor_gifts = "hideProfileEditorGifts"
     hide_boost_badge = "hideBoostBadge"
     hide_profile_music = "hideProfileMusic"
     hide_profile_business = "hideProfileBusiness"

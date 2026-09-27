@@ -1,6 +1,6 @@
 from typing import Any
 
-from ui.settings import Divider, Header, Text  # type: ignore
+from ui.settings import Divider, Header, Text
 
 from LiteGram.data.constants import GITHUB_URL, Keys
 from LiteGram.i18n.i18n import t
@@ -108,6 +108,7 @@ def _profile_settings() -> list[Any]:
         Switch(text=t("hide_profile_background_emoji"), subtext=t("hide_profile_background_emoji_sub"), key=Keys.hide_profile_background_emoji),
         Switch(text=t("hide_profile_pinned_gifts"), key=Keys.hide_profile_pinned_gifts),
         Switch(text=t("hide_profile_colorful_background"), key=Keys.hide_profile_colorful_background),
+        Switch(text=t("hide_profile_editor_gifts"), subtext=t("hide_profile_editor_gifts_sub"), key=Keys.hide_profile_editor_gifts),
         Switch(text=t("hide_boost_badge"), key=Keys.hide_boost_badge),
         Switch(text=t("hide_premium_badge"), subtext=t("hide_premium_badge_sub"), on_change=_on_premium_badge_toggle, key=Keys.hide_premium_badge),
     ]
