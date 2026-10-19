@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import traceback
+import zlib
 from typing import Any
 
 from hook_utils import find_class
@@ -32,7 +33,12 @@ class NativeBridge:
             if not context:
                 return
 
-            dex_bytes = base64.b64decode(DEX_B64)
+            raw_payload = base64.b64decode(DEX_B64)
+            try:
+                dex_bytes = zlib.decompress(raw_payload)
+            except Exception:
+                dex_bytes = raw_payload
+
             if hashlib.sha256(dex_bytes).hexdigest() != DEX_HASH:
                 if plugin:
                     plugin.log("[LiteGram] Security Error: DEX hash mismatch!")

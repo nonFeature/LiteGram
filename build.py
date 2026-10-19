@@ -8,6 +8,7 @@ import subprocess
 import sys
 import urllib.request
 import zipfile
+import zlib
 from collections import defaultdict
 from pathlib import Path
 
@@ -510,7 +511,7 @@ def compile_kotlin_to_dex(minify: bool = False) -> bool:
     hash_file = build_dir / "kt_hash.txt"
     dex_file = SRC_DIR / "data" / "dex.py"
 
-    hash_content = b"".join(f.read_bytes() for f in sorted(kt_files)) + str(minify).encode("utf-8")
+    hash_content = b"".join(f.read_bytes() for f in sorted(kt_files)) + str(minify).encode("utf-8") + b"zlib_v1"
     current_hash = hashlib.md5(hash_content).hexdigest()
     if hash_file.exists() and dex_file.exists():
         if hash_file.read_text(encoding="utf-8").strip() == current_hash:
@@ -667,8 +668,9 @@ def compile_kotlin_to_dex(minify: bool = False) -> bool:
 
     with open(dex_path, "rb") as f:
         dex_bytes = f.read()
-        dex_b64 = base64.b64encode(dex_bytes).decode("utf-8")
         dex_hash = hashlib.sha256(dex_bytes).hexdigest()
+        compressed_dex = zlib.compress(dex_bytes, 9)
+        dex_b64 = base64.b64encode(compressed_dex).decode("utf-8")
 
     dex_file.parent.mkdir(exist_ok=True)
     with open(dex_file, "w", encoding="utf-8") as f:
@@ -676,7 +678,7 @@ def compile_kotlin_to_dex(minify: bool = False) -> bool:
         f.write(f'DEX_HASH = "{dex_hash}"\n')
 
     hash_file.write_text(current_hash, encoding="utf-8")
-    print(f"Injected DEX into {dex_file.name} (SHA-256: {dex_hash[:12]}..., size: {len(dex_bytes) / 1024:.1f} KB).")
+    print(f"Injected DEX into {dex_file.name} (SHA-256: {dex_hash[:12]}..., raw: {len(dex_bytes) / 1024:.1f} KB, zlib: {len(compressed_dex) / 1024:.1f} KB).")
     return True
 
 
