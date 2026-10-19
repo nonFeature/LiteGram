@@ -11,6 +11,7 @@ from LiteGram.features.gift_cards import register_gift_cards
 from LiteGram.features.greeting_button import register_greeting_button
 from LiteGram.features.hide_ai_features import register_hide_ai_features
 from LiteGram.features.hide_articles import register_hide_articles
+from LiteGram.features.hide_communities import register_hide_communities
 from LiteGram.features.hide_emoji_search import register_hide_emoji_search
 from LiteGram.features.hide_group_stickers import register_hide_group_stickers
 from LiteGram.features.hide_premium_features import register_hide_premium_features
@@ -216,6 +217,7 @@ class LiteGramPlugin(BasePlugin):
         register_hide_ai_features(self)
         register_hide_articles(self)
         register_hide_todo(self)
+        register_hide_communities(self)
         register_hide_group_stickers(self)
         register_settings_header(self)
 

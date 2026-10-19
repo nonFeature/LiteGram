@@ -30,6 +30,7 @@ def _chat_settings() -> list[Any]:
             icon=resolve_icon("extera_outline"),
         ),
         Switch(text=t("hide_greeting_button"), key=Keys.hide_greeting_button, subtext=t("hide_greeting_button_sub")),
+        Switch(text=t("hide_communities"), key=Keys.hide_communities),
         Header(text=t("action_bar")),
         Switch(text=t("hide_action_bar_live_stream"), key=Keys.hide_action_bar_live_stream),
         Switch(text=t("hide_action_bar_archived_stories"), key=Keys.hide_action_bar_archived_stories),

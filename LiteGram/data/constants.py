@@ -29,6 +29,7 @@ class Keys:
     hide_action_bar_status = "hideActionBarStatus"  # ETG
     hide_greeting_button = "hideGreetingButton"
     hide_group_stickers = "hideGroupStickers"
+    hide_communities = "hideCommunities"
 
     # --- Profile Buttons ---
     hide_profile_actions_stories_button = "hideProfileActionsStoriesButton"
