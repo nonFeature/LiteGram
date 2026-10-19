@@ -4,6 +4,19 @@ from LiteGram.data.constants import Keys
 from LiteGram.utils.xposed_utils import BaseHook
 
 
+def _neutralize(obj):
+    if obj is None:
+        return
+    try:
+        obj.linked_community_id = 0
+    except Exception:
+        pass
+    try:
+        set_private_field(obj, "linked_community_id", 0)
+    except Exception:
+        pass
+
+
 class ChatTLdeserializeHook(BaseHook):
     def __init__(self, plugin):
         super().__init__(plugin, Keys.hide_communities)
@@ -12,9 +25,7 @@ class ChatTLdeserializeHook(BaseHook):
         if not self.is_enabled():
             return
         try:
-            chat = param.getResult()
-            if chat is not None and hasattr(chat, "linked_community_id"):
-                chat.linked_community_id = 0
+            _neutralize(param.getResult())
         except Exception:
             pass
 
@@ -27,9 +38,35 @@ class UserTLdeserializeHook(BaseHook):
         if not self.is_enabled():
             return
         try:
-            user = param.getResult()
-            if user is not None and hasattr(user, "linked_community_id"):
-                user.linked_community_id = 0
+            _neutralize(param.getResult())
+        except Exception:
+            pass
+
+
+class MessagesControllerPutChatHook(BaseHook):
+    def __init__(self, plugin):
+        super().__init__(plugin, Keys.hide_communities)
+
+    def before_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        try:
+            if param.args:
+                _neutralize(param.args[0])
+        except Exception:
+            pass
+
+
+class MessagesControllerPutUserHook(BaseHook):
+    def __init__(self, plugin):
+        super().__init__(plugin, Keys.hide_communities)
+
+    def before_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        try:
+            if param.args:
+                _neutralize(param.args[0])
         except Exception:
             pass
 
@@ -70,12 +107,8 @@ class ProfileActivityUpdateRowsIdsHook(BaseHook):
             return
         try:
             activity = param.thisObject
-            chat = get_private_field(activity, "currentChat")
-            if chat and hasattr(chat, "linked_community_id"):
-                chat.linked_community_id = 0
-            user = get_private_field(activity, "currentUser")
-            if user and hasattr(user, "linked_community_id"):
-                user.linked_community_id = 0
+            _neutralize(get_private_field(activity, "currentChat"))
+            _neutralize(get_private_field(activity, "currentUser"))
         except Exception:
             pass
 
@@ -93,37 +126,23 @@ class DialogCellHook(BaseHook):
     def __init__(self, plugin):
         super().__init__(plugin, Keys.hide_communities)
 
-    def before_hooked_method(self, param):
-        if not self.is_enabled():
-            return
+    def _apply(self, cell):
         try:
-            cell = param.thisObject
-            chat = getattr(cell, "chat", None)
-            if chat and hasattr(chat, "linked_community_id"):
-                chat.linked_community_id = 0
-            user = getattr(cell, "user", None)
-            if user and hasattr(user, "linked_community_id"):
-                user.linked_community_id = 0
+            _neutralize(get_private_field(cell, "chat"))
+            _neutralize(get_private_field(cell, "user"))
             set_private_field(cell, "drawCommunityAvatar", False)
         except Exception:
             pass
 
+    def before_hooked_method(self, param):
+        if not self.is_enabled():
+            return
+        self._apply(param.thisObject)
+
     def after_hooked_method(self, param):
         if not self.is_enabled():
             return
-        try:
-            set_private_field(param.thisObject, "drawCommunityAvatar", False)
-        except Exception:
-            pass
-
-
-class CommunityArrowDrawableDrawHook(BaseHook):
-    def __init__(self, plugin):
-        super().__init__(plugin, Keys.hide_communities)
-
-    def before_hooked_method(self, param):
-        if self.is_enabled():
-            param.setResult(None)
+        self._apply(param.thisObject)
 
 
 def register_hide_communities(plugin) -> None:
@@ -139,6 +158,17 @@ def register_hide_communities(plugin) -> None:
         if TLRPC_User:
             try:
                 plugin.hook_all_methods(TLRPC_User, "TLdeserialize", UserTLdeserializeHook(plugin))
+            except Exception:
+                pass
+
+        MessagesController = find_class("org.telegram.messenger.MessagesController")
+        if MessagesController:
+            try:
+                plugin.hook_all_methods(MessagesController, "putChat", MessagesControllerPutChatHook(plugin))
+            except Exception:
+                pass
+            try:
+                plugin.hook_all_methods(MessagesController, "putUser", MessagesControllerPutUserHook(plugin))
             except Exception:
                 pass
 
@@ -176,22 +206,15 @@ def register_hide_communities(plugin) -> None:
         if DialogCell:
             hook = DialogCellHook(plugin)
             try:
+                plugin.hook_all_methods(DialogCell, "setDialog", hook)
+            except Exception:
+                pass
+            try:
+                plugin.hook_all_methods(DialogCell, "update", hook)
+            except Exception:
+                pass
+            try:
                 plugin.hook_all_methods(DialogCell, "buildLayout", hook)
-            except Exception:
-                pass
-            try:
-                plugin.hook_all_methods(DialogCell, "onDraw", hook)
-            except Exception:
-                pass
-
-        CommunityArrowDrawable = find_class("org.telegram.ui.community.CommunityArrowDrawable")
-        if CommunityArrowDrawable:
-            try:
-                plugin.hook_all_methods(
-                    CommunityArrowDrawable,
-                    "draw",
-                    CommunityArrowDrawableDrawHook(plugin),
-                )
             except Exception:
                 pass
     except Exception:
