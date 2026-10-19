@@ -135,7 +135,14 @@ def _profile_settings() -> list[Any]:
     ]
 
     if not hide_premium:
-        elements.append(Switch(text=t("hide_collectible_status"), subtext=t("hide_collectible_status_sub"), key=Keys.hide_collectible_status))
+        elements.append(
+            Switch(
+                text=t("hide_collectible_status"),
+                subtext=t("hide_collectible_status_sub"),
+                key=Keys.hide_collectible_status,
+                on_change=on_toggle_with_restart(Keys.hide_collectible_status),
+            )
+        )
 
     elements.extend(
         [

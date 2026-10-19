@@ -82,6 +82,14 @@ class LiteGramPlugin(BasePlugin):
             except Exception:
                 pass
 
+        if key in (Keys.hide_premium_badge, Keys.hide_collectible_status):
+            try:
+                from LiteGram.features.premium_badge import update_premium_badge_dex_settings
+
+                update_premium_badge_dex_settings(self)
+            except Exception:
+                pass
+
         if key == Keys.hide_premium_features and value:
             try:
                 from hook_utils import find_class
@@ -254,6 +262,12 @@ class LiteGramPlugin(BasePlugin):
             from LiteGram.features.hide_communities import unload_hide_communities_dex
 
             unload_hide_communities_dex()
+        except Exception:
+            pass
+        try:
+            from LiteGram.features.premium_badge import unload_premium_badge_dex
+
+            unload_premium_badge_dex()
         except Exception:
             pass
         try:
