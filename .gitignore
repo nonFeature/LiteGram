@@ -217,3 +217,5 @@ versions/
 
 # Telegram Source Code
 Telegram/
+# Build tools
+.tools/

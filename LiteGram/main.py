@@ -60,6 +60,20 @@ class LiteGramPlugin(BasePlugin):
             self._settings_cache[key] = (value, time.monotonic())
         super().set_setting(key, value, reload_settings)
 
+        if key in (
+            Keys.hide_premium_emoji_keyboard,
+            Keys.hide_premium_stickers_recent,
+            Keys.hide_premium_stickers_grid,
+            Keys.hide_premium_emoji_reactions,
+            Keys.hide_group_stickers,
+        ):
+            try:
+                from LiteGram.features.premium_emoji import update_dex_settings
+
+                update_dex_settings(self)
+            except Exception:
+                pass
+
         if key == Keys.hide_premium_features and value:
             try:
                 from hook_utils import find_class
@@ -220,6 +234,14 @@ class LiteGramPlugin(BasePlugin):
         register_hide_communities(self)
         register_hide_group_stickers(self)
         register_settings_header(self)
+
+    def on_plugin_unload(self) -> None:
+        try:
+            from LiteGram.features.premium_emoji import unload_dex
+
+            unload_dex()
+        except Exception:
+            pass
 
     @classmethod
     def get_instance(cls) -> "LiteGramPlugin":

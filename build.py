@@ -1,8 +1,13 @@
 import argparse
 import ast
+import base64
+import hashlib
+import os
 import re
 import subprocess
 import sys
+import urllib.request
+import zipfile
 from collections import defaultdict
 from pathlib import Path
 
@@ -356,9 +361,257 @@ class ASTMinifier(ast.NodeTransformer):
         return node
 
 
+def check_java():
+    try:
+        subprocess.run(["java", "-version"], check=True, capture_output=True)
+        return "java"
+    except Exception:
+        pass
+
+    java_home = os.environ.get("JAVA_HOME")
+    if java_home:
+        java_exe = Path(java_home) / "bin" / ("java.exe" if os.name == "nt" else "java")
+        if java_exe.exists():
+            return str(java_exe)
+
+    return None
+
+
+def get_tools_dir() -> Path:
+    local_tools = SCRIPT_DIR / ".tools"
+    if (local_tools / "android.jar").exists():
+        return local_tools
+    sibling_tools = SCRIPT_DIR.parent / "sync_powersaver_repo" / ".tools"
+    if (sibling_tools / "android.jar").exists():
+        return sibling_tools
+    return local_tools
+
+
+def ensure_xposed_stub_jar(tools_dir: Path) -> Path:
+    xposed_jar = tools_dir / "xposed-api.jar"
+    if xposed_jar.exists():
+        return xposed_jar
+    sibling_stub = SCRIPT_DIR.parent / "sync_powersaver_repo" / ".tools" / "xposed-api.jar"
+    if sibling_stub.exists():
+        import shutil
+
+        shutil.copy2(sibling_stub, xposed_jar)
+        return xposed_jar
+
+    stub_dir = tools_dir / "xposed_stub_src" / "de" / "robv" / "android" / "xposed"
+    stub_dir.mkdir(parents=True, exist_ok=True)
+    (stub_dir / "XC_MethodHook.java").write_text(
+        """package de.robv.android.xposed;
+import java.lang.reflect.Member;
+public abstract class XC_MethodHook {
+    public static final int PRIORITY_DEFAULT = 50;
+    public final int priority;
+    public XC_MethodHook() { this(PRIORITY_DEFAULT); }
+    public XC_MethodHook(int priority) { this.priority = priority; }
+    protected void beforeHookedMethod(MethodHookParam param) throws Throwable {}
+    protected void afterHookedMethod(MethodHookParam param) throws Throwable {}
+    public static class MethodHookParam {
+        public Member method;
+        public Object thisObject;
+        public Object[] args;
+        private Object result;
+        private Throwable throwable;
+        public boolean returnEarly;
+        public Object getResult() { return result; }
+        public void setResult(Object result) { this.result = result; this.throwable = null; this.returnEarly = true; }
+        public Throwable getThrowable() { return throwable; }
+        public void setThrowable(Throwable throwable) { this.throwable = throwable; this.result = null; this.returnEarly = true; }
+        public Object getResultOrThrowable() throws Throwable { if (throwable != null) throw throwable; return result; }
+    }
+    public static class Unhook {
+        public Member getHookedMethod() { return null; }
+        public XC_MethodHook getCallback() { return null; }
+        public void unhook() {}
+    }
+}
+""",
+        encoding="utf-8",
+    )
+    (stub_dir / "XposedBridge.java").write_text(
+        """package de.robv.android.xposed;
+import java.lang.reflect.Member;
+import java.util.Set;
+public final class XposedBridge {
+    public static XC_MethodHook.Unhook hookMethod(Member hookMethod, XC_MethodHook callback) { return null; }
+    public static Set<XC_MethodHook.Unhook> hookAllMethods(Class<?> hookClass, String methodName, XC_MethodHook callback) { return null; }
+    public static Set<XC_MethodHook.Unhook> hookAllConstructors(Class<?> hookClass, XC_MethodHook callback) { return null; }
+    public static Object invokeOriginalMethod(Member method, Object thisObject, Object[] args) throws Throwable { return null; }
+}
+""",
+        encoding="utf-8",
+    )
+    out_dir = tools_dir / "xposed_stub_out"
+    out_dir.mkdir(exist_ok=True)
+    subprocess.run(
+        [
+            "javac",
+            "-source",
+            "8",
+            "-target",
+            "8",
+            str(stub_dir / "XC_MethodHook.java"),
+            str(stub_dir / "XposedBridge.java"),
+            "-d",
+            str(out_dir),
+        ],
+        check=True,
+    )
+    subprocess.run(["jar", "cf", str(xposed_jar), "-C", str(out_dir), "."], check=True)
+    return xposed_jar
+
+
+def download_tools(tools_dir: Path):
+    tools_dir.mkdir(exist_ok=True)
+
+    kotlinc_dir = tools_dir / "kotlinc"
+    if not kotlinc_dir.exists():
+        print("Downloading Kotlin Compiler...")
+        kt_zip = tools_dir / "kotlinc.zip"
+        urllib.request.urlretrieve(
+            "https://github.com/JetBrains/kotlin/releases/download/v1.9.22/kotlin-compiler-1.9.22.zip",
+            kt_zip,
+        )
+        print("Extracting Kotlin Compiler...")
+        with zipfile.ZipFile(kt_zip, "r") as zip_ref:
+            zip_ref.extractall(tools_dir)
+        kt_zip.unlink()
+
+    d8_jar = tools_dir / "d8.jar"
+    if not d8_jar.exists():
+        print("Downloading D8 (R8) compiler...")
+        urllib.request.urlretrieve(
+            "https://dl.google.com/dl/android/maven2/com/android/tools/r8/8.2.33/r8-8.2.33.jar",
+            d8_jar,
+        )
+
+    android_jar = tools_dir / "android.jar"
+    if not android_jar.exists():
+        print("Downloading android.jar (API 33)...")
+        urllib.request.urlretrieve(
+            "https://raw.githubusercontent.com/Sable/android-platforms/master/android-33/android.jar",
+            android_jar,
+        )
+
+    ensure_xposed_stub_jar(tools_dir)
+
+
+def compile_kotlin_to_dex(minify: bool = False) -> bool:
+    kt_files = sorted(set(SRC_DIR.rglob("*.kt")) | set((SCRIPT_DIR / "kotlin").glob("*.kt") if (SCRIPT_DIR / "kotlin").exists() else []))
+    if not kt_files:
+        return True
+
+    build_dir = SCRIPT_DIR / "build"
+    build_dir.mkdir(exist_ok=True)
+    hash_file = build_dir / "kt_hash.txt"
+    dex_file = SRC_DIR / "data" / "dex.py"
+
+    hash_content = b"".join(f.read_bytes() for f in sorted(kt_files)) + str(minify).encode("utf-8")
+    current_hash = hashlib.md5(hash_content).hexdigest()
+    if hash_file.exists() and dex_file.exists():
+        if hash_file.read_text(encoding="utf-8").strip() == current_hash:
+            print("Kotlin files unchanged. Skipping compilation.")
+            return True
+
+    java_exe = check_java()
+    if not java_exe:
+        print("Java is required to compile Kotlin files. Please install Java and add it to PATH.")
+        return False
+
+    tools_dir = get_tools_dir()
+    download_tools(tools_dir)
+
+    kotlinc_home = tools_dir / "kotlinc"
+    preloader_jar = kotlinc_home / "lib" / "kotlin-preloader.jar"
+    compiler_jar = kotlinc_home / "lib" / "kotlin-compiler.jar"
+    android_jar = tools_dir / "android.jar"
+    d8_jar = tools_dir / "d8.jar"
+    xposed_jar = tools_dir / "xposed-api.jar"
+
+    if not xposed_jar.exists():
+        print(f"Xposed stub jar missing at {xposed_jar}")
+        return False
+
+    print("Compiling Kotlin sources...")
+    jar_path = build_dir / "classes.jar"
+    kt_files_str = [str(p) for p in kt_files]
+    sep = ";" if os.name == "nt" else ":"
+    classpath = f"{android_jar}{sep}{xposed_jar}"
+
+    cmd_kotlinc = [
+        java_exe,
+        "-cp",
+        str(preloader_jar),
+        "org.jetbrains.kotlin.preloading.Preloader",
+        "-cp",
+        str(compiler_jar),
+        "org.jetbrains.kotlin.cli.jvm.K2JVMCompiler",
+        *kt_files_str,
+        "-d",
+        str(jar_path),
+        "-classpath",
+        classpath,
+    ]
+
+    try:
+        subprocess.run(cmd_kotlinc, check=True)
+    except Exception as e:
+        print(f"Failed to compile Kotlin: {e}")
+        return False
+
+    print("Converting to DEX...")
+    cmd_d8 = [
+        java_exe,
+        "-cp",
+        str(d8_jar),
+        "com.android.tools.r8.D8",
+        str(jar_path),
+        "--output",
+        str(build_dir),
+        "--lib",
+        str(android_jar),
+        "--lib",
+        str(xposed_jar),
+    ]
+    if minify:
+        cmd_d8.append("--release")
+
+    try:
+        subprocess.run(cmd_d8, check=True)
+    except Exception as e:
+        print(f"Failed to run d8: {e}")
+        return False
+
+    dex_path = build_dir / "classes.dex"
+    if not dex_path.exists():
+        print("classes.dex not found!")
+        return False
+
+    with open(dex_path, "rb") as f:
+        dex_bytes = f.read()
+        dex_b64 = base64.b64encode(dex_bytes).decode("utf-8")
+        dex_hash = hashlib.sha256(dex_bytes).hexdigest()
+
+    dex_file.parent.mkdir(exist_ok=True)
+    with open(dex_file, "w", encoding="utf-8") as f:
+        f.write(f'DEX_B64 = "{dex_b64}"  # noqa: E501\n')
+        f.write(f'DEX_HASH = "{dex_hash}"\n')
+
+    hash_file.write_text(current_hash, encoding="utf-8")
+    print(f"Injected DEX into {dex_file.name} (SHA-256: {dex_hash[:12]}...).")
+    return True
+
+
 def build():
     args = parse_args()
     print(f"🚀 Starting build: {OUTPUT_FILENAME}...")
+
+    if not compile_kotlin_to_dex(minify=not args.no_minify):
+        sys.exit(1)
 
     if not SRC_DIR.exists():
         print(f"❌ Error: Source directory '{SRC_DIR}' not found!")
