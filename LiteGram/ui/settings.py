@@ -9,6 +9,7 @@ from LiteGram.utils.extera_utils import resolve_icon
 from LiteGram.utils.settings_utils import (
     Switch,
     on_media_toggle,
+    on_toggle_with_restart,
     open_extera_tab,
     open_url_view,
     show_restart_bulletin,
@@ -31,7 +32,7 @@ def _chat_settings() -> list[Any]:
             icon=resolve_icon("extera_outline"),
         ),
         Switch(text=t("hide_greeting_button"), key=Keys.hide_greeting_button, subtext=t("hide_greeting_button_sub")),
-        Switch(text=t("hide_communities"), key=Keys.hide_communities),
+        Switch(text=t("hide_communities"), key=Keys.hide_communities, on_change=on_toggle_with_restart(Keys.hide_communities)),
         Header(text=t("action_bar")),
         Switch(text=t("hide_action_bar_live_stream"), key=Keys.hide_action_bar_live_stream),
         Switch(text=t("hide_action_bar_archived_stories"), key=Keys.hide_action_bar_archived_stories),

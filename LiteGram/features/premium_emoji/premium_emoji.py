@@ -1,11 +1,8 @@
-import base64
-import hashlib
-
 from hook_utils import find_class, get_private_field
 
 from LiteGram.data.constants import Keys
-from LiteGram.data.dex import DEX_B64, DEX_HASH
 from LiteGram.main import LiteGramPlugin
+from LiteGram.utils.dex_utils import load_dex_class
 from LiteGram.utils.xposed_utils import BaseHook
 
 
@@ -346,16 +343,17 @@ class FilterSuggestResultsHook(BaseHook):
 # DEX Management
 # ============================================================
 
-_dex_class = None
+_premium_emoji_dex = None
 
 
-def init_dex(plugin):
-    global _dex_class
-    if _dex_class is not None:
-        update_dex_settings(plugin)
+def init_premium_emoji_dex(plugin):
+    global _premium_emoji_dex
+    if _premium_emoji_dex is not None:
+        update_premium_emoji_dex_settings(plugin)
         return
 
-    if not DEX_B64:
+    dex_class = load_dex_class("non.feature.litegram.premium_emoji.PremiumEmojiHook", plugin)
+    if not dex_class:
         return
 
     try:
@@ -365,58 +363,26 @@ def init_dex(plugin):
         context = getattr(ApplicationLoader, "applicationContext", None)
         if not context:
             return
-
-        dex_bytes = base64.b64decode(DEX_B64)
-        if hashlib.sha256(dex_bytes).hexdigest() != DEX_HASH:
-            plugin.log("[LiteGram] Security Error: DEX hash mismatch!")
-            return
-
         parent_cl = context.getClassLoader()
-        ByteBuffer = find_class("java.nio.ByteBuffer")
-        if not ByteBuffer:
-            return
-        dex_buffer = ByteBuffer.wrap(dex_bytes)
-        InMemoryDexClassLoader = find_class("dalvik.system.InMemoryDexClassLoader")
-        class_loader = None
-        if InMemoryDexClassLoader:
-            try:
-                class_loader = InMemoryDexClassLoader(dex_buffer, parent_cl)
-            except Exception:
-                pass
-        if class_loader is None:
-            DexClassLoader = find_class("dalvik.system.DexClassLoader")
-            if not DexClassLoader:
-                plugin.log("[LiteGram] No DexClassLoader available")
-                return
-            cache_dir = context.getCacheDir().getAbsolutePath()
-            code_cache = context.getCodeCacheDir().getAbsolutePath()
-            dex_path = f"{cache_dir}/litegram.dex"
-            with open(dex_path, "wb") as f:
-                f.write(dex_bytes)
-            class_loader = DexClassLoader(dex_path, code_cache, None, parent_cl)
-
-        dex_class = class_loader.loadClass("non.feature.litegram.premium_emoji.PremiumEmojiHook")
-        if not dex_class:
-            return
 
         init_method = dex_class.getMethod("init", find_class("java.lang.ClassLoader"))
         init_method.invoke(None, parent_cl)
 
-        _dex_class = dex_class
-        update_dex_settings(plugin)
-        plugin.log("[LiteGram] Kotlin DEX module loaded.")
+        _premium_emoji_dex = dex_class
+        update_premium_emoji_dex_settings(plugin)
+        plugin.log("[LiteGram] PremiumEmoji Kotlin DEX loaded.")
     except Exception as e:
-        plugin.log(f"[LiteGram] Failed to init DEX: {e}")
+        plugin.log(f"[LiteGram] Failed to init PremiumEmoji DEX: {e}")
 
 
-def update_dex_settings(plugin):
-    if _dex_class is None:
+def update_premium_emoji_dex_settings(plugin):
+    if _premium_emoji_dex is None:
         return
     try:
         BooleanClz = find_class("java.lang.Boolean")
         StringClz = find_class("java.lang.String")
         bool_type = getattr(BooleanClz, "TYPE", None)
-        set_flag_method = _dex_class.getMethod("setFlag", StringClz, bool_type)
+        set_flag_method = _premium_emoji_dex.getMethod("setFlag", StringClz, bool_type)
         for key in (
             Keys.hide_premium_emoji_keyboard,
             Keys.hide_premium_stickers_recent,
@@ -427,17 +393,17 @@ def update_dex_settings(plugin):
             val = bool(plugin.get_setting(key, False))
             set_flag_method.invoke(None, key, val)
     except Exception as e:
-        plugin.log(f"[LiteGram] Failed to update DEX settings: {e}")
+        plugin.log(f"[LiteGram] Failed to update PremiumEmoji DEX settings: {e}")
 
 
-def unload_dex():
-    global _dex_class
-    if _dex_class is not None:
+def unload_premium_emoji_dex():
+    global _premium_emoji_dex
+    if _premium_emoji_dex is not None:
         try:
-            _dex_class.getMethod("unload").invoke(None)
+            _premium_emoji_dex.getMethod("unload").invoke(None)
         except Exception:
             pass
-        _dex_class = None
+        _premium_emoji_dex = None
 
 
 # ============================================================
@@ -446,7 +412,7 @@ def unload_dex():
 
 
 def register_premium_emoji(plugin):
-    init_dex(plugin)
+    init_premium_emoji_dex(plugin)
 
     if EmojiSearchAdapter:
         try:

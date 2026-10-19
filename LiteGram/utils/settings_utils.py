@@ -58,13 +58,16 @@ def toggle_premium_stickers_options(_: View | None = None) -> None:
     )
 
 
-def on_media_toggle(key: str) -> Callable[[bool], None]:
+def on_toggle_with_restart(key: str) -> Callable[[bool], None]:
     def callback(val: bool):
         plugin = LiteGramPlugin.get_instance()
         plugin.set_setting(key, val)
         show_restart_bulletin(val)
 
     return callback
+
+
+on_media_toggle = on_toggle_with_restart
 
 
 def open_extera_tab(tab_name: str) -> Callable[[View], None]:

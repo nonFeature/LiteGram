@@ -68,9 +68,17 @@ class LiteGramPlugin(BasePlugin):
             Keys.hide_group_stickers,
         ):
             try:
-                from LiteGram.features.premium_emoji import update_dex_settings
+                from LiteGram.features.premium_emoji import update_premium_emoji_dex_settings
 
-                update_dex_settings(self)
+                update_premium_emoji_dex_settings(self)
+            except Exception:
+                pass
+
+        if key == Keys.hide_communities:
+            try:
+                from LiteGram.features.hide_communities import update_hide_communities_dex_settings
+
+                update_hide_communities_dex_settings(self)
             except Exception:
                 pass
 
@@ -237,9 +245,21 @@ class LiteGramPlugin(BasePlugin):
 
     def on_plugin_unload(self) -> None:
         try:
-            from LiteGram.features.premium_emoji import unload_dex
+            from LiteGram.features.premium_emoji import unload_premium_emoji_dex
 
-            unload_dex()
+            unload_premium_emoji_dex()
+        except Exception:
+            pass
+        try:
+            from LiteGram.features.hide_communities import unload_hide_communities_dex
+
+            unload_hide_communities_dex()
+        except Exception:
+            pass
+        try:
+            from LiteGram.utils.dex_utils import unload_all_dex
+
+            unload_all_dex()
         except Exception:
             pass
 
