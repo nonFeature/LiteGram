@@ -1,89 +1,164 @@
 import base64
 import hashlib
+import traceback
 from typing import Any
 
 from hook_utils import find_class
 
 from LiteGram.data.dex import DEX_B64, DEX_HASH
 
-_class_loader: Any = None
-_loaded_classes: dict[str, Any] = {}
+ENTRY_CLASS = "non.feature.litegram.core.LiteGramBridge"
+
+
+class NativeBridge:
+    def __init__(self, entry_class: str = ENTRY_CLASS):
+        self.entry_class = entry_class
+        self.clazz: Any = None
+        self.loader: Any = None
+        self.loaded: bool = False
+        self._method_cache: dict[tuple[str, int], Any] = {}
+
+    def load(self, plugin: Any = None) -> None:
+        if self.loaded:
+            return
+        if not DEX_B64:
+            return
+
+        try:
+            ApplicationLoader = find_class("org.telegram.messenger.ApplicationLoader")
+            if not ApplicationLoader:
+                return
+            context = getattr(ApplicationLoader, "applicationContext", None)
+            if not context:
+                return
+
+            dex_bytes = base64.b64decode(DEX_B64)
+            if hashlib.sha256(dex_bytes).hexdigest() != DEX_HASH:
+                if plugin:
+                    plugin.log("[LiteGram] Security Error: DEX hash mismatch!")
+                return
+
+            parent_loader = context.getClassLoader()
+            ByteBuffer = find_class("java.nio.ByteBuffer")
+            if not ByteBuffer:
+                return
+
+            InMemoryDexClassLoader = find_class("dalvik.system.InMemoryDexClassLoader")
+            if InMemoryDexClassLoader:
+                try:
+                    self.loader = InMemoryDexClassLoader(ByteBuffer.wrap(dex_bytes), parent_loader)
+                    self.clazz = self.loader.loadClass(self.entry_class)
+                except Exception:
+                    pass
+
+            if self.clazz is None:
+                cache_dir = context.getCacheDir().getAbsolutePath()
+                code_cache = context.getCodeCacheDir().getAbsolutePath()
+                dex_path = f"{cache_dir}/litegram_{DEX_HASH[:12]}.dex"
+                with open(dex_path, "wb") as f:
+                    f.write(dex_bytes)
+                DexClassLoader = find_class("dalvik.system.DexClassLoader")
+                if not DexClassLoader:
+                    return
+                self.loader = DexClassLoader(dex_path, code_cache, None, parent_loader)
+                self.clazz = self.loader.loadClass(self.entry_class)
+
+            self._invoke("load", parent_loader)
+            self.loaded = True
+            if plugin:
+                plugin.log("[LiteGram] Core DEX bridge loaded successfully.")
+        except Exception as e:
+            try:
+                self._invoke("unload")
+            except Exception:
+                pass
+            self.loaded = False
+            self.clazz = None
+            self.loader = None
+            self._method_cache.clear()
+            if plugin:
+                plugin.log(f"[LiteGram] Failed to load Core DEX bridge: {e}\n{traceback.format_exc()}")
+
+    def unload(self) -> None:
+        if self.clazz is None or not self.loaded:
+            return
+        try:
+            self._invoke("unload")
+        except Exception:
+            pass
+        finally:
+            self.loaded = False
+            self.clazz = None
+            self.loader = None
+            self._method_cache.clear()
+
+    def set_flag(self, name: str, enabled: bool) -> None:
+        if self.clazz is None or not self.loaded:
+            return
+        try:
+            self._invoke("setFlag", str(name), bool(enabled))
+        except Exception:
+            pass
+
+    def is_loaded(self) -> bool:
+        return self.loaded and self.clazz is not None
+
+    def _invoke(self, method_name: str, *args: Any) -> Any:
+        if self.clazz is None:
+            raise RuntimeError("DEX class is not loaded")
+        cache_key = (method_name, len(args))
+        cached = self._method_cache.get(cache_key)
+        if not cached:
+            for method in self.clazz.getDeclaredMethods():
+                if str(method.getName()) == method_name and len(method.getParameterTypes()) == len(args):
+                    method.setAccessible(True)
+                    param_type_names = [str(pt.getName()) for pt in method.getParameterTypes()]
+                    cached = (method, param_type_names)
+                    self._method_cache[cache_key] = cached
+                    break
+            if not cached:
+                raise RuntimeError(f"method not found: {method_name}/{len(args)}")
+
+        method, param_type_names = cached
+        converted_args = []
+        BooleanClass = find_class("java.lang.Boolean")
+        IntegerClass = find_class("java.lang.Integer")
+        LongClass = find_class("java.lang.Long")
+
+        for i, arg in enumerate(args):
+            pt = param_type_names[i]
+            if pt in ("boolean", "java.lang.Boolean") and BooleanClass:
+                converted_args.append(BooleanClass.valueOf(bool(arg)))
+            elif pt in ("int", "java.lang.Integer") and IntegerClass:
+                converted_args.append(IntegerClass.valueOf(int(arg)))
+            elif pt in ("long", "java.lang.Long") and LongClass:
+                converted_args.append(LongClass.valueOf(int(arg)))
+            elif pt in ("java.lang.String", "str"):
+                converted_args.append(str(arg))
+            else:
+                converted_args.append(arg)
+
+        return method.invoke(None, *converted_args)
+
+
+dex_bridge = NativeBridge(ENTRY_CLASS)
 
 
 def get_dex_class_loader(plugin: Any = None) -> Any:
-    global _class_loader
-    if _class_loader is not None:
-        return _class_loader
-
-    if not DEX_B64:
-        return None
-
-    try:
-        ApplicationLoader = find_class("org.telegram.messenger.ApplicationLoader")
-        if not ApplicationLoader:
-            return None
-        context = getattr(ApplicationLoader, "applicationContext", None)
-        if not context:
-            return None
-
-        dex_bytes = base64.b64decode(DEX_B64)
-        if hashlib.sha256(dex_bytes).hexdigest() != DEX_HASH:
-            if plugin:
-                plugin.log("[LiteGram] Security Error: DEX hash mismatch!")
-            return None
-
-        parent_cl = context.getClassLoader()
-        ByteBuffer = find_class("java.nio.ByteBuffer")
-        if not ByteBuffer:
-            return None
-        dex_buffer = ByteBuffer.wrap(dex_bytes)
-        InMemoryDexClassLoader = find_class("dalvik.system.InMemoryDexClassLoader")
-        if InMemoryDexClassLoader:
-            try:
-                _class_loader = InMemoryDexClassLoader(dex_buffer, parent_cl)
-            except Exception:
-                pass
-        if _class_loader is None:
-            DexClassLoader = find_class("dalvik.system.DexClassLoader")
-            if not DexClassLoader:
-                if plugin:
-                    plugin.log("[LiteGram] No DexClassLoader available")
-                return None
-            cache_dir = context.getCacheDir().getAbsolutePath()
-            code_cache = context.getCodeCacheDir().getAbsolutePath()
-            dex_path = f"{cache_dir}/litegram.dex"
-            with open(dex_path, "wb") as f:
-                f.write(dex_bytes)
-            _class_loader = DexClassLoader(dex_path, code_cache, None, parent_cl)
-
-        return _class_loader
-    except Exception as e:
-        if plugin:
-            plugin.log(f"[LiteGram] Failed to create DEX ClassLoader: {e}")
-        return None
+    if not dex_bridge.is_loaded():
+        dex_bridge.load(plugin)
+    return dex_bridge.loader
 
 
 def load_dex_class(class_name: str, plugin: Any = None) -> Any | None:
-    if class_name in _loaded_classes:
-        return _loaded_classes[class_name]
-    cl = get_dex_class_loader(plugin)
-    if not cl:
+    loader = get_dex_class_loader(plugin)
+    if not loader:
         return None
     try:
-        dex_cls = cl.loadClass(class_name)
-        if dex_cls:
-            _loaded_classes[class_name] = dex_cls
-        return dex_cls
-    except Exception as e:
-        if plugin:
-            plugin.log(f"[LiteGram] Failed to load DEX class {class_name}: {e}")
+        return loader.loadClass(class_name)
+    except Exception:
         return None
 
 
 def unload_all_dex() -> None:
-    for _, cls in list(_loaded_classes.items()):
-        try:
-            cls.getMethod("unload").invoke(None)
-        except Exception:
-            pass
-    _loaded_classes.clear()
+    dex_bridge.unload()

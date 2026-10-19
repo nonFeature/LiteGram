@@ -26,6 +26,7 @@ from LiteGram.features.star_rating import register_star_rating
 from LiteGram.features.star_reaction import register_star_reaction
 from LiteGram.ui.settings import get_main_settings_list
 from LiteGram.ui.settings_header import register_settings_header
+from LiteGram.utils.dex_utils import dex_bridge
 
 _PROFILE_GIFT_REQUEST_HOOKS = {
     "TL_users_getFullUser",
@@ -60,35 +61,7 @@ class LiteGramPlugin(BasePlugin):
             self._settings_cache[key] = (value, time.monotonic())
         super().set_setting(key, value, reload_settings)
 
-        if key in (
-            Keys.hide_premium_emoji_keyboard,
-            Keys.hide_premium_stickers_recent,
-            Keys.hide_premium_stickers_grid,
-            Keys.hide_premium_emoji_reactions,
-            Keys.hide_group_stickers,
-        ):
-            try:
-                from LiteGram.features.premium_emoji import update_premium_emoji_dex_settings
-
-                update_premium_emoji_dex_settings(self)
-            except Exception:
-                pass
-
-        if key == Keys.hide_communities:
-            try:
-                from LiteGram.features.hide_communities import update_hide_communities_dex_settings
-
-                update_hide_communities_dex_settings(self)
-            except Exception:
-                pass
-
-        if key in (Keys.hide_premium_badge, Keys.hide_collectible_status):
-            try:
-                from LiteGram.features.premium_badge import update_premium_badge_dex_settings
-
-                update_premium_badge_dex_settings(self)
-            except Exception:
-                pass
+        dex_bridge.set_flag(key, bool(value))
 
         if key == Keys.hide_premium_features and value:
             try:
@@ -108,8 +81,24 @@ class LiteGramPlugin(BasePlugin):
             except Exception:
                 pass
 
+    def _sync_dex_flags(self) -> None:
+        for key in (
+            Keys.hide_premium_emoji_keyboard,
+            Keys.hide_premium_stickers_recent,
+            Keys.hide_premium_stickers_grid,
+            Keys.hide_premium_emoji_reactions,
+            Keys.hide_group_stickers,
+            Keys.hide_communities,
+            Keys.hide_premium_badge,
+            Keys.hide_collectible_status,
+        ):
+            val = self.get_setting(key, False)
+            dex_bridge.set_flag(key, bool(val))
+
     def on_plugin_load(self) -> None:
         LiteGramPlugin._instance = self
+        dex_bridge.load(self)
+        self._sync_dex_flags()
         tl_hooks = [
             "TL_messages_getEmojiStickers",
             "TL_messages_getFeaturedEmojiStickers",
@@ -139,33 +128,43 @@ class LiteGramPlugin(BasePlugin):
         self.register_hooks()
 
     def post_request_hook(self, request_name: str, account: int, response: Any, error: Any) -> HookResult:
-        if error is not None or response is None:
+        try:
+            if error is not None or response is None:
+                return HookResult()
+            if (
+                self.get_setting(Keys.hide_premium_emoji_keyboard, False)
+                or self.get_setting(Keys.hide_premium_emoji_reactions, False)
+                or self.get_setting(Keys.hide_premium_search, False)
+                or self.get_setting(Keys.hide_premium_suggestions, False)
+                or self.get_setting(Keys.hide_premium_stickers_recent, False)
+                or self.get_setting(Keys.hide_premium_stickers_search, False)
+                or self.get_setting(Keys.hide_premium_stickers_grid, False)
+                or self.get_setting(Keys.hide_group_stickers, False)
+            ):
+                filter_response(request_name, response)
+            if self.get_setting(Keys.hide_gifts_tab, False):
+                if self._is_gift_request(request_name):
+                    self._sanitize_gifts_payload(response)
             return HookResult()
-        if (
-            self.get_setting(Keys.hide_premium_emoji_keyboard, False)
-            or self.get_setting(Keys.hide_premium_emoji_reactions, False)
-            or self.get_setting(Keys.hide_premium_search, False)
-            or self.get_setting(Keys.hide_premium_suggestions, False)
-            or self.get_setting(Keys.hide_premium_stickers_recent, False)
-            or self.get_setting(Keys.hide_premium_stickers_search, False)
-            or self.get_setting(Keys.hide_premium_stickers_grid, False)
-            or self.get_setting(Keys.hide_group_stickers, False)
-        ):
-            filter_response(request_name, response)
-        if self.get_setting(Keys.hide_gifts_tab, False):
-            if self._is_gift_request(request_name):
-                self._sanitize_gifts_payload(response)
-        return HookResult()
+        finally:
+            del response
+            del error
 
     def on_update_hook(self, update_name: str, account: int, update: Any) -> HookResult:
-        if self.get_setting(Keys.hide_gifts_tab, False) and update is not None:
-            self._sanitize_gifts_payload(update)
-        return HookResult()
+        try:
+            if self.get_setting(Keys.hide_gifts_tab, False) and update is not None:
+                self._sanitize_gifts_payload(update)
+            return HookResult()
+        finally:
+            del update
 
     def on_updates_hook(self, container_name: str, account: int, updates: Any) -> HookResult:
-        if self.get_setting(Keys.hide_gifts_tab, False) and updates is not None:
-            self._sanitize_gifts_payload(updates)
-        return HookResult()
+        try:
+            if self.get_setting(Keys.hide_gifts_tab, False) and updates is not None:
+                self._sanitize_gifts_payload(updates)
+            return HookResult()
+        finally:
+            del updates
 
     def _is_gift_request(self, name: str) -> bool:
         if name in _PROFILE_GIFT_REQUEST_HOOKS:
@@ -253,27 +252,7 @@ class LiteGramPlugin(BasePlugin):
 
     def on_plugin_unload(self) -> None:
         try:
-            from LiteGram.features.premium_emoji import unload_premium_emoji_dex
-
-            unload_premium_emoji_dex()
-        except Exception:
-            pass
-        try:
-            from LiteGram.features.hide_communities import unload_hide_communities_dex
-
-            unload_hide_communities_dex()
-        except Exception:
-            pass
-        try:
-            from LiteGram.features.premium_badge import unload_premium_badge_dex
-
-            unload_premium_badge_dex()
-        except Exception:
-            pass
-        try:
-            from LiteGram.utils.dex_utils import unload_all_dex
-
-            unload_all_dex()
+            dex_bridge.unload()
         except Exception:
             pass
 

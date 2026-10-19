@@ -6,6 +6,7 @@ import de.robv.android.xposed.XposedBridge
 import java.lang.reflect.Field
 import java.lang.reflect.Method
 import java.util.ArrayList
+import non.feature.litegram.core.ReflectionCache
 
 object PremiumEmojiHook {
 
@@ -15,7 +16,7 @@ object PremiumEmojiHook {
     @Volatile @JvmStatic var hidePremiumEmojiReactions: Boolean = false
     @Volatile @JvmStatic var hideGroupStickers: Boolean = false
 
-    private val unhooks = ArrayList<XC_MethodHook.Unhook>()
+    private val localUnhooks = ArrayList<XC_MethodHook.Unhook>()
     private val isSuppressingReactionPacks = ThreadLocal<Boolean>()
 
     private var messageObjectClass: Class<*>? = null
@@ -43,90 +44,74 @@ object PremiumEmojiHook {
     @JvmStatic
     fun setFlag(name: String, enabled: Boolean) {
         when (name) {
-            "hidePremiumEmojiKeyboard" -> hidePremiumEmojiKeyboard = enabled
-            "hidePremiumStickersRecent" -> hidePremiumStickersRecent = enabled
-            "hidePremiumStickersGrid" -> hidePremiumStickersGrid = enabled
-            "hidePremiumEmojiReactions" -> hidePremiumEmojiReactions = enabled
-            "hideGroupStickers" -> hideGroupStickers = enabled
+            "hidePremiumEmojiKeyboard", "hide_premium_emoji_keyboard" -> hidePremiumEmojiKeyboard = enabled
+            "hidePremiumStickersRecent", "hide_premium_stickers_recent" -> hidePremiumStickersRecent = enabled
+            "hidePremiumStickersGrid", "hide_premium_stickers_grid" -> hidePremiumStickersGrid = enabled
+            "hidePremiumEmojiReactions", "hide_premium_emoji_reactions" -> hidePremiumEmojiReactions = enabled
+            "hideGroupStickers", "hide_group_stickers" -> hideGroupStickers = enabled
         }
     }
 
     @JvmStatic
     fun unload() {
-        synchronized(unhooks) {
-            for (u in unhooks) {
+        synchronized(localUnhooks) {
+            for (u in localUnhooks) {
                 try {
                     u.unhook()
                 } catch (_: Throwable) {}
             }
-            unhooks.clear()
+            localUnhooks.clear()
         }
+        try {
+            isSuppressingReactionPacks.remove()
+        } catch (_: Throwable) {}
+
+        messageObjectClass = null
+        isPremiumStickerMethod = null
+        isAnimatedEmojiMethod = null
+        videoThumbsField = null
+        thumbTypeField = null
     }
 
-    private fun findClass(name: String, cl: ClassLoader): Class<*>? {
-        return try {
-            Class.forName(name, false, cl)
-        } catch (_: Throwable) {
-            null
-        }
-    }
-
-    private fun hookAllMethods(clazz: Class<*>?, methodName: String, hook: XC_MethodHook) {
+    private fun hookAllMethods(
+        clazz: Class<*>?,
+        methodName: String,
+        hook: XC_MethodHook,
+        targetList: MutableList<XC_MethodHook.Unhook>
+    ) {
         if (clazz == null) return
         try {
             val result = XposedBridge.hookAllMethods(clazz, methodName, hook)
             if (result != null) {
-                synchronized(unhooks) {
-                    unhooks.addAll(result)
+                synchronized(targetList) {
+                    targetList.addAll(result)
                 }
             }
         } catch (_: Throwable) {}
     }
 
-    private fun hookAllConstructors(clazz: Class<*>?, hook: XC_MethodHook) {
+    private fun hookAllConstructors(
+        clazz: Class<*>?,
+        hook: XC_MethodHook,
+        targetList: MutableList<XC_MethodHook.Unhook>
+    ) {
         if (clazz == null) return
         try {
             val result = XposedBridge.hookAllConstructors(clazz, hook)
             if (result != null) {
-                synchronized(unhooks) {
-                    unhooks.addAll(result)
+                synchronized(targetList) {
+                    targetList.addAll(result)
                 }
             }
         } catch (_: Throwable) {}
     }
 
     private fun setPrivateField(obj: Any?, fieldName: String, value: Any?) {
-        if (obj == null) return
-        try {
-            var cls: Class<*>? = obj.javaClass
-            while (cls != null) {
-                try {
-                    val field = cls.getDeclaredField(fieldName)
-                    field.isAccessible = true
-                    field.set(obj, value)
-                    return
-                } catch (_: NoSuchFieldException) {
-                    cls = cls.superclass
-                }
-            }
-        } catch (_: Throwable) {}
+        ReflectionCache.setFieldValue(obj, fieldName, value)
     }
 
     private fun getPrivateField(obj: Any?, fieldName: String): Any? {
-        if (obj == null) return null
-        try {
-            var cls: Class<*>? = obj.javaClass
-            while (cls != null) {
-                try {
-                    val field = cls.getDeclaredField(fieldName)
-                    field.isAccessible = true
-                    return field.get(obj)
-                } catch (_: NoSuchFieldException) {
-                    cls = cls.superclass
-                }
-            }
-        } catch (_: Throwable) {}
-        return null
+        return ReflectionCache.getFieldValue(obj, fieldName)
     }
 
     fun isPremiumSticker(doc: Any?): Boolean {
@@ -140,14 +125,14 @@ object PremiumEmojiHook {
 
         try {
             if (videoThumbsField == null) {
-                videoThumbsField = doc.javaClass.getField("video_thumbs")
+                videoThumbsField = ReflectionCache.getField(doc.javaClass, "video_thumbs")
             }
             val thumbs = videoThumbsField?.get(doc) as? List<*> ?: return false
             val size = thumbs.size
             for (i in 0 until size) {
                 val thumb = thumbs[i] ?: continue
                 if (thumbTypeField == null) {
-                    thumbTypeField = thumb.javaClass.getField("type")
+                    thumbTypeField = ReflectionCache.getField(thumb.javaClass, "type")
                 }
                 val type = thumbTypeField?.get(thumb)
                 if ("f" == type) {
@@ -173,25 +158,25 @@ object PremiumEmojiHook {
     }
 
     @JvmStatic
-    fun init(cl: ClassLoader) {
-        messageObjectClass = findClass("org.telegram.messenger.MessageObject", cl)
+    fun init(cl: ClassLoader, unhooksList: MutableList<XC_MethodHook.Unhook> = localUnhooks) {
+        messageObjectClass = ReflectionCache.findClass("org.telegram.messenger.MessageObject", cl)
         if (messageObjectClass != null) {
             try {
-                val docClz = findClass("org.telegram.tgnet.TLRPC\$Document", cl)
+                val docClz = ReflectionCache.findClass("org.telegram.tgnet.TLRPC\$Document", cl)
                 if (docClz != null) {
-                    isPremiumStickerMethod = messageObjectClass!!.getMethod("isPremiumSticker", docClz)
-                    isAnimatedEmojiMethod = messageObjectClass!!.getMethod("isAnimatedEmoji", docClz)
+                    isPremiumStickerMethod = ReflectionCache.getMethod(messageObjectClass, "isPremiumSticker", docClz)
+                    isAnimatedEmojiMethod = ReflectionCache.getMethod(messageObjectClass, "isAnimatedEmoji", docClz)
                 }
             } catch (_: Throwable) {}
         }
 
-        val emojiViewClass = findClass("org.telegram.ui.Components.EmojiView", cl)
-        val emojiGridAdapterClass = findClass("org.telegram.ui.Components.EmojiView\$EmojiGridAdapter", cl)
-        val emojiTabsStripClass = findClass("org.telegram.ui.Components.EmojiTabsStrip", cl)
-        val stickerEmojiCellClass = findClass("org.telegram.ui.Cells.StickerEmojiCell", cl)
-        val mediaDataControllerClass = findClass("org.telegram.messenger.MediaDataController", cl)
-        val selectAnimatedEmojiDialogClass = findClass("org.telegram.ui.SelectAnimatedEmojiDialog", cl)
-        val reactionsContainerLayoutClass = findClass("org.telegram.ui.Components.ReactionsContainerLayout", cl)
+        val emojiViewClass = ReflectionCache.findClass("org.telegram.ui.Components.EmojiView", cl)
+        val emojiGridAdapterClass = ReflectionCache.findClass("org.telegram.ui.Components.EmojiView\$EmojiGridAdapter", cl)
+        val emojiTabsStripClass = ReflectionCache.findClass("org.telegram.ui.Components.EmojiTabsStrip", cl)
+        val stickerEmojiCellClass = ReflectionCache.findClass("org.telegram.ui.Cells.StickerEmojiCell", cl)
+        val mediaDataControllerClass = ReflectionCache.findClass("org.telegram.messenger.MediaDataController", cl)
+        val selectAnimatedEmojiDialogClass = ReflectionCache.findClass("org.telegram.ui.SelectAnimatedEmojiDialog", cl)
+        val reactionsContainerLayoutClass = ReflectionCache.findClass("org.telegram.ui.Components.ReactionsContainerLayout", cl)
 
         // 1. EmojiView Constructor Hook
         hookAllConstructors(emojiViewClass, object : XC_MethodHook() {
@@ -209,7 +194,7 @@ object PremiumEmojiHook {
                 setPrivateField(view, "allowAnimatedEmoji", false)
                 setPrivateField(view, "allowEmojisForNonPremium", false)
             }
-        })
+        }, unhooksList)
 
         // 2. EmojiView.getRecentEmoji
         hookAllMethods(emojiViewClass, "getRecentEmoji", object : XC_MethodHook() {
@@ -235,7 +220,7 @@ object PremiumEmojiHook {
                 }
                 param.result = filtered
             }
-        })
+        }, unhooksList)
 
         // 3. EmojiView.getEmojipacks
         hookAllMethods(emojiViewClass, "getEmojipacks", object : XC_MethodHook() {
@@ -243,7 +228,7 @@ object PremiumEmojiHook {
                 if (!hidePremiumEmojiKeyboard) return
                 param.result = ArrayList<Any>()
             }
-        })
+        }, unhooksList)
 
         // 4. EmojiView.checkDocuments (clean recent/favourite stickers)
         hookAllMethods(emojiViewClass, "checkDocuments", object : XC_MethodHook() {
@@ -259,7 +244,7 @@ object PremiumEmojiHook {
                     }
                 }
             }
-        })
+        }, unhooksList)
 
         // 5. EmojiGridAdapter.processEmoji
         hookAllMethods(emojiGridAdapterClass, "processEmoji", object : XC_MethodHook() {
@@ -285,7 +270,7 @@ object PremiumEmojiHook {
                 if (!hidePremiumEmojiKeyboard) return
                 clean(param.thisObject)
             }
-        })
+        }, unhooksList)
 
         // 6. EmojiGridAdapter.updateRows
         hookAllMethods(emojiGridAdapterClass, "updateRows", object : XC_MethodHook() {
@@ -301,7 +286,7 @@ object PremiumEmojiHook {
                     packs?.clear()
                 }
             }
-        })
+        }, unhooksList)
 
         // 7. EmojiTabsStrip Constructors
         hookAllConstructors(emojiTabsStripClass, object : XC_MethodHook() {
@@ -322,7 +307,7 @@ object PremiumEmojiHook {
                     setPrivateField(strip, "includeAnimated", false)
                 }
             }
-        })
+        }, unhooksList)
 
         // 8. EmojiTabsStrip.updateEmojiPacks
         hookAllMethods(emojiTabsStripClass, "updateEmojiPacks", object : XC_MethodHook() {
@@ -338,7 +323,7 @@ object PremiumEmojiHook {
                     }
                 }
             }
-        })
+        }, unhooksList)
 
         // 9. EmojiView.addEmojiToRecent (block animated from being saved from keyboard)
         hookAllMethods(emojiViewClass, "addEmojiToRecent", object : XC_MethodHook() {
@@ -352,7 +337,7 @@ object PremiumEmojiHook {
                     }
                 }
             }
-        })
+        }, unhooksList)
 
         // 10. StickerEmojiCell.setSticker (ZERO-LAG high performance recycling cell hook)
         hookAllMethods(stickerEmojiCellClass, "setSticker", object : XC_MethodHook() {
@@ -373,7 +358,7 @@ object PremiumEmojiHook {
                     }
                 }
             }
-        })
+        }, unhooksList)
 
         // 11. MediaDataController.getStickerSets & getFeaturedEmojiSets
         hookAllMethods(mediaDataControllerClass, "getStickerSets", object : XC_MethodHook() {
@@ -405,7 +390,7 @@ object PremiumEmojiHook {
                     }
                 }
             }
-        })
+        }, unhooksList)
 
         hookAllMethods(mediaDataControllerClass, "getFeaturedEmojiSets", object : XC_MethodHook() {
             override fun beforeHookedMethod(param: MethodHookParam) {
@@ -413,7 +398,7 @@ object PremiumEmojiHook {
                     param.result = ArrayList<Any>()
                 }
             }
-        })
+        }, unhooksList)
 
         // 12. SelectAnimatedEmojiDialog.updateRows (reactions window category bar & packs suppression)
         hookAllMethods(selectAnimatedEmojiDialogClass, "updateRows", object : XC_MethodHook() {
@@ -427,22 +412,25 @@ object PremiumEmojiHook {
             }
 
             override fun afterHookedMethod(param: MethodHookParam) {
-                isSuppressingReactionPacks.set(false)
-                if (!hidePremiumEmojiReactions) return
-                val dialog = param.thisObject ?: return
-                val dtype = getPrivateField(dialog, "type")
-                if (dtype is Int && (dtype == 1 || dtype == 8 || dtype == 11)) {
-                    val tabs = getPrivateField(dialog, "emojiTabs") as? View
-                    if (tabs != null && tabs.visibility != View.GONE) {
-                        tabs.visibility = View.GONE
+                try {
+                    if (!hidePremiumEmojiReactions) return
+                    val dialog = param.thisObject ?: return
+                    val dtype = getPrivateField(dialog, "type")
+                    if (dtype is Int && (dtype == 1 || dtype == 8 || dtype == 11)) {
+                        val tabs = getPrivateField(dialog, "emojiTabs") as? View
+                        if (tabs != null && tabs.visibility != View.GONE) {
+                            tabs.visibility = View.GONE
+                        }
+                        val shadow = getPrivateField(dialog, "emojiTabsShadow") as? View
+                        if (shadow != null && shadow.visibility != View.GONE) {
+                            shadow.visibility = View.GONE
+                        }
                     }
-                    val shadow = getPrivateField(dialog, "emojiTabsShadow") as? View
-                    if (shadow != null && shadow.visibility != View.GONE) {
-                        shadow.visibility = View.GONE
-                    }
+                } finally {
+                    isSuppressingReactionPacks.remove()
                 }
             }
-        })
+        }, unhooksList)
 
         // 13. ReactionsContainerLayout (quick bar custom emoji reactions)
         val reactionsFilterHook = object : XC_MethodHook() {
@@ -465,9 +453,9 @@ object PremiumEmojiHook {
                 filterReactions(getPrivateField(layout, "visibleReactionsList") as? ArrayList<*>)
             }
         }
-        hookAllMethods(reactionsContainerLayoutClass, "showCustomEmojiReactionDialog", reactionsFilterHook)
-        hookAllMethods(reactionsContainerLayoutClass, "setMessage", reactionsFilterHook)
-        hookAllMethods(reactionsContainerLayoutClass, "setVisibleReactionsList", reactionsFilterHook)
-        hookAllConstructors(reactionsContainerLayoutClass, reactionsFilterHook)
+        hookAllMethods(reactionsContainerLayoutClass, "showCustomEmojiReactionDialog", reactionsFilterHook, unhooksList)
+        hookAllMethods(reactionsContainerLayoutClass, "setMessage", reactionsFilterHook, unhooksList)
+        hookAllMethods(reactionsContainerLayoutClass, "setVisibleReactionsList", reactionsFilterHook, unhooksList)
+        hookAllConstructors(reactionsContainerLayoutClass, reactionsFilterHook, unhooksList)
     }
 }

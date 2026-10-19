@@ -6,13 +6,14 @@ import de.robv.android.xposed.XposedBridge
 import java.lang.reflect.Field
 import java.lang.reflect.Method
 import java.util.ArrayList
+import non.feature.litegram.core.ReflectionCache
 
 object PremiumBadgeHook {
 
     @Volatile @JvmStatic var hidePremiumBadge: Boolean = false
     @Volatile @JvmStatic var hideCollectibleStatus: Boolean = false
 
-    private val unhooks = ArrayList<XC_MethodHook.Unhook>()
+    private val localUnhooks = ArrayList<XC_MethodHook.Unhook>()
 
     private var userClass: Class<*>? = null
     private var userVerifiedField: Field? = null
@@ -37,118 +38,70 @@ object PremiumBadgeHook {
     @JvmStatic
     fun setFlag(name: String, enabled: Boolean) {
         when (name) {
-            "hidePremiumBadge" -> hidePremiumBadge = enabled
-            "hideCollectibleStatus" -> hideCollectibleStatus = enabled
+            "hidePremiumBadge", "hide_premium_badge" -> hidePremiumBadge = enabled
+            "hideCollectibleStatus", "hide_collectible_status" -> hideCollectibleStatus = enabled
         }
     }
 
     @JvmStatic
     fun unload() {
-        synchronized(unhooks) {
-            for (u in unhooks) {
+        synchronized(localUnhooks) {
+            for (u in localUnhooks) {
                 try {
                     u.unhook()
                 } catch (_: Throwable) {}
             }
-            unhooks.clear()
+            localUnhooks.clear()
         }
+
+        userClass = null
+        userVerifiedField = null
+        badgeDtoClass = null
+        badgesControllerClass = null
+        badgesControllerInstanceField = null
+        badgesControllerHasBadgeMethod = null
+        badgesControllerGetBadgeMethod = null
+        premiumGradientClass = null
+        premiumGradientGetInstanceMethod = null
+        premiumStarMiniField = null
+        swapSetMethod = null
     }
 
-    private fun findClass(name: String, cl: ClassLoader): Class<*>? {
-        return try {
-            Class.forName(name, false, cl)
-        } catch (_: Throwable) {
-            null
-        }
-    }
-
-    private fun findField(clazz: Class<*>?, fieldName: String): Field? {
-        var cls = clazz
-        while (cls != null) {
-            try {
-                val f = cls.getDeclaredField(fieldName)
-                f.isAccessible = true
-                return f
-            } catch (_: NoSuchFieldException) {
-                cls = cls.superclass
-            }
-        }
-        return null
-    }
-
-    private fun hookAllMethods(clazz: Class<*>?, methodName: String, hook: XC_MethodHook) {
+    private fun hookAllMethods(
+        clazz: Class<*>?,
+        methodName: String,
+        hook: XC_MethodHook,
+        targetList: MutableList<XC_MethodHook.Unhook>
+    ) {
         if (clazz == null) return
         try {
             val result = XposedBridge.hookAllMethods(clazz, methodName, hook)
             if (result != null) {
-                synchronized(unhooks) {
-                    unhooks.addAll(result)
+                synchronized(targetList) {
+                    targetList.addAll(result)
                 }
             }
         } catch (_: Throwable) {}
     }
 
-    private fun setPrivateField(obj: Any?, fieldName: String, value: Any?) {
-        if (obj == null) return
-        try {
-            var cls: Class<*>? = obj.javaClass
-            while (cls != null) {
-                try {
-                    val field = cls.getDeclaredField(fieldName)
-                    field.isAccessible = true
-                    if (value is Int && field.type == Int::class.javaPrimitiveType) {
-                        field.setInt(obj, value)
-                    } else if (value is Boolean && field.type == Boolean::class.javaPrimitiveType) {
-                        field.setBoolean(obj, value)
-                    } else {
-                        field.set(obj, value)
-                    }
-                    return
-                } catch (_: NoSuchFieldException) {
-                    cls = cls.superclass
-                }
-            }
-        } catch (_: Throwable) {}
-    }
-
-    private fun getPrivateField(obj: Any?, fieldName: String): Any? {
-        if (obj == null) return null
-        try {
-            var cls: Class<*>? = obj.javaClass
-            while (cls != null) {
-                try {
-                    val field = cls.getDeclaredField(fieldName)
-                    field.isAccessible = true
-                    return field.get(obj)
-                } catch (_: NoSuchFieldException) {
-                    cls = cls.superclass
-                }
-            }
-        } catch (_: Throwable) {}
+    private fun findPremiumGradientClass(cl: ClassLoader): Class<*>? {
+        for (pkg in arrayOf(
+            "com.exteragram.messenger.utils.PremiumGradient",
+            "org.telegram.ui.Components.Premium.PremiumGradient"
+        )) {
+            val cls = ReflectionCache.findClass(pkg, cl)
+            if (cls != null) return cls
+        }
         return null
     }
 
     private fun findStatusBadgeComponentClass(cl: ClassLoader): Class<*>? {
         for (pkg in arrayOf(
             "org.telegram.ui.Components.StatusBadgeComponent",
-            "org.telegram.p035ui.Components.StatusBadgeComponent",
-            "org.telegram.p022ui.Components.StatusBadgeComponent",
-            "org.telegram.p031ui.Components.StatusBadgeComponent"
+            "com.exteragram.messenger.ui.StatusBadgeComponent",
+            "org.telegram.ui.Components.Reactions.StatusBadgeComponent"
         )) {
-            val cls = findClass(pkg, cl)
-            if (cls != null) return cls
-        }
-        return null
-    }
-
-    private fun findPremiumGradientClass(cl: ClassLoader): Class<*>? {
-        for (pkg in arrayOf(
-            "org.telegram.ui.Components.Premium.PremiumGradient",
-            "org.telegram.p035ui.Components.Premium.PremiumGradient",
-            "org.telegram.p022ui.Components.Premium.PremiumGradient",
-            "org.telegram.p031ui.Components.Premium.PremiumGradient"
-        )) {
-            val cls = findClass(pkg, cl)
+            val cls = ReflectionCache.findClass(pkg, cl)
             if (cls != null) return cls
         }
         return null
@@ -173,11 +126,11 @@ object PremiumBadgeHook {
     private fun getPremiumStarMini(clazz: Class<*>): Any? {
         try {
             if (premiumGradientGetInstanceMethod == null) {
-                premiumGradientGetInstanceMethod = clazz.getMethod("getInstance")
+                premiumGradientGetInstanceMethod = ReflectionCache.getMethod(clazz, "getInstance")
             }
             val instance = premiumGradientGetInstanceMethod?.invoke(null) ?: return null
             if (premiumStarMiniField == null) {
-                premiumStarMiniField = clazz.getField("premiumStarDrawableMini")
+                premiumStarMiniField = ReflectionCache.getField(clazz, "premiumStarDrawableMini")
             }
             return premiumStarMiniField?.get(instance)
         } catch (_: Throwable) {
@@ -193,96 +146,81 @@ object PremiumBadgeHook {
             }
         } catch (_: Throwable) {}
         try {
-            var cls: Class<*>? = drawable.javaClass
-            while (cls != null) {
-                try {
-                    val m = cls.getDeclaredMethod("set", Drawable::class.java, Boolean::class.javaPrimitiveType)
-                    m.isAccessible = true
-                    swapSetMethod = m
-                    m.invoke(drawable, null, false)
-                    return
-                } catch (_: NoSuchMethodException) {
-                    cls = cls.superclass
-                }
+            val m = ReflectionCache.getMethod(drawable.javaClass, "set", Drawable::class.java, Boolean::class.javaPrimitiveType)
+            if (m != null) {
+                swapSetMethod = m
+                m.invoke(drawable, null, false)
             }
         } catch (_: Throwable) {}
     }
 
     @JvmStatic
-    fun init(cl: ClassLoader) {
-        userClass = findClass("org.telegram.tgnet.TLRPC\$User", cl)
+    fun init(cl: ClassLoader, unhooksList: MutableList<XC_MethodHook.Unhook> = localUnhooks) {
+        userClass = ReflectionCache.findClass("org.telegram.tgnet.TLRPC\$User", cl)
         if (userClass != null) {
-            try {
-                userVerifiedField = userClass!!.getField("verified")
-            } catch (_: Throwable) {
-                userVerifiedField = findField(userClass, "verified")
-            }
+            userVerifiedField = ReflectionCache.getField(userClass, "verified")
         }
 
-        badgeDtoClass = findClass("com.exteragram.messenger.api.dto.BadgeDTO", cl)
-        badgesControllerClass = findClass("com.exteragram.messenger.badges.BadgesController", cl)
+        badgeDtoClass = ReflectionCache.findClass("com.exteragram.messenger.api.dto.BadgeDTO", cl)
+        badgesControllerClass = ReflectionCache.findClass("com.exteragram.messenger.badges.BadgesController", cl)
         if (badgesControllerClass != null) {
-            try {
-                badgesControllerInstanceField = badgesControllerClass!!.getField("INSTANCE")
-            } catch (_: Throwable) {}
-            try {
-                badgesControllerHasBadgeMethod = badgesControllerClass!!.getMethod("hasBadge", userClass)
-            } catch (_: Throwable) {}
-            try {
-                badgesControllerGetBadgeMethod = badgesControllerClass!!.getMethod("getBadge", userClass)
-            } catch (_: Throwable) {}
+            badgesControllerInstanceField = ReflectionCache.getField(badgesControllerClass, "INSTANCE")
+            if (userClass != null) {
+                badgesControllerHasBadgeMethod = ReflectionCache.getMethod(badgesControllerClass, "hasBadge", userClass!!)
+                badgesControllerGetBadgeMethod = ReflectionCache.getMethod(badgesControllerClass, "getBadge", userClass!!)
+            }
         }
 
         premiumGradientClass = findPremiumGradientClass(cl)
 
-        val userObjectClass = findClass("org.telegram.messenger.UserObject", cl)
-        val dialogObjectClass = findClass("org.telegram.messenger.DialogObject", cl)
-        val messageObjectClass = findClass("org.telegram.messenger.MessageObject", cl)
-        val messagesControllerClass = findClass("org.telegram.messenger.MessagesController", cl)
-        val chatMessageCellClass = findClass("org.telegram.ui.Cells.ChatMessageCell", cl)
-        val swapAnimatedEmojiDrawableClass = findClass("org.telegram.ui.Components.AnimatedEmojiDrawable\$SwapAnimatedEmojiDrawable", cl)
+        val userObjectClass = ReflectionCache.findClass("org.telegram.messenger.UserObject", cl)
+        val dialogObjectClass = ReflectionCache.findClass("org.telegram.messenger.DialogObject", cl)
+        val messageObjectClass = ReflectionCache.findClass("org.telegram.messenger.MessageObject", cl)
+        val messagesControllerClass = ReflectionCache.findClass("org.telegram.messenger.MessagesController", cl)
+        val chatMessageCellClass = ReflectionCache.findClass("org.telegram.ui.Cells.ChatMessageCell", cl)
+        val swapAnimatedEmojiDrawableClass = ReflectionCache.findClass("org.telegram.ui.Components.AnimatedEmojiDrawable\$SwapAnimatedEmojiDrawable", cl)
         val statusBadgeComponentClass = findStatusBadgeComponentClass(cl)
-        val drawerHeaderViewClass = findClass("com.exteragram.messenger.drawer.DrawerHeaderView", cl)
-        val accountRowViewClass = findClass("com.exteragram.messenger.drawer.DrawerAccountPickerView\$AccountRowView", cl)
-        val profileActivityClass = findClass("org.telegram.ui.ProfileActivity", cl)
+        val drawerHeaderViewClass = ReflectionCache.findClass("com.exteragram.messenger.drawer.DrawerHeaderView", cl)
+        val accountRowViewClass = ReflectionCache.findClass("com.exteragram.messenger.drawer.DrawerAccountPickerView\$AccountRowView", cl)
+        val profileActivityClass = ReflectionCache.findClass("org.telegram.ui.ProfileActivity", cl)
 
         // 1. UserObject.getEmojiStatusDocumentId -> null
         hookAllMethods(userObjectClass, "getEmojiStatusDocumentId", object : XC_MethodHook() {
             override fun beforeHookedMethod(param: MethodHookParam) {
                 if (!hidePremiumBadge) return
-                param.setResult(null)
+                param.result = null
             }
-        })
+        }, unhooksList)
 
         // 2. DialogObject & MessageObject.getEmojiStatusDocumentId -> 0
         val zeroHook = object : XC_MethodHook() {
             override fun beforeHookedMethod(param: MethodHookParam) {
                 if (!hidePremiumBadge) return
-                param.setResult(0L)
+                param.result = 0L
             }
         }
-        hookAllMethods(dialogObjectClass, "getEmojiStatusDocumentId", zeroHook)
-        hookAllMethods(messageObjectClass, "getEmojiStatusDocumentId", zeroHook)
+        hookAllMethods(dialogObjectClass, "getEmojiStatusDocumentId", zeroHook, unhooksList)
+        hookAllMethods(messageObjectClass, "getEmojiStatusDocumentId", zeroHook, unhooksList)
 
         // 3. isEmojiStatusCollectible -> false (when hidePremiumBadge OR hideCollectibleStatus)
         val isCollectibleHook = object : XC_MethodHook() {
             override fun beforeHookedMethod(param: MethodHookParam) {
                 if (hidePremiumBadge || hideCollectibleStatus) {
-                    param.setResult(false)
+                    param.result = false
                 }
             }
         }
-        hookAllMethods(userObjectClass, "isEmojiStatusCollectible", isCollectibleHook)
-        hookAllMethods(dialogObjectClass, "isEmojiStatusCollectible", isCollectibleHook)
-        hookAllMethods(messageObjectClass, "isEmojiStatusCollectible", isCollectibleHook)
+        hookAllMethods(userObjectClass, "isEmojiStatusCollectible", isCollectibleHook, unhooksList)
+        hookAllMethods(dialogObjectClass, "isEmojiStatusCollectible", isCollectibleHook, unhooksList)
+        hookAllMethods(messageObjectClass, "isEmojiStatusCollectible", isCollectibleHook, unhooksList)
 
         // 4. MessagesController.isPremiumUser -> false
         hookAllMethods(messagesControllerClass, "isPremiumUser", object : XC_MethodHook() {
             override fun beforeHookedMethod(param: MethodHookParam) {
                 if (!hidePremiumBadge) return
-                param.setResult(false)
+                param.result = false
             }
-        })
+        }, unhooksList)
 
         // 5. ChatMessageCell.getAuthorStatus
         hookAllMethods(chatMessageCellClass, "getAuthorStatus", object : XC_MethodHook() {
@@ -293,15 +231,15 @@ object PremiumBadgeHook {
                     return
                 }
                 if (res is Number) {
-                    param.setResult(null)
+                    param.result = null
                     return
                 }
                 val clsName = res.javaClass.name
                 if (clsName.contains("Drawable") || clsName.contains("Long") || clsName.contains("Integer") || clsName.contains("Number")) {
-                    param.setResult(null)
+                    param.result = null
                 }
             }
-        })
+        }, unhooksList)
 
         // 6. SwapAnimatedEmojiDrawable.set
         hookAllMethods(swapAnimatedEmojiDrawableClass, "set", object : XC_MethodHook() {
@@ -326,7 +264,7 @@ object PremiumBadgeHook {
                     }
                 }
             }
-        })
+        }, unhooksList)
 
         // 7. StatusBadgeComponent.updateDrawable
         hookAllMethods(statusBadgeComponentClass, "updateDrawable", object : XC_MethodHook() {
@@ -356,19 +294,19 @@ object PremiumBadgeHook {
                     setDrawableNull(res)
                 }
             }
-        })
+        }, unhooksList)
 
         // 8. DrawerHeaderView.updateUserInfo & AccountRowView.bind
         val drawerHook = object : XC_MethodHook() {
             override fun afterHookedMethod(param: MethodHookParam) {
                 if (!hidePremiumBadge) return
                 val obj = param.thisObject ?: return
-                val drawable = getPrivateField(obj, "premiumStatusDrawable") ?: return
+                val drawable = ReflectionCache.getFieldValue(obj, "premiumStatusDrawable") ?: return
                 setDrawableNull(drawable)
             }
         }
-        hookAllMethods(drawerHeaderViewClass, "updateUserInfo", drawerHook)
-        hookAllMethods(accountRowViewClass, "bind", drawerHook)
+        hookAllMethods(drawerHeaderViewClass, "updateUserInfo", drawerHook, unhooksList)
+        hookAllMethods(accountRowViewClass, "bind", drawerHook, unhooksList)
 
         // 9. ProfileActivity.setCollectibleGiftStatus
         hookAllMethods(profileActivityClass, "setCollectibleGiftStatus", object : XC_MethodHook() {
@@ -376,26 +314,26 @@ object PremiumBadgeHook {
                 if (!hideCollectibleStatus) return
                 val obj = param.thisObject ?: return
                 try {
-                    val hint = getPrivateField(obj, "collectibleHint")
+                    val hint = ReflectionCache.getFieldValue(obj, "collectibleHint")
                     if (hint != null) {
                         try {
                             hint.javaClass.getMethod("hide").invoke(hint)
                         } catch (_: Throwable) {}
                     }
-                    setPrivateField(obj, "collectibleHint", null)
-                    setPrivateField(obj, "collectibleHintVisible", false)
-                    setPrivateField(obj, "collectibleStatus", null)
-                    setPrivateField(obj, "emojiStatusGiftId", null)
+                    ReflectionCache.setFieldValue(obj, "collectibleHint", null)
+                    ReflectionCache.setFieldValue(obj, "collectibleHintVisible", false)
+                    ReflectionCache.setFieldValue(obj, "collectibleStatus", null)
+                    ReflectionCache.setFieldValue(obj, "emojiStatusGiftId", null)
                 } catch (_: Throwable) {}
-                param.setResult(null)
+                param.result = null
             }
-        })
+        }, unhooksList)
 
         // 10. ProfileActivity.getEmojiStatusDrawable
         hookAllMethods(profileActivityClass, "getEmojiStatusDrawable", object : XC_MethodHook() {
             override fun beforeHookedMethod(param: MethodHookParam) {
                 if (hidePremiumBadge) {
-                    param.setResult(null)
+                    param.result = null
                 }
             }
 
@@ -403,10 +341,15 @@ object PremiumBadgeHook {
                 if (!hideCollectibleStatus) return
                 val res = param.result ?: return
                 try {
-                    val m = res.javaClass.getMethod("setParticles", Boolean::class.javaPrimitiveType, Boolean::class.javaPrimitiveType)
-                    m.invoke(res, false, true)
+                    val m = ReflectionCache.getMethod(res.javaClass, "setParticles", Boolean::class.javaPrimitiveType, Boolean::class.javaPrimitiveType)
+                    if (m != null) {
+                        m.invoke(res, false, true)
+                    } else {
+                        val fallback = res.javaClass.getMethod("setParticles", Boolean::class.javaPrimitiveType, Boolean::class.javaPrimitiveType)
+                        fallback.invoke(res, false, true)
+                    }
                 } catch (_: Throwable) {}
             }
-        })
+        }, unhooksList)
     }
 }

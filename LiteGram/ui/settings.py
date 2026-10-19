@@ -8,11 +8,8 @@ from LiteGram.main import LiteGramPlugin
 from LiteGram.utils.extera_utils import resolve_icon
 from LiteGram.utils.settings_utils import (
     Switch,
-    on_media_toggle,
-    on_toggle_with_restart,
     open_extera_tab,
     open_url_view,
-    show_restart_bulletin,
     toggle_premium_emoji_options,
     toggle_premium_stickers_options,
     toggle_settings_options,
@@ -38,7 +35,7 @@ def _chat_settings() -> list[Any]:
         from LiteGram.utils.utils import get_client_version, parse_version
 
         if parse_version(get_client_version()) >= (12, 9, 0):
-            chat_list_items.append(Switch(text=t("hide_communities"), key=Keys.hide_communities, on_change=on_toggle_with_restart(Keys.hide_communities)))
+            chat_list_items.append(Switch(text=t("hide_communities"), key=Keys.hide_communities))
     except Exception:
         pass
 
@@ -78,10 +75,10 @@ def _chat_settings() -> list[Any]:
         [
             Header(text=t("premium_emoji_settings_header")),
             Text(text=t("switch_all"), link_alias=Keys.switch_all_premium_emoji, on_click=toggle_premium_emoji_options),
-            *[Switch(text=t(text_key), key=key, default=False, on_change=on_media_toggle(key)) for key, text_key in Keys.PREMIUM_EMOJI_ROWS],
+            *[Switch(text=t(text_key), key=key, default=False) for key, text_key in Keys.PREMIUM_EMOJI_ROWS],
             Header(text=t("premium_stickers_settings_header")),
             Text(text=t("switch_all"), link_alias=Keys.switch_all_premium_stickers, on_click=toggle_premium_stickers_options),
-            *[Switch(text=t(text_key), key=key, default=False, on_change=on_media_toggle(key)) for key, text_key in Keys.PREMIUM_STICKERS_ROWS],
+            *[Switch(text=t(text_key), key=key, default=False) for key, text_key in Keys.PREMIUM_STICKERS_ROWS],
         ]
     )
 
@@ -115,7 +112,6 @@ def _on_premium_badge_toggle(val: bool):
     plugin.set_setting(Keys.hide_premium_badge, val, reload_settings=False)
     # Update collectible status and trigger UI rebuild
     plugin.set_setting(Keys.hide_collectible_status, val, reload_settings=True)
-    show_restart_bulletin(val)
 
 
 def _profile_settings() -> list[Any]:
@@ -151,7 +147,6 @@ def _profile_settings() -> list[Any]:
                 text=t("hide_collectible_status"),
                 subtext=t("hide_collectible_status_sub"),
                 key=Keys.hide_collectible_status,
-                on_change=on_toggle_with_restart(Keys.hide_collectible_status),
             )
         )
 

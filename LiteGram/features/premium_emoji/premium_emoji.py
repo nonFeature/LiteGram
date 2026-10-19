@@ -2,7 +2,7 @@ from hook_utils import find_class, get_private_field
 
 from LiteGram.data.constants import Keys
 from LiteGram.main import LiteGramPlugin
-from LiteGram.utils.dex_utils import load_dex_class
+from LiteGram.utils.dex_utils import dex_bridge
 from LiteGram.utils.xposed_utils import BaseHook
 
 
@@ -347,63 +347,25 @@ _premium_emoji_dex = None
 
 
 def init_premium_emoji_dex(plugin):
-    global _premium_emoji_dex
-    if _premium_emoji_dex is not None:
-        update_premium_emoji_dex_settings(plugin)
-        return
-
-    dex_class = load_dex_class("non.feature.litegram.premium_emoji.PremiumEmojiHook", plugin)
-    if not dex_class:
-        return
-
-    try:
-        ApplicationLoader = find_class("org.telegram.messenger.ApplicationLoader")
-        if not ApplicationLoader:
-            return
-        context = getattr(ApplicationLoader, "applicationContext", None)
-        if not context:
-            return
-        parent_cl = context.getClassLoader()
-
-        init_method = dex_class.getMethod("init", find_class("java.lang.ClassLoader"))
-        init_method.invoke(None, parent_cl)
-
-        _premium_emoji_dex = dex_class
-        update_premium_emoji_dex_settings(plugin)
-        plugin.log("[LiteGram] PremiumEmoji Kotlin DEX loaded.")
-    except Exception as e:
-        plugin.log(f"[LiteGram] Failed to init PremiumEmoji DEX: {e}")
+    if not dex_bridge.is_loaded():
+        dex_bridge.load(plugin)
+    update_premium_emoji_dex_settings(plugin)
 
 
 def update_premium_emoji_dex_settings(plugin):
-    if _premium_emoji_dex is None:
-        return
-    try:
-        BooleanClz = find_class("java.lang.Boolean")
-        StringClz = find_class("java.lang.String")
-        bool_type = getattr(BooleanClz, "TYPE", None)
-        set_flag_method = _premium_emoji_dex.getMethod("setFlag", StringClz, bool_type)
-        for key in (
-            Keys.hide_premium_emoji_keyboard,
-            Keys.hide_premium_stickers_recent,
-            Keys.hide_premium_stickers_grid,
-            Keys.hide_premium_emoji_reactions,
-            Keys.hide_group_stickers,
-        ):
-            val = bool(plugin.get_setting(key, False))
-            set_flag_method.invoke(None, key, val)
-    except Exception as e:
-        plugin.log(f"[LiteGram] Failed to update PremiumEmoji DEX settings: {e}")
+    for key in (
+        Keys.hide_premium_emoji_keyboard,
+        Keys.hide_premium_stickers_recent,
+        Keys.hide_premium_stickers_grid,
+        Keys.hide_premium_emoji_reactions,
+        Keys.hide_group_stickers,
+    ):
+        val = bool(plugin.get_setting(key, False))
+        dex_bridge.set_flag(key, val)
 
 
 def unload_premium_emoji_dex():
-    global _premium_emoji_dex
-    if _premium_emoji_dex is not None:
-        try:
-            _premium_emoji_dex.getMethod("unload").invoke(None)
-        except Exception:
-            pass
-        _premium_emoji_dex = None
+    pass
 
 
 # ============================================================

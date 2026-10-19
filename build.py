@@ -599,7 +599,7 @@ def compile_kotlin_to_dex(minify: bool = False) -> bool:
             "    public static void checkParameterIsNotNull(java.lang.Object, java.lang.String);\n"
             "}\n\n"
             "-keep class non.feature.litegram.** {\n"
-            "    public static *;\n"
+            "    *;\n"
             "}\n\n"
             "-keepclassmembers class * extends de.robv.android.xposed.XC_MethodHook {\n"
             "    protected void beforeHookedMethod(de.robv.android.xposed.XC_MethodHook$MethodHookParam);\n"
