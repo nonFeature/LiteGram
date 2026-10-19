@@ -22,7 +22,7 @@ SETTINGS_OPTION_ROWS = Keys.SETTINGS_OPTION_ROWS
 
 
 def _chat_settings() -> list[Any]:
-    settings = [
+    chat_list_items: list[Any] = [
         Header(text=t("chat_list")),
         Text(text=t("hide_stories"), link_alias=Keys.hide_stories, on_click=open_extera_tab(Keys.hide_stories), icon=resolve_icon("extera_outline")),
         Text(
@@ -32,7 +32,18 @@ def _chat_settings() -> list[Any]:
             icon=resolve_icon("extera_outline"),
         ),
         Switch(text=t("hide_greeting_button"), key=Keys.hide_greeting_button, subtext=t("hide_greeting_button_sub")),
-        Switch(text=t("hide_communities"), key=Keys.hide_communities, on_change=on_toggle_with_restart(Keys.hide_communities)),
+    ]
+
+    try:
+        from LiteGram.utils.utils import get_client_version, parse_version
+
+        if parse_version(get_client_version()) >= (12, 9, 0):
+            chat_list_items.append(Switch(text=t("hide_communities"), key=Keys.hide_communities, on_change=on_toggle_with_restart(Keys.hide_communities)))
+    except Exception:
+        pass
+
+    settings = [
+        *chat_list_items,
         Header(text=t("action_bar")),
         Switch(text=t("hide_action_bar_live_stream"), key=Keys.hide_action_bar_live_stream),
         Switch(text=t("hide_action_bar_archived_stories"), key=Keys.hide_action_bar_archived_stories),

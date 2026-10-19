@@ -14,6 +14,14 @@ def init_hide_communities_dex(plugin: Any) -> None:
         update_hide_communities_dex_settings(plugin)
         return
 
+    try:
+        from LiteGram.utils.utils import get_client_version, parse_version
+
+        if parse_version(get_client_version()) < (12, 9, 0):
+            return
+    except Exception:
+        return
+
     dex_cls = load_dex_class("non.feature.litegram.hide_communities.HideCommunitiesHook", plugin)
     if not dex_cls:
         return
