@@ -54,7 +54,7 @@ def _chat_settings() -> list[Any]:
             settings.extend(
                 [
                     Switch(text=t("hide_articles_editor"), key=Keys.hide_articles_editor),
-                    Switch(text=t("hide_todo_button"), key=Keys.hide_todo_button),
+                    Switch(text=t("hide_todo_button"), subtext=t("hide_todo_button_sub"), key=Keys.hide_todo_button),
                 ]
             )
     except Exception:
