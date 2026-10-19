@@ -528,6 +528,7 @@ def compile_kotlin_to_dex(minify: bool = False) -> bool:
     kotlinc_home = tools_dir / "kotlinc"
     preloader_jar = kotlinc_home / "lib" / "kotlin-preloader.jar"
     compiler_jar = kotlinc_home / "lib" / "kotlin-compiler.jar"
+    kt_stdlib_jar = kotlinc_home / "lib" / "kotlin-stdlib.jar"
     android_jar = tools_dir / "android.jar"
     d8_jar = tools_dir / "d8.jar"
     xposed_jar = tools_dir / "xposed-api.jar"
@@ -555,7 +556,17 @@ def compile_kotlin_to_dex(minify: bool = False) -> bool:
         str(jar_path),
         "-classpath",
         classpath,
+        "-jvm-target",
+        "1.8",
     ]
+    if minify:
+        cmd_kotlinc.extend(
+            [
+                "-Xno-param-assertions",
+                "-Xno-call-assertions",
+                "-Xno-receiver-assertions",
+            ]
+        )
 
     try:
         subprocess.run(cmd_kotlinc, check=True)
@@ -563,33 +574,96 @@ def compile_kotlin_to_dex(minify: bool = False) -> bool:
         print(f"Failed to compile Kotlin: {e}")
         return False
 
-    print("Converting to DEX...")
-    cmd_d8 = [
-        java_exe,
-        "-cp",
-        str(d8_jar),
-        "com.android.tools.r8.D8",
-        str(jar_path),
-        "--output",
-        str(build_dir),
-        "--lib",
-        str(android_jar),
-        "--lib",
-        str(xposed_jar),
-    ]
+    dex_out_dir = build_dir / "dex_out"
+    dex_out_dir.mkdir(exist_ok=True)
+    for existing in dex_out_dir.glob("*.dex"):
+        try:
+            existing.unlink()
+        except Exception:
+            pass
+
     if minify:
-        cmd_d8.append("--release")
+        print("⚡ Minifying and converting to DEX (R8 aggressive mode)...")
+        r8_rules_file = build_dir / "r8_rules.pro"
+        r8_rules_file.write_text(
+            "-dontwarn **\n"
+            "-repackageclasses ''\n"
+            "-allowaccessmodification\n"
+            "-overloadaggressively\n\n"
+            "-assumenosideeffects class kotlin.jvm.internal.Intrinsics {\n"
+            "    public static void checkNotNullParameter(java.lang.Object, java.lang.String);\n"
+            "    public static void checkNotNullExpressionValue(java.lang.Object, java.lang.String);\n"
+            "    public static void checkNotNull(java.lang.Object);\n"
+            "    public static void checkNotNull(java.lang.Object, java.lang.String);\n"
+            "    public static void checkExpressionValueIsNotNull(java.lang.Object, java.lang.String);\n"
+            "    public static void checkParameterIsNotNull(java.lang.Object, java.lang.String);\n"
+            "}\n\n"
+            "-keep class non.feature.litegram.** {\n"
+            "    public static *;\n"
+            "}\n\n"
+            "-keepclassmembers class * extends de.robv.android.xposed.XC_MethodHook {\n"
+            "    protected void beforeHookedMethod(de.robv.android.xposed.XC_MethodHook$MethodHookParam);\n"
+            "    protected void afterHookedMethod(de.robv.android.xposed.XC_MethodHook$MethodHookParam);\n"
+            "}\n",
+            encoding="utf-8",
+        )
+
+        stdlib_args = ["--lib", str(kt_stdlib_jar)] if kt_stdlib_jar.exists() else []
+        cmd_dex = [
+            java_exe,
+            "-cp",
+            str(d8_jar),
+            "com.android.tools.r8.R8",
+            str(jar_path),
+            "--output",
+            str(dex_out_dir),
+            "--lib",
+            str(android_jar),
+            "--lib",
+            str(xposed_jar),
+            *stdlib_args,
+            "--min-api",
+            "26",
+            "--pg-conf",
+            str(r8_rules_file),
+            "--release",
+            "--no-data-resources",
+        ]
+    else:
+        print("Converting to DEX (D8 debug mode)...")
+        cmd_dex = [
+            java_exe,
+            "-cp",
+            str(d8_jar),
+            "com.android.tools.r8.D8",
+            str(jar_path),
+            "--output",
+            str(dex_out_dir),
+            "--lib",
+            str(android_jar),
+            "--lib",
+            str(xposed_jar),
+            "--min-api",
+            "26",
+        ]
 
     try:
-        subprocess.run(cmd_d8, check=True)
+        subprocess.run(cmd_dex, check=True)
     except Exception as e:
-        print(f"Failed to run d8: {e}")
+        print(f"Failed to run DEX converter: {e}")
         return False
 
-    dex_path = build_dir / "classes.dex"
+    dex_path = dex_out_dir / "classes.dex"
     if not dex_path.exists():
         print("classes.dex not found!")
         return False
+
+    try:
+        import shutil
+
+        shutil.copy2(dex_path, build_dir / "classes.dex")
+    except Exception:
+        pass
 
     with open(dex_path, "rb") as f:
         dex_bytes = f.read()
@@ -602,7 +676,7 @@ def compile_kotlin_to_dex(minify: bool = False) -> bool:
         f.write(f'DEX_HASH = "{dex_hash}"\n')
 
     hash_file.write_text(current_hash, encoding="utf-8")
-    print(f"Injected DEX into {dex_file.name} (SHA-256: {dex_hash[:12]}...).")
+    print(f"Injected DEX into {dex_file.name} (SHA-256: {dex_hash[:12]}..., size: {len(dex_bytes) / 1024:.1f} KB).")
     return True
 
 
