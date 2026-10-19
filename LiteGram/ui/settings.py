@@ -8,6 +8,7 @@ from LiteGram.main import LiteGramPlugin
 from LiteGram.utils.extera_utils import resolve_icon
 from LiteGram.utils.settings_utils import (
     Switch,
+    on_media_toggle,
     open_extera_tab,
     open_url_view,
     show_restart_bulletin,
@@ -65,10 +66,10 @@ def _chat_settings() -> list[Any]:
         [
             Header(text=t("premium_emoji_settings_header")),
             Text(text=t("switch_all"), link_alias=Keys.switch_all_premium_emoji, on_click=toggle_premium_emoji_options),
-            *[Switch(text=t(text_key), key=key, default=False) for key, text_key in Keys.PREMIUM_EMOJI_ROWS],
+            *[Switch(text=t(text_key), key=key, default=False, on_change=on_media_toggle(key)) for key, text_key in Keys.PREMIUM_EMOJI_ROWS],
             Header(text=t("premium_stickers_settings_header")),
             Text(text=t("switch_all"), link_alias=Keys.switch_all_premium_stickers, on_click=toggle_premium_stickers_options),
-            *[Switch(text=t(text_key), key=key, default=False) for key, text_key in Keys.PREMIUM_STICKERS_ROWS],
+            *[Switch(text=t(text_key), key=key, default=False, on_change=on_media_toggle(key)) for key, text_key in Keys.PREMIUM_STICKERS_ROWS],
         ]
     )
 

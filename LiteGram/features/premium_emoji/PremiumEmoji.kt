@@ -16,6 +16,7 @@ object PremiumEmojiHook {
     @Volatile @JvmStatic var hideGroupStickers: Boolean = false
 
     private val unhooks = ArrayList<XC_MethodHook.Unhook>()
+    private val isSuppressingReactionPacks = ThreadLocal<Boolean>()
 
     private var messageObjectClass: Class<*>? = null
     private var isPremiumStickerMethod: Method? = null
@@ -187,7 +188,6 @@ object PremiumEmojiHook {
         val emojiViewClass = findClass("org.telegram.ui.Components.EmojiView", cl)
         val emojiGridAdapterClass = findClass("org.telegram.ui.Components.EmojiView\$EmojiGridAdapter", cl)
         val emojiTabsStripClass = findClass("org.telegram.ui.Components.EmojiTabsStrip", cl)
-        val emojiClass = findClass("org.telegram.messenger.Emoji", cl)
         val stickerEmojiCellClass = findClass("org.telegram.ui.Cells.StickerEmojiCell", cl)
         val mediaDataControllerClass = findClass("org.telegram.messenger.MediaDataController", cl)
         val selectAnimatedEmojiDialogClass = findClass("org.telegram.ui.SelectAnimatedEmojiDialog", cl)
@@ -308,12 +308,7 @@ object PremiumEmojiHook {
             override fun beforeHookedMethod(param: MethodHookParam) {
                 if (!hidePremiumEmojiKeyboard) return
                 val args = param.args ?: return
-                var isKeyboard = false
-                if (args.size > 6 && args[6] is Int) {
-                    isKeyboard = (args[6] as Int) == 0
-                } else if (args.size > 4 && args[4] == true) {
-                    isKeyboard = true
-                }
+                val isKeyboard = (args.size > 4 && args[4] == true)
                 if (isKeyboard && args.size > 5 && args[5] is Boolean) {
                     args[5] = false
                 }
@@ -322,8 +317,8 @@ object PremiumEmojiHook {
             override fun afterHookedMethod(param: MethodHookParam) {
                 if (!hidePremiumEmojiKeyboard) return
                 val strip = param.thisObject ?: return
-                val currentType = getPrivateField(strip, "currentType")
-                if (currentType is Int && currentType == 0) {
+                val emojiTabsField = getPrivateField(strip, "emojiTabs")
+                if (emojiTabsField != null) {
                     setPrivateField(strip, "includeAnimated", false)
                 }
             }
@@ -334,8 +329,8 @@ object PremiumEmojiHook {
             override fun beforeHookedMethod(param: MethodHookParam) {
                 if (!hidePremiumEmojiKeyboard) return
                 val strip = param.thisObject ?: return
-                val currentType = getPrivateField(strip, "currentType")
-                if (currentType is Int && currentType == 0) {
+                val emojiTabsField = getPrivateField(strip, "emojiTabs")
+                if (emojiTabsField != null) {
                     setPrivateField(strip, "includeAnimated", false)
                     val args = param.args
                     if (args != null && args.isNotEmpty()) {
@@ -345,8 +340,8 @@ object PremiumEmojiHook {
             }
         })
 
-        // 9. Emoji.addRecentEmoji (block animated from being saved)
-        hookAllMethods(emojiClass, "addRecentEmoji", object : XC_MethodHook() {
+        // 9. EmojiView.addEmojiToRecent (block animated from being saved from keyboard)
+        hookAllMethods(emojiViewClass, "addEmojiToRecent", object : XC_MethodHook() {
             override fun beforeHookedMethod(param: MethodHookParam) {
                 if (!hidePremiumEmojiKeyboard) return
                 val args = param.args ?: return
@@ -386,8 +381,8 @@ object PremiumEmojiHook {
                 val args = param.args ?: return
                 if (args.isNotEmpty() && args[0] is Int) {
                     val type = args[0] as Int
-                    if (type == 5 && hidePremiumEmojiKeyboard) {
-                        // TYPE_EMOJIPACKS = 5
+                    if (type == 5 && isSuppressingReactionPacks.get() == true) {
+                        // TYPE_EMOJIPACKS = 5, ONLY suppressed when updating reaction dialog rows
                         param.result = ArrayList<Any>()
                     }
                 }
@@ -414,18 +409,29 @@ object PremiumEmojiHook {
 
         hookAllMethods(mediaDataControllerClass, "getFeaturedEmojiSets", object : XC_MethodHook() {
             override fun beforeHookedMethod(param: MethodHookParam) {
-                if (hidePremiumEmojiKeyboard) {
+                if (isSuppressingReactionPacks.get() == true) {
                     param.result = ArrayList<Any>()
                 }
             }
         })
 
-        // 12. SelectAnimatedEmojiDialog.updateRows (reactions window category bar)
+        // 12. SelectAnimatedEmojiDialog.updateRows (reactions window category bar & packs suppression)
         hookAllMethods(selectAnimatedEmojiDialogClass, "updateRows", object : XC_MethodHook() {
-            override fun afterHookedMethod(param: MethodHookParam) {
+            override fun beforeHookedMethod(param: MethodHookParam) {
+                if (!hidePremiumEmojiReactions) return
                 val dialog = param.thisObject ?: return
                 val dtype = getPrivateField(dialog, "type")
-                if (dtype is Int && (dtype == 1 || dtype == 8 || dtype == 11) && hidePremiumEmojiReactions) {
+                if (dtype is Int && (dtype == 1 || dtype == 8 || dtype == 11)) {
+                    isSuppressingReactionPacks.set(true)
+                }
+            }
+
+            override fun afterHookedMethod(param: MethodHookParam) {
+                isSuppressingReactionPacks.set(false)
+                if (!hidePremiumEmojiReactions) return
+                val dialog = param.thisObject ?: return
+                val dtype = getPrivateField(dialog, "type")
+                if (dtype is Int && (dtype == 1 || dtype == 8 || dtype == 11)) {
                     val tabs = getPrivateField(dialog, "emojiTabs") as? View
                     if (tabs != null && tabs.visibility != View.GONE) {
                         tabs.visibility = View.GONE
@@ -434,29 +440,34 @@ object PremiumEmojiHook {
                     if (shadow != null && shadow.visibility != View.GONE) {
                         shadow.visibility = View.GONE
                     }
-                    val packs = getPrivateField(dialog, "packs") as? ArrayList<*>
-                    packs?.clear()
                 }
             }
         })
 
         // 13. ReactionsContainerLayout (quick bar custom emoji reactions)
         val reactionsFilterHook = object : XC_MethodHook() {
-            override fun beforeHookedMethod(param: MethodHookParam) {
-                if (!hidePremiumEmojiReactions) return
-                val layout = param.thisObject ?: return
-                val allReactions = getPrivateField(layout, "allReactionsList") as? ArrayList<*> ?: return
-                for (i in allReactions.size - 1 downTo 0) {
-                    val item = allReactions[i] ?: continue
+            private fun filterReactions(list: ArrayList<*>?) {
+                if (list == null) return
+                for (i in list.size - 1 downTo 0) {
+                    val item = list[i] ?: continue
                     val docId1 = getPrivateField(item, "documentId") as? Long ?: 0L
                     val docId2 = getPrivateField(item, "document_id") as? Long ?: 0L
                     if (docId1 != 0L || docId2 != 0L) {
-                        allReactions.removeAt(i)
+                        list.removeAt(i)
                     }
                 }
             }
+
+            override fun beforeHookedMethod(param: MethodHookParam) {
+                if (!hidePremiumEmojiReactions) return
+                val layout = param.thisObject ?: return
+                filterReactions(getPrivateField(layout, "allReactionsList") as? ArrayList<*>)
+                filterReactions(getPrivateField(layout, "visibleReactionsList") as? ArrayList<*>)
+            }
         }
         hookAllMethods(reactionsContainerLayoutClass, "showCustomEmojiReactionDialog", reactionsFilterHook)
+        hookAllMethods(reactionsContainerLayoutClass, "setMessage", reactionsFilterHook)
+        hookAllMethods(reactionsContainerLayoutClass, "setVisibleReactionsList", reactionsFilterHook)
         hookAllConstructors(reactionsContainerLayoutClass, reactionsFilterHook)
     }
 }

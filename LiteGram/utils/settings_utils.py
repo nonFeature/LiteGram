@@ -29,11 +29,13 @@ def Switch(
     return BaseSwitch(key=key, text=text, default=default, subtext=subtext, icon=icon, on_change=on_change, on_long_click=on_long_click, link_alias=link_alias)
 
 
-def toggle_group_options(row_keys: list[str], default_val: bool = False) -> None:
+def toggle_group_options(row_keys: list[str], default_val: bool = False, show_bulletin: bool = False) -> None:
     plugin_instance = LiteGramPlugin.get_instance()
     new_state = any(not bool(plugin_instance.get_setting(key, default_val)) for key in row_keys)
     for i, key in enumerate(row_keys):
         plugin_instance.set_setting(key, new_state, reload_settings=(i == len(row_keys) - 1))
+    if show_bulletin:
+        show_restart_bulletin(new_state)
 
 
 def toggle_settings_options(_: View | None = None) -> None:
@@ -41,7 +43,7 @@ def toggle_settings_options(_: View | None = None) -> None:
 
 
 def toggle_premium_emoji_options(_: View | None = None) -> None:
-    toggle_group_options([key for key, _ in Keys.PREMIUM_EMOJI_ROWS], default_val=True)
+    toggle_group_options([key for key, _ in Keys.PREMIUM_EMOJI_ROWS], default_val=True, show_bulletin=True)
 
 
 def toggle_premium_stickers_options(_: View | None = None) -> None:
@@ -52,7 +54,17 @@ def toggle_premium_stickers_options(_: View | None = None) -> None:
             Keys.hide_premium_stickers_grid,
         ],
         default_val=True,
+        show_bulletin=True,
     )
+
+
+def on_media_toggle(key: str) -> Callable[[bool], None]:
+    def callback(val: bool):
+        plugin = LiteGramPlugin.get_instance()
+        plugin.set_setting(key, val)
+        show_restart_bulletin(val)
+
+    return callback
 
 
 def open_extera_tab(tab_name: str) -> Callable[[View], None]:
@@ -69,7 +81,7 @@ def open_url_view(url: str) -> Callable[[View], None]:
     return callback
 
 
-def show_restart_bulletin(_enabled: bool) -> None:
+def show_restart_bulletin(_enabled: bool = False) -> None:
     BulletinHelper.show_with_button(text=t("restart_required"), button_text=t("restart"), icon_res_id=R_tg.raw.info, on_click=lambda: restart_app())
 
 
