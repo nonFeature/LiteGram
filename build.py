@@ -44,7 +44,7 @@ COPYRIGHT_STRING = (
     "# Open Source LiteGram plugin for https://exteragram.app\n"
     "# Plugin created by t.me/wepinek\n"
     "# Licensed under the MIT License\n"
-    "# Repository: https://github.com/nonFeature/LegacyGram\n"
+    "# Repository: https://github.com/nonFeature/LiteGram\n"
 )
 
 HEADER_WATERMARK = """
