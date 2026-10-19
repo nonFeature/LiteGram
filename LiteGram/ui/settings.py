@@ -45,13 +45,31 @@ def _chat_settings() -> list[Any]:
         Switch(text=t("hide_star_reaction"), key=Keys.hide_star_reaction),
         Switch(text=t("hide_group_stickers"), key=Keys.hide_group_stickers),
         Switch(text=t("hide_emoji_search"), key=Keys.hide_emoji_search),
-        Header(text=t("premium_emoji_settings_header")),
-        Text(text=t("switch_all"), link_alias=Keys.switch_all_premium_emoji, on_click=toggle_premium_emoji_options),
-        *[Switch(text=t(text_key), key=key, default=False) for key, text_key in Keys.PREMIUM_EMOJI_ROWS],
-        Header(text=t("premium_stickers_settings_header")),
-        Text(text=t("switch_all"), link_alias=Keys.switch_all_premium_stickers, on_click=toggle_premium_stickers_options),
-        *[Switch(text=t(text_key), key=key, default=False) for key, text_key in Keys.PREMIUM_STICKERS_ROWS],
     ]
+
+    try:
+        from LiteGram.utils.utils import get_client_version, parse_version
+
+        if parse_version(get_client_version()) >= (12, 9, 0):
+            settings.extend(
+                [
+                    Switch(text=t("hide_articles_editor"), key=Keys.hide_articles_editor),
+                    Switch(text=t("hide_todo_button"), subtext=t("hide_todo_button_sub"), key=Keys.hide_todo_button),
+                ]
+            )
+    except Exception:
+        pass
+
+    settings.extend(
+        [
+            Header(text=t("premium_emoji_settings_header")),
+            Text(text=t("switch_all"), link_alias=Keys.switch_all_premium_emoji, on_click=toggle_premium_emoji_options),
+            *[Switch(text=t(text_key), key=key, default=False) for key, text_key in Keys.PREMIUM_EMOJI_ROWS],
+            Header(text=t("premium_stickers_settings_header")),
+            Text(text=t("switch_all"), link_alias=Keys.switch_all_premium_stickers, on_click=toggle_premium_stickers_options),
+            *[Switch(text=t(text_key), key=key, default=False) for key, text_key in Keys.PREMIUM_STICKERS_ROWS],
+        ]
+    )
 
     show_ai = False
     try:
@@ -143,14 +161,6 @@ def _interface_settings() -> list[Any]:
         Header(text=t("premium_features_header")),
         Switch(text=t("hide_premium_features"), subtext=t("hide_premium_features_sub"), key=Keys.hide_premium_features),
     ]
-
-    try:
-        from LiteGram.utils.utils import get_client_version, parse_version
-
-        if parse_version(get_client_version()) >= (12, 9, 0):
-            items.append(Switch(text=t("hide_articles_editor"), key=Keys.hide_articles_editor))
-    except Exception:
-        pass
 
     return items
 

@@ -14,6 +14,7 @@ from LiteGram.features.hide_articles import register_hide_articles
 from LiteGram.features.hide_emoji_search import register_hide_emoji_search
 from LiteGram.features.hide_group_stickers import register_hide_group_stickers
 from LiteGram.features.hide_premium_features import register_hide_premium_features
+from LiteGram.features.hide_todo import register_hide_todo
 from LiteGram.features.media_layout import register_media_layout
 from LiteGram.features.premium_badge import register_premium_badge
 from LiteGram.features.premium_emoji import filter_response, register_premium_emoji
@@ -214,6 +215,7 @@ class LiteGramPlugin(BasePlugin):
         register_hide_premium_features(self)
         register_hide_ai_features(self)
         register_hide_articles(self)
+        register_hide_todo(self)
         register_hide_group_stickers(self)
         register_settings_header(self)
 

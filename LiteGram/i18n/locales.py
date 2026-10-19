@@ -99,6 +99,8 @@ STRINGS = {
         "hide_premium_features": "Скрыть премиум-функции",
         "hide_premium_features_sub": "Скрывает некоторые настройки конфиденциальности, теги папок, и перевод чатов",
         "hide_articles_editor": "Скрыть редактор статей",
+        "hide_todo_button": "Скрыть списки задач в меню вложений",
+        "hide_todo_button_sub": "В меню скрепки при отправке сообщений",
 
         # --- AI Features ---
         "ai_features_header": "ИИ-Функции",
@@ -214,6 +216,8 @@ STRINGS = {
         "hide_premium_features": "Hide premium features",
         "hide_premium_features_sub": "Hides some privacy settings, folder tags, and chat translation",
         "hide_articles_editor": "Hide articles editor",
+        "hide_todo_button": "Hide To-Do lists in attachment menu",
+        "hide_todo_button_sub": "In attachment menu when sending messages",
 
         # --- AI Features ---
         "ai_features_header": "AI Features",
