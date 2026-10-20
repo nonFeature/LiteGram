@@ -34,7 +34,7 @@ STRINGS = {
         "hide_communities": "Скрыть сообщества",
         "hide_communities_default": "Не скрывать",
         "hide_communities_all": "Скрыть полностью",
-        "hide_communities_badges_only": "Только значки",
+        "hide_communities_badges_only": "Только возле аватарки",
         "hide_communities_profile_only": "Только в профиле",
 
 
@@ -157,7 +157,7 @@ STRINGS = {
         "hide_communities": "Hide Communities",
         "hide_communities_default": "Do not hide",
         "hide_communities_all": "Hide completely",
-        "hide_communities_badges_only": "Badges only",
+        "hide_communities_badges_only": "Avatar only",
         "hide_communities_profile_only": "Profile only",
 
 
