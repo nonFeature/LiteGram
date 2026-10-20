@@ -1,10 +1,11 @@
 from typing import Any
 
-from ui.settings import Divider, Header, Text
+from ui.settings import Divider, Header, Selector, Text
 
 from LiteGram.data.constants import GITHUB_URL, Keys
 from LiteGram.i18n.i18n import t
 from LiteGram.main import LiteGramPlugin
+from LiteGram.utils.dex_utils import dex_bridge
 from LiteGram.utils.extera_utils import resolve_icon
 from LiteGram.utils.settings_utils import (
     Switch,
@@ -16,6 +17,14 @@ from LiteGram.utils.settings_utils import (
 )
 
 SETTINGS_OPTION_ROWS = Keys.SETTINGS_OPTION_ROWS
+
+
+def _on_communities_mode_change(val: Any) -> None:
+    mode = int(val or 0)
+    plugin = LiteGramPlugin.get_instance()
+    plugin.set_setting(Keys.hide_communities, mode, reload_settings=False)
+    dex_bridge.set_flag(Keys.hide_communities_badges, mode in (1, 2))
+    dex_bridge.set_flag(Keys.hide_communities_profile, mode in (1, 3))
 
 
 def _chat_settings() -> list[Any]:
@@ -35,7 +44,20 @@ def _chat_settings() -> list[Any]:
         from LiteGram.utils.utils import get_client_version, parse_version
 
         if parse_version(get_client_version()) >= (12, 9, 0):
-            chat_list_items.append(Switch(text=t("hide_communities"), key=Keys.hide_communities))
+            chat_list_items.append(
+                Selector(
+                    text=t("hide_communities"),
+                    key=Keys.hide_communities,
+                    default=0,
+                    items=[
+                        t("hide_communities_default"),
+                        t("hide_communities_all"),
+                        t("hide_communities_badges_only"),
+                        t("hide_communities_profile_only"),
+                    ],
+                    on_change=_on_communities_mode_change,
+                )
+            )
     except Exception:
         pass
 

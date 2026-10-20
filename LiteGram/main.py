@@ -61,7 +61,12 @@ class LiteGramPlugin(BasePlugin):
             self._settings_cache[key] = (value, time.monotonic())
         super().set_setting(key, value, reload_settings)
 
-        dex_bridge.set_flag(key, bool(value))
+        if key == Keys.hide_communities:
+            mode = int(value or 0)
+            dex_bridge.set_flag(Keys.hide_communities_badges, mode in (1, 2))
+            dex_bridge.set_flag(Keys.hide_communities_profile, mode in (1, 3))
+        else:
+            dex_bridge.set_flag(key, bool(value))
 
         if key == Keys.hide_premium_features and value:
             try:
@@ -82,13 +87,15 @@ class LiteGramPlugin(BasePlugin):
                 pass
 
     def _sync_dex_flags(self) -> None:
+        mode = int(self.get_setting(Keys.hide_communities, 0) or 0)
+        dex_bridge.set_flag(Keys.hide_communities_badges, mode in (1, 2))
+        dex_bridge.set_flag(Keys.hide_communities_profile, mode in (1, 3))
         for key in (
             Keys.hide_premium_emoji_keyboard,
             Keys.hide_premium_stickers_recent,
             Keys.hide_premium_stickers_grid,
             Keys.hide_premium_emoji_reactions,
             Keys.hide_group_stickers,
-            Keys.hide_communities,
             Keys.hide_premium_badge,
             Keys.hide_collectible_status,
         ):

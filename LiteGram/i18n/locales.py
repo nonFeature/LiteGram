@@ -32,6 +32,11 @@ STRINGS = {
         "hide_greeting_button": "Скрыть промо Telegram Business в новых чатах",
         "hide_greeting_button_sub": "Убирает кнопку с текстом «имя установил(а) это сообщение для всех новых чатов»",
         "hide_communities": "Скрыть сообщества",
+        "hide_communities_default": "Не скрывать",
+        "hide_communities_all": "Скрыть полностью",
+        "hide_communities_badges_only": "Только значки",
+        "hide_communities_profile_only": "Только в профиле",
+
 
         # --- Profile Buttons ---
         "profile_buttons": "Кнопки в профиле",
@@ -150,6 +155,11 @@ STRINGS = {
         "hide_greeting_button": "Hide Telegram Business Promo in Empty Chats",
         "hide_greeting_button_sub": "Removes button with text «name added the message above for all empty chats»",
         "hide_communities": "Hide Communities",
+        "hide_communities_default": "Do not hide",
+        "hide_communities_all": "Hide completely",
+        "hide_communities_badges_only": "Badges only",
+        "hide_communities_profile_only": "Profile only",
+
 
         # --- Profile Buttons ---
         "profile_buttons": "Profile Buttons",

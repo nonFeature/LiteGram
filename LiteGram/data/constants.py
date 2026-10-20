@@ -30,6 +30,8 @@ class Keys:
     hide_greeting_button = "hideGreetingButton"
     hide_group_stickers = "hideGroupStickers"
     hide_communities = "hideCommunities"
+    hide_communities_badges = "hideCommunitiesBadges"
+    hide_communities_profile = "hideCommunitiesProfile"
 
     # --- Profile Buttons ---
     hide_profile_actions_stories_button = "hideProfileActionsStoriesButton"
