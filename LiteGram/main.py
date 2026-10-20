@@ -40,6 +40,8 @@ _PROFILE_GIFT_REQUEST_HOOKS = {
 
 _GIFT_SUBSTRING_HOOKS = {"StarGift", "Gifts", "StarGiftUnique"}
 
+_ACTIVE_LITEGRAM_INSTANCE: Optional["LiteGramPlugin"] = None
+
 
 class LiteGramPlugin(BasePlugin):
     _instance: Optional["LiteGramPlugin"] = None
@@ -98,13 +100,21 @@ class LiteGramPlugin(BasePlugin):
             Keys.hide_group_stickers,
             Keys.hide_premium_badge,
             Keys.hide_collectible_status,
+            Keys.simplified_articles_editor,
         ):
             val = self.get_setting(key, False)
             dex_bridge.set_flag(key, bool(val))
 
     def on_plugin_load(self) -> None:
+        global _ACTIVE_LITEGRAM_INSTANCE
+        if _ACTIVE_LITEGRAM_INSTANCE is not None and _ACTIVE_LITEGRAM_INSTANCE is not self:
+            try:
+                _ACTIVE_LITEGRAM_INSTANCE.on_plugin_unload()
+            except Exception:
+                pass
+        _ACTIVE_LITEGRAM_INSTANCE = self
         LiteGramPlugin._instance = self
-        dex_bridge.load(self)
+        dex_bridge.load(self, force=True)
         self._sync_dex_flags()
         tl_hooks = [
             "TL_messages_getEmojiStickers",
@@ -258,10 +268,13 @@ class LiteGramPlugin(BasePlugin):
         register_settings_header(self)
 
     def on_plugin_unload(self) -> None:
+        global _ACTIVE_LITEGRAM_INSTANCE
         try:
             dex_bridge.unload()
         except Exception:
             pass
+        if _ACTIVE_LITEGRAM_INSTANCE is self:
+            _ACTIVE_LITEGRAM_INSTANCE = None
 
     @classmethod
     def get_instance(cls) -> "LiteGramPlugin":

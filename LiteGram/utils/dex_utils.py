@@ -19,9 +19,11 @@ class NativeBridge:
         self.loaded: bool = False
         self._method_cache: dict[tuple[str, int], Any] = {}
 
-    def load(self, plugin: Any = None) -> None:
+    def load(self, plugin: Any = None, force: bool = False) -> None:
         if self.loaded:
-            return
+            if not force:
+                return
+            self.unload()
         if not DEX_B64:
             return
 
@@ -30,7 +32,18 @@ class NativeBridge:
             if not ApplicationLoader:
                 return
             context = getattr(ApplicationLoader, "applicationContext", None)
-            if not context:
+            parent_loader = None
+            if context:
+                try:
+                    parent_loader = context.getClassLoader()
+                except Exception:
+                    parent_loader = None
+            if parent_loader is None and hasattr(ApplicationLoader, "getClass"):
+                try:
+                    parent_loader = ApplicationLoader.getClass().getClassLoader()
+                except Exception:
+                    parent_loader = None
+            if not parent_loader:
                 return
 
             raw_payload = base64.b64decode(DEX_B64)
@@ -44,30 +57,29 @@ class NativeBridge:
                     plugin.log("[LiteGram] Security Error: DEX hash mismatch!")
                 return
 
-            parent_loader = context.getClassLoader()
             ByteBuffer = find_class("java.nio.ByteBuffer")
-            if not ByteBuffer:
-                return
-
             InMemoryDexClassLoader = find_class("dalvik.system.InMemoryDexClassLoader")
-            if InMemoryDexClassLoader:
+            if InMemoryDexClassLoader and ByteBuffer:
                 try:
                     self.loader = InMemoryDexClassLoader(ByteBuffer.wrap(dex_bytes), parent_loader)
                     self.clazz = self.loader.loadClass(self.entry_class)
                 except Exception:
-                    pass
+                    self.clazz = None
+                    self.loader = None
 
-            if self.clazz is None:
+            if self.clazz is None and context:
                 cache_dir = context.getCacheDir().getAbsolutePath()
                 code_cache = context.getCodeCacheDir().getAbsolutePath()
                 dex_path = f"{cache_dir}/litegram_{DEX_HASH[:12]}.dex"
                 with open(dex_path, "wb") as f:
                     f.write(dex_bytes)
                 DexClassLoader = find_class("dalvik.system.DexClassLoader")
-                if not DexClassLoader:
-                    return
-                self.loader = DexClassLoader(dex_path, code_cache, None, parent_loader)
-                self.clazz = self.loader.loadClass(self.entry_class)
+                if DexClassLoader:
+                    self.loader = DexClassLoader(dex_path, code_cache, None, parent_loader)
+                    self.clazz = self.loader.loadClass(self.entry_class)
+
+            if self.clazz is None:
+                return
 
             self._invoke("load", parent_loader)
             self.loaded = True
@@ -86,17 +98,15 @@ class NativeBridge:
                 plugin.log(f"[LiteGram] Failed to load Core DEX bridge: {e}\n{traceback.format_exc()}")
 
     def unload(self) -> None:
-        if self.clazz is None or not self.loaded:
-            return
-        try:
-            self._invoke("unload")
-        except Exception:
-            pass
-        finally:
-            self.loaded = False
-            self.clazz = None
-            self.loader = None
-            self._method_cache.clear()
+        if self.clazz is not None and self.loaded:
+            try:
+                self._invoke("unload")
+            except Exception:
+                pass
+        self.loaded = False
+        self.clazz = None
+        self.loader = None
+        self._method_cache.clear()
 
     def set_flag(self, name: str, enabled: bool) -> None:
         if self.clazz is None or not self.loaded:
@@ -144,7 +154,12 @@ class NativeBridge:
             else:
                 converted_args.append(arg)
 
-        return method.invoke(None, *converted_args)
+        target = None
+        try:
+            target = self.clazz.getField("INSTANCE").get(None)
+        except Exception:
+            pass
+        return method.invoke(target, *converted_args)
 
 
 dex_bridge = NativeBridge(ENTRY_CLASS)

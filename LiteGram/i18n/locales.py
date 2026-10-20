@@ -105,6 +105,7 @@ STRINGS = {
         "hide_premium_features": "Скрыть премиум-функции",
         "hide_premium_features_sub": "Скрывает некоторые настройки конфиденциальности, теги папок, и перевод чатов",
         "hide_articles_editor": "Скрыть редактор статей",
+        "simplified_articles_editor": "Упрощенный редактор статей",
         "hide_todo_button": "Скрыть списки задач",
         "hide_todo_button_sub": "В меню вложений",
 
@@ -228,6 +229,7 @@ STRINGS = {
         "hide_premium_features": "Hide premium features",
         "hide_premium_features_sub": "Hides some privacy settings, folder tags, and chat translation",
         "hide_articles_editor": "Hide articles editor",
+        "simplified_articles_editor": "Simplified articles editor",
         "hide_todo_button": "Hide To-Do lists",
         "hide_todo_button_sub": "In attachment menu",
 

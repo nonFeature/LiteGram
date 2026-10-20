@@ -6,7 +6,10 @@ object LiteGramBridge {
     @JvmStatic
     @Synchronized
     fun load(cl: ClassLoader) {
-        if (core != null) return
+        try {
+            core?.unload()
+        } catch (_: Throwable) {}
+        core = null
         val newCore = LiteGramCore()
         try {
             newCore.load(cl)

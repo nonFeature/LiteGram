@@ -27,6 +27,11 @@ def _on_communities_mode_change(val: Any) -> None:
     dex_bridge.set_flag(Keys.hide_communities_profile, mode in (1, 3))
 
 
+def _on_hide_articles_editor_toggle(val: bool) -> None:
+    plugin = LiteGramPlugin.get_instance()
+    plugin.set_setting(Keys.hide_articles_editor, val, reload_settings=True)
+
+
 def _chat_settings() -> list[Any]:
     chat_list_items: list[Any] = [
         Header(text=t("chat_list")),
@@ -84,11 +89,28 @@ def _chat_settings() -> list[Any]:
         from LiteGram.utils.utils import get_client_version, parse_version
 
         if parse_version(get_client_version()) >= (12, 9, 0):
-            settings.extend(
-                [
-                    Switch(text=t("hide_articles_editor"), key=Keys.hide_articles_editor),
-                    Switch(text=t("hide_todo_button"), subtext=t("hide_todo_button_sub"), key=Keys.hide_todo_button),
-                ]
+            plugin = LiteGramPlugin.get_instance()
+            hide_articles = bool(plugin.get_setting(Keys.hide_articles_editor, False))
+            settings.append(
+                Switch(
+                    text=t("hide_articles_editor"),
+                    key=Keys.hide_articles_editor,
+                    on_change=_on_hide_articles_editor_toggle,
+                )
+            )
+            if not hide_articles:
+                settings.append(
+                    Switch(
+                        text=t("simplified_articles_editor"),
+                        key=Keys.simplified_articles_editor,
+                    )
+                )
+            settings.append(
+                Switch(
+                    text=t("hide_todo_button"),
+                    subtext=t("hide_todo_button_sub"),
+                    key=Keys.hide_todo_button,
+                )
             )
     except Exception:
         pass

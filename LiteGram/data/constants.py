@@ -79,6 +79,7 @@ class Keys:
     # --- Premium Features Hiding ---
     hide_premium_features = "hidePremiumFeatures"
     hide_articles_editor = "hideArticlesEditor"
+    simplified_articles_editor = "simplifiedArticlesEditor"
     hide_todo_button = "hideTodoButton"
 
     # --- AI Features ---
