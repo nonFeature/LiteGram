@@ -1,7 +1,11 @@
 package non.feature.litegram.simplified_articles
 
 import android.graphics.drawable.Drawable
+import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
+import android.widget.HorizontalScrollView
+import android.widget.PopupWindow
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedBridge
 import java.lang.reflect.Field
@@ -54,6 +58,54 @@ object SimplifiedArticlesHook {
             if (result != null) {
                 synchronized(targetList) {
                     targetList.addAll(result)
+                }
+            }
+        } catch (_: Throwable) {}
+    }
+
+    private fun isRichEditorBottomButton(scrimView: View?, fragment: Any?): Boolean {
+        if (scrimView == null) return false
+        val isButton = buttonClass != null && buttonClass!!.isInstance(scrimView)
+        val isRichEditor = fragment != null && fragment.javaClass.name.contains("RichEditor")
+        if (!isButton && !isRichEditor) return false
+
+        var p = scrimView.parent
+        while (p != null) {
+            if (p is HorizontalScrollView) {
+                return true
+            }
+            p = p.parent
+        }
+        return false
+    }
+
+    private fun clampPopupPosition(
+        itemOptions: Any,
+        containerField: Field?,
+        pointContainerField: Field?,
+        layoutField: Field?,
+        offsetXField: Field?,
+        offsetYField: Field?,
+        popupWindowField: Field?
+    ) {
+        try {
+            val popup = popupWindowField?.get(itemOptions) as? PopupWindow ?: return
+            if (!popup.isShowing) return
+            val container = (containerField?.get(itemOptions) as? ViewGroup)
+                ?: (pointContainerField?.get(itemOptions) as? ViewGroup) ?: return
+            val layout = layoutField?.get(itemOptions) as? View ?: return
+            val currentX = (offsetXField?.get(itemOptions) as? Number)?.toFloat() ?: return
+            val currentY = (offsetYField?.get(itemOptions) as? Number)?.toFloat() ?: return
+            val containerWidth = container.width
+            val layoutWidth = layout.measuredWidth
+            if (containerWidth > 0 && layoutWidth > 0) {
+                val pad = container.resources.displayMetrics.density * 8f
+                val minX = pad
+                val maxX = (containerWidth - layoutWidth - pad).coerceAtLeast(minX)
+                val clampedX = currentX.coerceIn(minX, maxX)
+                if (Math.abs(clampedX - currentX) > 1f) {
+                    offsetXField.set(itemOptions, clampedX)
+                    popup.update(clampedX.toInt(), currentY.toInt(), -1, -1)
                 }
             }
         } catch (_: Throwable) {}
@@ -134,6 +186,60 @@ object SimplifiedArticlesHook {
                             param.result = param.thisObject
                             return
                         }
+                    }
+                }
+            }, unhooksList)
+
+            // 4. Hook ItemOptions.show and reposition: center toolbar formatting menus horizontally above the button
+            val scrimViewField = ReflectionCache.getField(itemOptionsClass, "scrimView")
+            val fragmentField = ReflectionCache.getField(itemOptionsClass, "fragment")
+            val gravityField = ReflectionCache.getField(itemOptionsClass, "gravity")
+            val containerField = ReflectionCache.getField(itemOptionsClass, "container")
+            val pointContainerField = ReflectionCache.getField(itemOptionsClass, "pointContainer")
+            val layoutField = ReflectionCache.getField(itemOptionsClass, "layout")
+            val offsetXField = ReflectionCache.getField(itemOptionsClass, "offsetX")
+            val offsetYField = ReflectionCache.getField(itemOptionsClass, "offsetY")
+            val popupWindowField = ReflectionCache.getField(itemOptionsClass, "actionBarPopupWindow")
+            val setGravityMethod = ReflectionCache.getMethod(itemOptionsClass, "setGravity", Int::class.javaPrimitiveType)
+
+            hookAllMethods(itemOptionsClass, "show", object : XC_MethodHook() {
+                override fun beforeHookedMethod(param: MethodHookParam) {
+                    if (!simplifiedArticlesEditor) return
+                    val itemOptions = param.thisObject ?: return
+                    val scrimView = scrimViewField?.get(itemOptions) as? View
+                    val fragment = fragmentField?.get(itemOptions)
+                    if (isRichEditorBottomButton(scrimView, fragment)) {
+                        if (setGravityMethod != null) {
+                            try {
+                                setGravityMethod.invoke(itemOptions, Gravity.CENTER_HORIZONTAL)
+                            } catch (_: Throwable) {
+                                gravityField?.setInt(itemOptions, Gravity.CENTER_HORIZONTAL)
+                            }
+                        } else {
+                            gravityField?.setInt(itemOptions, Gravity.CENTER_HORIZONTAL)
+                        }
+                    }
+                }
+
+                override fun afterHookedMethod(param: MethodHookParam) {
+                    if (!simplifiedArticlesEditor) return
+                    val itemOptions = param.thisObject ?: return
+                    val scrimView = scrimViewField?.get(itemOptions) as? View
+                    val fragment = fragmentField?.get(itemOptions)
+                    if (isRichEditorBottomButton(scrimView, fragment)) {
+                        clampPopupPosition(itemOptions, containerField, pointContainerField, layoutField, offsetXField, offsetYField, popupWindowField)
+                    }
+                }
+            }, unhooksList)
+
+            hookAllMethods(itemOptionsClass, "reposition", object : XC_MethodHook() {
+                override fun afterHookedMethod(param: MethodHookParam) {
+                    if (!simplifiedArticlesEditor) return
+                    val itemOptions = param.thisObject ?: return
+                    val scrimView = scrimViewField?.get(itemOptions) as? View
+                    val fragment = fragmentField?.get(itemOptions)
+                    if (isRichEditorBottomButton(scrimView, fragment)) {
+                        clampPopupPosition(itemOptions, containerField, pointContainerField, layoutField, offsetXField, offsetYField, popupWindowField)
                     }
                 }
             }, unhooksList)
