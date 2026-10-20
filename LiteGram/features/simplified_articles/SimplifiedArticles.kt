@@ -117,6 +117,8 @@ object SimplifiedArticlesHook {
         requiresPremiumDrawableClass = ReflectionCache.findClass("org.telegram.ui.iv.RichEditor\$RequiresPremiumDrawable", cl)
         val richEditorToolbarClass = ReflectionCache.findClass("org.telegram.ui.iv.RichEditorToolbar", cl)
         val itemOptionsClass = ReflectionCache.findClass("org.telegram.ui.Components.ItemOptions", cl)
+        val richEditorListViewClass = ReflectionCache.findClass("org.telegram.ui.iv.RichEditorListView", cl)
+        val blockRowClass = ReflectionCache.findClass("org.telegram.ui.iv.BlockRow", cl)
 
         if (requiresPremiumDrawableClass != null) {
             showPremiumIconField = ReflectionCache.getField(requiresPremiumDrawableClass, "showPremiumIcon")
@@ -241,6 +243,35 @@ object SimplifiedArticlesHook {
                     if (isRichEditorBottomButton(scrimView, fragment)) {
                         clampPopupPosition(itemOptions, containerField, pointContainerField, layoutField, offsetXField, offsetYField, popupWindowField)
                     }
+                }
+            }, unhooksList)
+        }
+
+        // 5. Hook RichEditorListView.seedEmptyArticle: remove default Heading 1 so new article preset starts with plain text only
+        if (richEditorListViewClass != null) {
+            val rowsField = ReflectionCache.getField(richEditorListViewClass, "rows")
+            val adapterField = ReflectionCache.getField(richEditorListViewClass, "adapter")
+            val blockField = if (blockRowClass != null) ReflectionCache.getField(blockRowClass, "block") else null
+
+            hookAllMethods(richEditorListViewClass, "seedEmptyArticle", object : XC_MethodHook() {
+                override fun afterHookedMethod(param: MethodHookParam) {
+                    if (!simplifiedArticlesEditor) return
+                    val listView = param.thisObject ?: return
+                    try {
+                        val rows = rowsField?.get(listView) as? ArrayList<*> ?: return
+                        if (rows.isNotEmpty()) {
+                            val first = rows[0] ?: return
+                            val block = blockField?.get(first)
+                            if (block != null && block.javaClass.name.contains("pageBlockHeading")) {
+                                rows.removeAt(0)
+                                val adapter = adapterField?.get(listView)
+                                if (adapter != null) {
+                                    val updateMethod = ReflectionCache.getMethod(adapter.javaClass, "update", Boolean::class.javaPrimitiveType)
+                                    updateMethod?.invoke(adapter, false)
+                                }
+                            }
+                        }
+                    } catch (_: Throwable) {}
                 }
             }, unhooksList)
         }
