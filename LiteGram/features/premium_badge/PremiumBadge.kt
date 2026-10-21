@@ -202,7 +202,6 @@ object PremiumBadgeHook {
 
         val userObjectClass = ReflectionCache.findClass("org.telegram.messenger.UserObject", cl)
         val dialogObjectClass = ReflectionCache.findClass("org.telegram.messenger.DialogObject", cl)
-        val messageObjectClass = ReflectionCache.findClass("org.telegram.messenger.MessageObject", cl)
         val messagesControllerClass = ReflectionCache.findClass("org.telegram.messenger.MessagesController", cl)
         val chatMessageCellClass = ReflectionCache.findClass("org.telegram.ui.Cells.ChatMessageCell", cl)
         val swapAnimatedEmojiDrawableClass = ReflectionCache.findClass("org.telegram.ui.Components.AnimatedEmojiDrawable\$SwapAnimatedEmojiDrawable", cl)
@@ -219,32 +218,39 @@ object PremiumBadgeHook {
             }
         }, unhooksList)
 
-        // 2. DialogObject & MessageObject.getEmojiStatusDocumentId -> 0
-        val zeroHook = object : XC_MethodHook() {
+        // 2. DialogObject.getEmojiStatusDocumentId -> 0 (only for EmojiStatus, preserve dialogId routing)
+        hookAllMethods(dialogObjectClass, "getEmojiStatusDocumentId", object : XC_MethodHook() {
             override fun beforeHookedMethod(param: MethodHookParam) {
                 if (!hidePremiumBadge) return
+                val args = param.args
+                if (args != null && args.isNotEmpty()) {
+                    val first = args[0]
+                    if (first is Long) return
+                }
                 param.setResult(0L)
             }
-        }
-        hookAllMethods(dialogObjectClass, "getEmojiStatusDocumentId", zeroHook, unhooksList)
-        hookAllMethods(messageObjectClass, "getEmojiStatusDocumentId", zeroHook, unhooksList)
+        }, unhooksList)
 
-        // 3. isEmojiStatusCollectible -> false (when hidePremiumBadge OR hideCollectibleStatus)
-        val isCollectibleHook = object : XC_MethodHook() {
+        // 3. DialogObject.isEmojiStatusCollectible -> false (only for EmojiStatus)
+        hookAllMethods(dialogObjectClass, "isEmojiStatusCollectible", object : XC_MethodHook() {
             override fun beforeHookedMethod(param: MethodHookParam) {
-                if (hidePremiumBadge || hideCollectibleStatus) {
-                    param.setResult(false)
+                if (!hidePremiumBadge && !hideCollectibleStatus) return
+                val args = param.args
+                if (args != null && args.isNotEmpty()) {
+                    val first = args[0]
+                    if (first is Long) return
                 }
+                param.setResult(false)
             }
-        }
-        hookAllMethods(userObjectClass, "isEmojiStatusCollectible", isCollectibleHook, unhooksList)
-        hookAllMethods(dialogObjectClass, "isEmojiStatusCollectible", isCollectibleHook, unhooksList)
-        hookAllMethods(messageObjectClass, "isEmojiStatusCollectible", isCollectibleHook, unhooksList)
+        }, unhooksList)
 
-        // 4. MessagesController.isPremiumUser -> false
+        // 4. MessagesController.isPremiumUser -> false (exclude self to protect account capabilities/sync)
         hookAllMethods(messagesControllerClass, "isPremiumUser", object : XC_MethodHook() {
             override fun beforeHookedMethod(param: MethodHookParam) {
                 if (!hidePremiumBadge) return
+                val user = param.args?.getOrNull(0) ?: return
+                val isSelf = ReflectionCache.getFieldValue(user, "self")
+                if (isSelf == true) return
                 param.setResult(false)
             }
         }, unhooksList)

@@ -33,9 +33,6 @@ _PROFILE_GIFT_REQUEST_HOOKS = {
     "TL_channels_getFullChannel",
     "TL_messages_getFullChat",
     "TL_contacts_resolveUsername",
-    "TL_messages_getDialogs",
-    "TL_messages_getPeerDialogs",
-    "TL_users_getUsers",
 }
 
 _GIFT_SUBSTRING_HOOKS = {"StarGift", "Gifts", "StarGiftUnique"}
@@ -170,16 +167,18 @@ class LiteGramPlugin(BasePlugin):
 
     def on_update_hook(self, update_name: str, account: int, update: Any) -> HookResult:
         try:
-            if self.get_setting(Keys.hide_gifts_tab, False) and update is not None:
-                self._sanitize_gifts_payload(update)
+            if update is not None and self.get_setting(Keys.hide_gifts_tab, False):
+                if "gift" in str(update_name).lower():
+                    self._sanitize_gifts_payload(update)
             return HookResult()
         finally:
             del update
 
     def on_updates_hook(self, container_name: str, account: int, updates: Any) -> HookResult:
         try:
-            if self.get_setting(Keys.hide_gifts_tab, False) and updates is not None:
-                self._sanitize_gifts_payload(updates)
+            if updates is not None and self.get_setting(Keys.hide_gifts_tab, False):
+                if "gift" in str(container_name).lower():
+                    self._sanitize_gifts_payload(updates)
             return HookResult()
         finally:
             del updates
