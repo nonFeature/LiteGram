@@ -154,6 +154,33 @@ object PremiumBadgeHook {
         } catch (_: Throwable) {}
     }
 
+    private fun cleanupCollectibleHint(activity: Any) {
+        try {
+            val hint = ReflectionCache.getFieldValue(activity, "collectibleHint")
+            if (hint != null) {
+                try {
+                    hint.javaClass.getMethod("hide").invoke(hint)
+                } catch (_: Throwable) {}
+            }
+            val container = ReflectionCache.getFieldValue(activity, "avatarContainer2")
+            if (container is android.view.ViewGroup) {
+                if (hint is android.view.View) {
+                    container.removeView(hint)
+                }
+                for (i in container.childCount - 1 downTo 0) {
+                    val child = container.getChildAt(i)
+                    if (child != null && child.javaClass.name.contains("HintView")) {
+                        container.removeViewAt(i)
+                    }
+                }
+            }
+            ReflectionCache.setFieldValue(activity, "collectibleHint", null)
+            ReflectionCache.setFieldValue(activity, "collectibleHintVisible", false)
+            ReflectionCache.setFieldValue(activity, "collectibleStatus", null)
+            ReflectionCache.setFieldValue(activity, "emojiStatusGiftId", null)
+        } catch (_: Throwable) {}
+    }
+
     @JvmStatic
     fun init(cl: ClassLoader, unhooksList: MutableList<XC_MethodHook.Unhook> = localUnhooks) {
         userClass = ReflectionCache.findClass("org.telegram.tgnet.TLRPC\$User", cl)
@@ -225,6 +252,14 @@ object PremiumBadgeHook {
         // 5. ChatMessageCell.getAuthorStatus
         hookAllMethods(chatMessageCellClass, "getAuthorStatus", object : XC_MethodHook() {
             override fun afterHookedMethod(param: MethodHookParam) {
+                if (hideCollectibleStatus || hidePremiumBadge) {
+                    val obj = param.thisObject
+                    if (obj != null) {
+                        try {
+                            ReflectionCache.setFieldValue(obj, "nameStatusSlug", null)
+                        } catch (_: Throwable) {}
+                    }
+                }
                 if (!hidePremiumBadge) return
                 val res = param.result ?: return
                 if (badgeDtoClass != null && badgeDtoClass!!.isInstance(res)) {
@@ -313,24 +348,7 @@ object PremiumBadgeHook {
             override fun beforeHookedMethod(param: MethodHookParam) {
                 if (!hideCollectibleStatus && !hidePremiumBadge) return
                 val obj = param.thisObject ?: return
-                try {
-                    val hint = ReflectionCache.getFieldValue(obj, "collectibleHint")
-                    if (hint != null) {
-                        try {
-                            val container = ReflectionCache.getFieldValue(obj, "avatarContainer2")
-                            if (container is android.view.ViewGroup && hint is android.view.View) {
-                                container.removeView(hint)
-                            }
-                        } catch (_: Throwable) {}
-                        try {
-                            hint.javaClass.getMethod("hide").invoke(hint)
-                        } catch (_: Throwable) {}
-                    }
-                    ReflectionCache.setFieldValue(obj, "collectibleHint", null)
-                    ReflectionCache.setFieldValue(obj, "collectibleHintVisible", false)
-                    ReflectionCache.setFieldValue(obj, "collectibleStatus", null)
-                    ReflectionCache.setFieldValue(obj, "emojiStatusGiftId", null)
-                } catch (_: Throwable) {}
+                cleanupCollectibleHint(obj)
                 param.setResult(null)
             }
         }, unhooksList)
@@ -340,22 +358,7 @@ object PremiumBadgeHook {
             override fun beforeHookedMethod(param: MethodHookParam) {
                 if (!hideCollectibleStatus && !hidePremiumBadge) return
                 val obj = param.thisObject ?: return
-                try {
-                    val hint = ReflectionCache.getFieldValue(obj, "collectibleHint")
-                    if (hint != null) {
-                        try {
-                            val container = ReflectionCache.getFieldValue(obj, "avatarContainer2")
-                            if (container is android.view.ViewGroup && hint is android.view.View) {
-                                container.removeView(hint)
-                            }
-                        } catch (_: Throwable) {}
-                        try {
-                            hint.javaClass.getMethod("hide").invoke(hint)
-                        } catch (_: Throwable) {}
-                        ReflectionCache.setFieldValue(obj, "collectibleHint", null)
-                        ReflectionCache.setFieldValue(obj, "collectibleHintVisible", false)
-                    }
-                } catch (_: Throwable) {}
+                cleanupCollectibleHint(obj)
                 param.setResult(null)
             }
         }, unhooksList)
@@ -365,26 +368,22 @@ object PremiumBadgeHook {
             override fun afterHookedMethod(param: MethodHookParam) {
                 if (!hideCollectibleStatus && !hidePremiumBadge) return
                 val obj = param.thisObject ?: return
-                try {
-                    val hint = ReflectionCache.getFieldValue(obj, "collectibleHint")
-                    if (hint != null) {
-                        try {
-                            val container = ReflectionCache.getFieldValue(obj, "avatarContainer2")
-                            if (container is android.view.ViewGroup && hint is android.view.View) {
-                                container.removeView(hint)
-                            }
-                        } catch (_: Throwable) {}
-                        try {
-                            hint.javaClass.getMethod("hide").invoke(hint)
-                        } catch (_: Throwable) {}
-                        ReflectionCache.setFieldValue(obj, "collectibleHint", null)
-                        ReflectionCache.setFieldValue(obj, "collectibleHintVisible", false)
-                    }
-                } catch (_: Throwable) {}
+                cleanupCollectibleHint(obj)
             }
         }, unhooksList)
 
-        // 9.3 ProfileActivity$TopView.setBackgroundEmojiId
+        // 9.3 ProfileActivity onFragmentResume & onTransitionAnimationEnd
+        val resumeHook = object : XC_MethodHook() {
+            override fun afterHookedMethod(param: MethodHookParam) {
+                if (!hideCollectibleStatus && !hidePremiumBadge) return
+                val obj = param.thisObject ?: return
+                cleanupCollectibleHint(obj)
+            }
+        }
+        hookAllMethods(profileActivityClass, "onFragmentResume", resumeHook, unhooksList)
+        hookAllMethods(profileActivityClass, "onTransitionAnimationEnd", resumeHook, unhooksList)
+
+        // 9.4 ProfileActivity$TopView.setBackgroundEmojiId
         val topViewClass = ReflectionCache.findClass("org.telegram.ui.ProfileActivity\$TopView", cl)
         if (topViewClass != null) {
             hookAllMethods(topViewClass, "setBackgroundEmojiId", object : XC_MethodHook() {
@@ -408,6 +407,12 @@ object PremiumBadgeHook {
 
             override fun afterHookedMethod(param: MethodHookParam) {
                 if (!hideCollectibleStatus && !hidePremiumBadge) return
+                val obj = param.thisObject
+                if (obj != null) {
+                    try {
+                        ReflectionCache.setFieldValue(obj, "emojiStatusGiftId", null)
+                    } catch (_: Throwable) {}
+                }
                 val res = param.result ?: return
                 try {
                     val m = ReflectionCache.getMethod(res.javaClass, "setParticles", Boolean::class.javaPrimitiveType, Boolean::class.javaPrimitiveType)
@@ -420,5 +425,23 @@ object PremiumBadgeHook {
                 } catch (_: Throwable) {}
             }
         }, unhooksList)
+
+        // 11. Browser.openUrl: prevent opening NFT link when collectible info is hidden
+        val browserClass = ReflectionCache.findClass("org.telegram.messenger.browser.Browser", cl)
+        if (browserClass != null) {
+            hookAllMethods(browserClass, "openUrl", object : XC_MethodHook() {
+                override fun beforeHookedMethod(param: MethodHookParam) {
+                    if (!hideCollectibleStatus && !hidePremiumBadge) return
+                    val args = param.args ?: return
+                    for (arg in args) {
+                        val s = arg?.toString() ?: continue
+                        if (s.contains("/nft/")) {
+                            param.setResult(null)
+                            return
+                        }
+                    }
+                }
+            }, unhooksList)
+        }
     }
 }

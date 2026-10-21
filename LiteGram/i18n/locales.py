@@ -120,6 +120,9 @@ STRINGS = {
         "github_sub": "Никакой телеметрии, модульная архитектура на Python, "
                       "кастомный скрипт для сборки, Ruff-линтинг и типизация для java, xposed и android модулей",
 
+        "enable_debug_logs": "??????????? ? Logcat",
+        "enable_debug_logs_sub": "???????? ????????? ???? ?????? ????? LiteGram ? Logcat (???: LiteGram)",
+
         # --- Bulletins ---
         "restart_required": "Перезапустите приложение, чтобы изменения вступили в силу.",
         "restart": "ПЕРЕЗАПУСТИТЬ",
@@ -243,6 +246,9 @@ STRINGS = {
         "github_repository": "Github Repository (Leave a ⭐!)",
         "github_sub": "Zero Telemetry, Python modular architecture with custom build script, "
                       "Ruff linting, and typing stubs for java, Xposed and android modules",
+
+        "enable_debug_logs": "Logcat Debug Logging",
+        "enable_debug_logs_sub": "Output detailed LiteGram hook execution logs to Logcat (tag: LiteGram)",
 
         # --- Bulletins ---
         "restart_required": "Restart the app for changes to take effect.",

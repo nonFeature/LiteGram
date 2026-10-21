@@ -23,8 +23,13 @@ def get_client_version() -> str:
 
 def parse_version(version: str):
     try:
-        return tuple(map(int, version.split(".")))
-    except ValueError:
+        import re
+
+        nums = [int(x) for x in re.findall(r"\d+", str(version))[:3]]
+        while len(nums) < 3:
+            nums.append(0)
+        return tuple(nums)
+    except Exception:
         return 0, 0, 0
 
 

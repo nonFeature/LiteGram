@@ -113,8 +113,13 @@ class NativeBridge:
             return
         try:
             self._invoke("setFlag", str(name), bool(enabled))
-        except Exception:
-            pass
+        except Exception as e:
+            try:
+                XposedBridge = find_class("de.robv.android.xposed.XposedBridge")
+                if XposedBridge:
+                    XposedBridge.log(f"LiteGram [dex_bridge] set_flag({name}, {enabled}) error: {e}")
+            except Exception:
+                pass
 
     def is_loaded(self) -> bool:
         return self.loaded and self.clazz is not None

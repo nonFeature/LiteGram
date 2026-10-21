@@ -150,12 +150,42 @@ def _chat_settings() -> list[Any]:
     return settings
 
 
-def _on_premium_badge_toggle(val: bool):
+def notify_interfaces_update() -> None:
+    try:
+        from hook_utils import find_class
+
+        NotificationCenter = find_class("org.telegram.messenger.NotificationCenter")
+        MessagesController = find_class("org.telegram.messenger.MessagesController")
+        UserConfig = find_class("org.telegram.messenger.UserConfig")
+        if NotificationCenter:
+            account = getattr(UserConfig, "selectedAccount", 0) if UserConfig else 0
+            mask = getattr(MessagesController, "UPDATE_MASK_ALL", 0xFFFF) if MessagesController else 0xFFFF
+            try:
+                NotificationCenter.getInstance(account).postNotificationName(NotificationCenter.updateInterfaces, mask)
+            except Exception:
+                pass
+            try:
+                NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.currentUserPremiumStatusChanged)
+            except Exception:
+                pass
+            try:
+                NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.mainUserInfoChanged)
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
+def _on_premium_badge_toggle(val: bool) -> None:
     plugin = LiteGramPlugin.get_instance()
-    # Force update the python cache for premium badge so the UI rebuild sees the new value instantly
-    plugin.set_setting(Keys.hide_premium_badge, val, reload_settings=False)
-    # Update collectible status and trigger UI rebuild
-    plugin.set_setting(Keys.hide_collectible_status, val, reload_settings=True)
+    plugin.set_setting(Keys.hide_premium_badge, val, reload_settings=True)
+    notify_interfaces_update()
+
+
+def _on_collectible_status_toggle(val: bool) -> None:
+    plugin = LiteGramPlugin.get_instance()
+    plugin.set_setting(Keys.hide_collectible_status, val, reload_settings=False)
+    notify_interfaces_update()
 
 
 def _profile_settings() -> list[Any]:
@@ -191,6 +221,7 @@ def _profile_settings() -> list[Any]:
                 text=t("hide_collectible_status"),
                 subtext=t("hide_collectible_status_sub"),
                 key=Keys.hide_collectible_status,
+                on_change=_on_collectible_status_toggle,
             )
         )
 
@@ -230,6 +261,11 @@ def _about_settings() -> list[Any]:
         Header(text=t("about_plugin")),
         Text(text=t("github_repository"), icon="msg_link", on_click=open_url_view(GITHUB_URL)),
         Divider(text=t("github_sub")),
+        Switch(
+            text=t("enable_debug_logs"),
+            subtext=t("enable_debug_logs_sub"),
+            key=Keys.enable_debug_logs,
+        ),
     ]
 
 

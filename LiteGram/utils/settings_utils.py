@@ -23,10 +23,31 @@ def Switch(
     link_alias: str | None = None,
 ) -> BaseSwitch:
     """
-    Uses key for link_alias, default is False
+    Uses key for link_alias, default is False.
+    Ensures an on_change handler is always attached so exteraGram notifies Python
+    and immediately syncs settings cache and native DEX flags on every toggle.
     """
     link_alias = key if link_alias is None else link_alias
-    return BaseSwitch(key=key, text=text, default=default, subtext=subtext, icon=icon, on_change=on_change, on_long_click=on_long_click, link_alias=link_alias)
+
+    def _switch_on_change(val: bool) -> None:
+        try:
+            plugin = LiteGramPlugin.get_instance()
+            plugin.set_setting(key, val, reload_settings=False)
+        except Exception:
+            pass
+        if on_change is not None:
+            on_change(val)
+
+    return BaseSwitch(
+        key=key,
+        text=text,
+        default=default,
+        subtext=subtext,
+        icon=icon,
+        on_change=_switch_on_change,
+        on_long_click=on_long_click,
+        link_alias=link_alias,
+    )
 
 
 def toggle_group_options(row_keys: list[str], default_val: bool = False) -> None:

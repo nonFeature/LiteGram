@@ -106,6 +106,9 @@ class Keys:
     # --- Emoji Search Options ---
     hide_emoji_search = "hideEmojiSearch"
 
+    # --- Debug Logging ---
+    enable_debug_logs = "enableDebugLogs"
+
     # --- Settings Option Rows (shared between ui/settings and utils/settings_utils) ---
     SETTINGS_OPTION_ROWS = (
         (hide_premium_row, "hide_premium_row"),

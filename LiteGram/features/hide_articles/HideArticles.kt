@@ -14,6 +14,7 @@ import non.feature.litegram.core.ReflectionCache
 
 object HideArticlesHook {
 
+    @Volatile @JvmStatic var hideArticlesEditor: Boolean = false
     @Volatile @JvmStatic var simplifiedArticlesEditor: Boolean = false
 
     private val localUnhooks = ArrayList<XC_MethodHook.Unhook>()
@@ -25,8 +26,9 @@ object HideArticlesHook {
 
     @JvmStatic
     fun setFlag(name: String, enabled: Boolean) {
-        if (name == "simplifiedArticlesEditor" || name == "simplified_articles_editor" || name == "hideArticlesEditor" || name == "hide_articles_editor") {
-            simplifiedArticlesEditor = enabled
+        when (name) {
+            "hideArticlesEditor", "hide_articles_editor" -> hideArticlesEditor = enabled
+            "simplifiedArticlesEditor", "simplified_articles_editor" -> simplifiedArticlesEditor = enabled
         }
     }
 
@@ -40,6 +42,8 @@ object HideArticlesHook {
             }
             localUnhooks.clear()
         }
+        hideArticlesEditor = false
+        simplifiedArticlesEditor = false
         buttonClass = null
         requiresPremiumDrawableClass = null
         showPremiumIconField = null
@@ -125,6 +129,20 @@ object HideArticlesHook {
         }
         if (richEditorToolbarClass != null) {
             toolbarPremiumButtonsField = ReflectionCache.getField(richEditorToolbarClass, "premiumButtons")
+        }
+
+        // 0. Hook MessagesController.richEditorAvailable & richEditorAllowed: completely hide rich/articles editor
+        val messagesControllerClass = ReflectionCache.findClass("org.telegram.messenger.MessagesController", cl)
+        if (messagesControllerClass != null) {
+            val hideHook = object : XC_MethodHook() {
+                override fun beforeHookedMethod(param: MethodHookParam) {
+                    if (hideArticlesEditor) {
+                        param.setResult(false)
+                    }
+                }
+            }
+            hookAllMethods(messagesControllerClass, "richEditorAvailable", hideHook, unhooksList)
+            hookAllMethods(messagesControllerClass, "richEditorAllowed", hideHook, unhooksList)
         }
 
         // 1. Hook RichEditor.Button.setPremiumLocked: hide premium/advanced buttons in simplified mode

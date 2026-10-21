@@ -100,6 +100,7 @@ class LiteGramPlugin(BasePlugin):
             Keys.hide_group_stickers,
             Keys.hide_premium_badge,
             Keys.hide_collectible_status,
+            Keys.hide_articles_editor,
             Keys.simplified_articles_editor,
         ):
             val = self.get_setting(key, False)
