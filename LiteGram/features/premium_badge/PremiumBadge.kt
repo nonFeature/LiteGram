@@ -188,7 +188,7 @@ object PremiumBadgeHook {
         hookAllMethods(userObjectClass, "getEmojiStatusDocumentId", object : XC_MethodHook() {
             override fun beforeHookedMethod(param: MethodHookParam) {
                 if (!hidePremiumBadge) return
-                param.result = null
+                param.setResult(null)
             }
         }, unhooksList)
 
@@ -196,7 +196,7 @@ object PremiumBadgeHook {
         val zeroHook = object : XC_MethodHook() {
             override fun beforeHookedMethod(param: MethodHookParam) {
                 if (!hidePremiumBadge) return
-                param.result = 0L
+                param.setResult(0L)
             }
         }
         hookAllMethods(dialogObjectClass, "getEmojiStatusDocumentId", zeroHook, unhooksList)
@@ -206,7 +206,7 @@ object PremiumBadgeHook {
         val isCollectibleHook = object : XC_MethodHook() {
             override fun beforeHookedMethod(param: MethodHookParam) {
                 if (hidePremiumBadge || hideCollectibleStatus) {
-                    param.result = false
+                    param.setResult(false)
                 }
             }
         }
@@ -218,7 +218,7 @@ object PremiumBadgeHook {
         hookAllMethods(messagesControllerClass, "isPremiumUser", object : XC_MethodHook() {
             override fun beforeHookedMethod(param: MethodHookParam) {
                 if (!hidePremiumBadge) return
-                param.result = false
+                param.setResult(false)
             }
         }, unhooksList)
 
@@ -311,11 +311,17 @@ object PremiumBadgeHook {
         // 9. ProfileActivity.setCollectibleGiftStatus
         hookAllMethods(profileActivityClass, "setCollectibleGiftStatus", object : XC_MethodHook() {
             override fun beforeHookedMethod(param: MethodHookParam) {
-                if (!hideCollectibleStatus) return
+                if (!hideCollectibleStatus && !hidePremiumBadge) return
                 val obj = param.thisObject ?: return
                 try {
                     val hint = ReflectionCache.getFieldValue(obj, "collectibleHint")
                     if (hint != null) {
+                        try {
+                            val container = ReflectionCache.getFieldValue(obj, "avatarContainer2")
+                            if (container is android.view.ViewGroup && hint is android.view.View) {
+                                container.removeView(hint)
+                            }
+                        } catch (_: Throwable) {}
                         try {
                             hint.javaClass.getMethod("hide").invoke(hint)
                         } catch (_: Throwable) {}
@@ -325,20 +331,83 @@ object PremiumBadgeHook {
                     ReflectionCache.setFieldValue(obj, "collectibleStatus", null)
                     ReflectionCache.setFieldValue(obj, "emojiStatusGiftId", null)
                 } catch (_: Throwable) {}
-                param.result = null
+                param.setResult(null)
             }
         }, unhooksList)
+
+        // 9.1 ProfileActivity.updateCollectibleHint
+        hookAllMethods(profileActivityClass, "updateCollectibleHint", object : XC_MethodHook() {
+            override fun beforeHookedMethod(param: MethodHookParam) {
+                if (!hideCollectibleStatus && !hidePremiumBadge) return
+                val obj = param.thisObject ?: return
+                try {
+                    val hint = ReflectionCache.getFieldValue(obj, "collectibleHint")
+                    if (hint != null) {
+                        try {
+                            val container = ReflectionCache.getFieldValue(obj, "avatarContainer2")
+                            if (container is android.view.ViewGroup && hint is android.view.View) {
+                                container.removeView(hint)
+                            }
+                        } catch (_: Throwable) {}
+                        try {
+                            hint.javaClass.getMethod("hide").invoke(hint)
+                        } catch (_: Throwable) {}
+                        ReflectionCache.setFieldValue(obj, "collectibleHint", null)
+                        ReflectionCache.setFieldValue(obj, "collectibleHintVisible", false)
+                    }
+                } catch (_: Throwable) {}
+                param.setResult(null)
+            }
+        }, unhooksList)
+
+        // 9.2 ProfileActivity.updateProfileData
+        hookAllMethods(profileActivityClass, "updateProfileData", object : XC_MethodHook() {
+            override fun afterHookedMethod(param: MethodHookParam) {
+                if (!hideCollectibleStatus && !hidePremiumBadge) return
+                val obj = param.thisObject ?: return
+                try {
+                    val hint = ReflectionCache.getFieldValue(obj, "collectibleHint")
+                    if (hint != null) {
+                        try {
+                            val container = ReflectionCache.getFieldValue(obj, "avatarContainer2")
+                            if (container is android.view.ViewGroup && hint is android.view.View) {
+                                container.removeView(hint)
+                            }
+                        } catch (_: Throwable) {}
+                        try {
+                            hint.javaClass.getMethod("hide").invoke(hint)
+                        } catch (_: Throwable) {}
+                        ReflectionCache.setFieldValue(obj, "collectibleHint", null)
+                        ReflectionCache.setFieldValue(obj, "collectibleHintVisible", false)
+                    }
+                } catch (_: Throwable) {}
+            }
+        }, unhooksList)
+
+        // 9.3 ProfileActivity$TopView.setBackgroundEmojiId
+        val topViewClass = ReflectionCache.findClass("org.telegram.ui.ProfileActivity\$TopView", cl)
+        if (topViewClass != null) {
+            hookAllMethods(topViewClass, "setBackgroundEmojiId", object : XC_MethodHook() {
+                override fun beforeHookedMethod(param: MethodHookParam) {
+                    if (!hideCollectibleStatus && !hidePremiumBadge) return
+                    val args = param.args ?: return
+                    if (args.size > 1 && args[1] is Boolean) {
+                        args[1] = false
+                    }
+                }
+            }, unhooksList)
+        }
 
         // 10. ProfileActivity.getEmojiStatusDrawable
         hookAllMethods(profileActivityClass, "getEmojiStatusDrawable", object : XC_MethodHook() {
             override fun beforeHookedMethod(param: MethodHookParam) {
                 if (hidePremiumBadge) {
-                    param.result = null
+                    param.setResult(null)
                 }
             }
 
             override fun afterHookedMethod(param: MethodHookParam) {
-                if (!hideCollectibleStatus) return
+                if (!hideCollectibleStatus && !hidePremiumBadge) return
                 val res = param.result ?: return
                 try {
                     val m = ReflectionCache.getMethod(res.javaClass, "setParticles", Boolean::class.javaPrimitiveType, Boolean::class.javaPrimitiveType)

@@ -226,7 +226,7 @@ object PremiumEmojiHook {
         hookAllMethods(emojiViewClass, "getEmojipacks", object : XC_MethodHook() {
             override fun beforeHookedMethod(param: MethodHookParam) {
                 if (!hidePremiumEmojiKeyboard) return
-                param.result = ArrayList<Any>()
+                param.setResult(ArrayList<Any>())
             }
         }, unhooksList)
 
@@ -333,7 +333,7 @@ object PremiumEmojiHook {
                 if (args.isNotEmpty()) {
                     val item = args[0]
                     if (item is String && item.startsWith("animated_")) {
-                        param.result = null
+                        param.setResult(null)
                     }
                 }
             }
@@ -351,7 +351,7 @@ object PremiumEmojiHook {
                     if (view.visibility != View.GONE) {
                         view.visibility = View.GONE
                     }
-                    param.result = null
+                    param.setResult(null)
                 } else {
                     if (view.visibility != View.VISIBLE) {
                         view.visibility = View.VISIBLE
@@ -368,7 +368,7 @@ object PremiumEmojiHook {
                     val type = args[0] as Int
                     if (type == 5 && isSuppressingReactionPacks.get() == true) {
                         // TYPE_EMOJIPACKS = 5, ONLY suppressed when updating reaction dialog rows
-                        param.result = ArrayList<Any>()
+                        param.setResult(ArrayList<Any>())
                     }
                 }
             }
@@ -395,7 +395,7 @@ object PremiumEmojiHook {
         hookAllMethods(mediaDataControllerClass, "getFeaturedEmojiSets", object : XC_MethodHook() {
             override fun beforeHookedMethod(param: MethodHookParam) {
                 if (isSuppressingReactionPacks.get() == true) {
-                    param.result = ArrayList<Any>()
+                    param.setResult(ArrayList<Any>())
                 }
             }
         }, unhooksList)

@@ -212,7 +212,7 @@ object HideCommunitiesHook {
         val avatarClickHook = object : XC_MethodHook() {
             override fun beforeHookedMethod(param: MethodHookParam) {
                 if (hideCommunitiesBadges) {
-                    param.result = false
+                    param.setResult(false)
                 }
             }
         }
@@ -248,7 +248,7 @@ object HideCommunitiesHook {
                         communityItem.visibility = View.GONE
                     }
                 } catch (_: Throwable) {}
-                param.result = null
+                param.setResult(null)
             }
         }, unhooksList)
 
