@@ -1,4 +1,4 @@
-package non.feature.litegram.simplified_articles
+package non.feature.litegram.hide_articles
 
 import android.graphics.drawable.Drawable
 import android.view.Gravity
@@ -12,7 +12,7 @@ import java.lang.reflect.Field
 import java.util.ArrayList
 import non.feature.litegram.core.ReflectionCache
 
-object SimplifiedArticlesHook {
+object HideArticlesHook {
 
     @Volatile @JvmStatic var simplifiedArticlesEditor: Boolean = false
 
@@ -25,7 +25,7 @@ object SimplifiedArticlesHook {
 
     @JvmStatic
     fun setFlag(name: String, enabled: Boolean) {
-        if (name == "simplifiedArticlesEditor" || name == "simplified_articles_editor") {
+        if (name == "simplifiedArticlesEditor" || name == "simplified_articles_editor" || name == "hideArticlesEditor" || name == "hide_articles_editor") {
             simplifiedArticlesEditor = enabled
         }
     }
@@ -185,7 +185,7 @@ object SimplifiedArticlesHook {
                     val args = param.args ?: return
                     for (arg in args) {
                         if (arg is Drawable && requiresPremiumDrawableClass != null && requiresPremiumDrawableClass!!.isInstance(arg)) {
-                            param.result = param.thisObject
+                            param.setResult(param.thisObject)
                             return
                         }
                     }

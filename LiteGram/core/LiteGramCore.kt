@@ -2,10 +2,10 @@ package non.feature.litegram.core
 
 import de.robv.android.xposed.XC_MethodHook
 import java.util.ArrayList
+import non.feature.litegram.hide_articles.HideArticlesHook
 import non.feature.litegram.hide_communities.HideCommunitiesHook
 import non.feature.litegram.premium_badge.PremiumBadgeHook
 import non.feature.litegram.premium_emoji.PremiumEmojiHook
-import non.feature.litegram.simplified_articles.SimplifiedArticlesHook
 
 class LiteGramCore {
     private val hooks = ArrayList<XC_MethodHook.Unhook>()
@@ -14,14 +14,14 @@ class LiteGramCore {
         try { PremiumEmojiHook.init(cl, hooks) } catch (_: Throwable) {}
         try { HideCommunitiesHook.init(cl, hooks) } catch (_: Throwable) {}
         try { PremiumBadgeHook.init(cl, hooks) } catch (_: Throwable) {}
-        try { SimplifiedArticlesHook.init(cl, hooks) } catch (_: Throwable) {}
+        try { HideArticlesHook.init(cl, hooks) } catch (_: Throwable) {}
     }
 
     fun unload() {
         try { PremiumEmojiHook.unload() } catch (_: Throwable) {}
         try { HideCommunitiesHook.unload() } catch (_: Throwable) {}
         try { PremiumBadgeHook.unload() } catch (_: Throwable) {}
-        try { SimplifiedArticlesHook.unload() } catch (_: Throwable) {}
+        try { HideArticlesHook.unload() } catch (_: Throwable) {}
 
         synchronized(hooks) {
             for (u in hooks) {
@@ -39,6 +39,6 @@ class LiteGramCore {
         try { PremiumEmojiHook.setFlag(name, enabled) } catch (_: Throwable) {}
         try { HideCommunitiesHook.setFlag(name, enabled) } catch (_: Throwable) {}
         try { PremiumBadgeHook.setFlag(name, enabled) } catch (_: Throwable) {}
-        try { SimplifiedArticlesHook.setFlag(name, enabled) } catch (_: Throwable) {}
+        try { HideArticlesHook.setFlag(name, enabled) } catch (_: Throwable) {}
     }
 }
