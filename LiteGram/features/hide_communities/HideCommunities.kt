@@ -5,6 +5,8 @@ import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedBridge
 import java.lang.reflect.Field
 import java.util.ArrayList
+import java.util.Collections
+import java.util.concurrent.ConcurrentHashMap
 import non.feature.litegram.core.ReflectionCache
 
 object HideCommunitiesHook {
@@ -28,6 +30,10 @@ object HideCommunitiesHook {
     private var dialogCellChatField: Field? = null
     private var dialogCellUserField: Field? = null
     private var dialogCellDrawCommunityAvatarField: Field? = null
+    private var dialogCellStoryParamsField: Field? = null
+
+    private val hookedStoryClasses = Collections.newSetFromMap(ConcurrentHashMap<Class<*>, Boolean>())
+    private val hookedAvatarContainerClasses = Collections.newSetFromMap(ConcurrentHashMap<Class<*>, Boolean>())
 
     private val origDrawChatComm = ThreadLocal<Long>()
     private val origDrawUserComm = ThreadLocal<Long>()
@@ -53,6 +59,9 @@ object HideCommunitiesHook {
             }
             localUnhooks.clear()
         }
+        hookedStoryClasses.clear()
+        hookedAvatarContainerClasses.clear()
+
         chatClass = null
         userClass = null
         chatLinkedCommunityField = null
@@ -65,6 +74,7 @@ object HideCommunitiesHook {
         dialogCellChatField = null
         dialogCellUserField = null
         dialogCellDrawCommunityAvatarField = null
+        dialogCellStoryParamsField = null
 
         origDrawChatComm.remove()
         origDrawUserComm.remove()
@@ -81,6 +91,22 @@ object HideCommunitiesHook {
         if (clazz == null) return
         try {
             val result = XposedBridge.hookAllMethods(clazz, methodName, hook)
+            if (result != null) {
+                synchronized(targetList) {
+                    targetList.addAll(result)
+                }
+            }
+        } catch (_: Throwable) {}
+    }
+
+    private fun hookAllConstructors(
+        clazz: Class<*>?,
+        hook: XC_MethodHook,
+        targetList: MutableList<XC_MethodHook.Unhook>
+    ) {
+        if (clazz == null) return
+        try {
+            val result = XposedBridge.hookAllConstructors(clazz, hook)
             if (result != null) {
                 synchronized(targetList) {
                     targetList.addAll(result)
@@ -123,6 +149,7 @@ object HideCommunitiesHook {
             dialogCellChatField = ReflectionCache.getField(dialogCellClass, "chat")
             dialogCellUserField = ReflectionCache.getField(dialogCellClass, "user")
             dialogCellDrawCommunityAvatarField = ReflectionCache.getField(dialogCellClass, "drawCommunityAvatar")
+            dialogCellStoryParamsField = ReflectionCache.getField(dialogCellClass, "storyParams")
         }
 
         // ==================== 1. BADGES (DialogCell & ChatAvatarContainer) ====================
@@ -208,27 +235,80 @@ object HideCommunitiesHook {
             }
         }, unhooksList)
 
-        // 1.4 Prevent clicking the community badge on the avatar in chat list
+        // 1.4 Prevent clicking the community badge on the avatar (both in dialog list and chat header)
         val avatarClickHook = object : XC_MethodHook() {
             override fun beforeHookedMethod(param: MethodHookParam) {
-                if (hideCommunitiesBadges) {
+                if (hideCommunitiesBadges || hideCommunitiesProfile) {
                     param.setResult(false)
                 }
             }
         }
-        if (dialogCellClass != null) {
-            try {
-                for (inner in dialogCellClass.declaredClasses) {
-                    if (avatarStoryParamsClass != null && avatarStoryParamsClass.isAssignableFrom(inner)) {
-                        hookAllMethods(inner, "isAvatarClickable", avatarClickHook, unhooksList)
-                        hookAllMethods(inner, "onAvatarClick", avatarClickHook, unhooksList)
-                    }
+
+        fun hookAvatarStoryParamsSubclass(clazz: Class<*>?) {
+            if (clazz == null || !hookedStoryClasses.add(clazz)) return
+            hookAllMethods(clazz, "isAvatarClickable", avatarClickHook, unhooksList)
+            hookAllMethods(clazz, "onAvatarClick", avatarClickHook, unhooksList)
+        }
+
+        val containerAvatarClickHook = object : XC_MethodHook() {
+            override fun beforeHookedMethod(param: MethodHookParam) {
+                if (hideCommunitiesBadges || hideCommunitiesProfile) {
+                    param.setResult(false)
                 }
-            } catch (_: Throwable) {}
+            }
+        }
+
+        fun hookChatAvatarContainerSubclass(clazz: Class<*>?) {
+            if (clazz == null || !hookedAvatarContainerClasses.add(clazz)) return
+            hookAllMethods(clazz, "onAvatarClick", containerAvatarClickHook, unhooksList)
+        }
+
+        // Static inner classes of DialogCell (e.g. DialogCell$1)
+        for (i in 1..10) {
+            val inner = ReflectionCache.findClass("org.telegram.ui.Cells.DialogCell$" + i, cl)
+            if (inner != null && (avatarStoryParamsClass == null || avatarStoryParamsClass.isAssignableFrom(inner))) {
+                hookAvatarStoryParamsSubclass(inner)
+            }
         }
         if (avatarStoryParamsClass != null) {
-            hookAllMethods(avatarStoryParamsClass, "isAvatarClickable", avatarClickHook, unhooksList)
-            hookAllMethods(avatarStoryParamsClass, "onAvatarClick", avatarClickHook, unhooksList)
+            hookAvatarStoryParamsSubclass(avatarStoryParamsClass)
+        }
+
+        // Dynamic DialogCell storyParams hook on constructor
+        hookAllConstructors(dialogCellClass, object : XC_MethodHook() {
+            override fun afterHookedMethod(param: MethodHookParam) {
+                val cell = param.thisObject ?: return
+                try {
+                    val sp = if (dialogCellStoryParamsField != null) {
+                        dialogCellStoryParamsField!!.get(cell)
+                    } else {
+                        ReflectionCache.getFieldValue(cell, "storyParams")
+                    }
+                    if (sp != null) {
+                        hookAvatarStoryParamsSubclass(sp.javaClass)
+                    }
+                } catch (_: Throwable) {}
+            }
+        }, unhooksList)
+
+        // ChatAvatarContainer and ChatActivity inner classes (e.g. ChatActivity$18)
+        if (chatAvatarContainerClass != null) {
+            hookChatAvatarContainerSubclass(chatAvatarContainerClass)
+            for (i in 1..40) {
+                val inner = ReflectionCache.findClass("org.telegram.ui.ChatActivity$" + i, cl)
+                if (inner != null && chatAvatarContainerClass.isAssignableFrom(inner)) {
+                    hookChatAvatarContainerSubclass(inner)
+                }
+            }
+            hookAllConstructors(chatAvatarContainerClass, object : XC_MethodHook() {
+                override fun afterHookedMethod(param: MethodHookParam) {
+                    val container = param.thisObject ?: return
+                    val containerClass = container.javaClass
+                    if (containerClass != chatAvatarContainerClass) {
+                        hookChatAvatarContainerSubclass(containerClass)
+                    }
+                }
+            }, unhooksList)
         }
 
         // ==================== 2. PROFILE (ProfileActivity) ====================
