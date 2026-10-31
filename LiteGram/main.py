@@ -27,6 +27,7 @@ from LiteGram.features.star_reaction import register_star_reaction
 from LiteGram.ui.settings import get_main_settings_list
 from LiteGram.ui.settings_header import register_settings_header
 from LiteGram.utils.dex_utils import dex_bridge
+from LiteGram.utils.log_utils import log_debug, log_info
 
 _PROFILE_GIFT_REQUEST_HOOKS = {
     "TL_users_getFullUser",
@@ -56,6 +57,7 @@ class LiteGramPlugin(BasePlugin):
         return cached[0]
 
     def set_setting(self, key: str, value: Any, reload_settings: bool = False) -> None:
+        log_debug("Settings", f"set_setting: {key} = {value}")
         if hasattr(self, "_settings_cache"):
             self._settings_cache[key] = (value, time.monotonic())
         super().set_setting(key, value, reload_settings)
@@ -99,6 +101,32 @@ class LiteGramPlugin(BasePlugin):
             Keys.hide_collectible_status,
             Keys.hide_articles_editor,
             Keys.simplified_articles_editor,
+            Keys.hide_gift_cards,
+            Keys.hide_giveaway_cards,
+            Keys.hide_star_reaction,
+            Keys.hide_emoji_search,
+            Keys.hide_profile_background_emoji,
+            Keys.hide_profile_pinned_gifts,
+            Keys.hide_boost_badge,
+            Keys.hide_profile_colorful_background,
+            Keys.hide_bot_verification,
+            Keys.hide_profile_music,
+            Keys.hide_profile_business,
+            Keys.hide_profile_editor_gifts,
+            Keys.hide_gifts_tab,
+            Keys.hide_stories_tab,
+            Keys.hide_profile_actions_gift_button,
+            Keys.hide_profile_actions_stories_button,
+            Keys.hide_profile_actions_stream_button,
+            Keys.hide_action_bar_live_stream,
+            Keys.hide_action_bar_clear_history,
+            Keys.hide_action_bar_report,
+            Keys.hide_action_bar_send_gift,
+            Keys.hide_action_bar_archived_stories,
+            Keys.hide_action_bar_add_shortcut,
+            Keys.hide_action_bar_boost_group,
+            Keys.hide_premium_features,
+            Keys.enable_debug_logs,
         ):
             val = self.get_setting(key, False)
             dex_bridge.set_flag(key, bool(val))
@@ -112,6 +140,7 @@ class LiteGramPlugin(BasePlugin):
                 pass
         _ACTIVE_LITEGRAM_INSTANCE = self
         LiteGramPlugin._instance = self
+        log_info("Lifecycle", "LiteGram plugin loaded")
         dex_bridge.load(self, force=True)
         self._sync_dex_flags()
         tl_hooks = [
@@ -143,6 +172,7 @@ class LiteGramPlugin(BasePlugin):
         self.register_hooks()
 
     def post_request_hook(self, request_name: str, account: int, response: Any, error: Any) -> HookResult:
+        log_debug("TL_Request", f"{request_name} (acc: {account}, err: {error is not None})")
         try:
             if error is not None or response is None:
                 return HookResult()
@@ -166,6 +196,7 @@ class LiteGramPlugin(BasePlugin):
             del error
 
     def on_update_hook(self, update_name: str, account: int, update: Any) -> HookResult:
+        log_debug("TL_Update", f"{update_name} (acc: {account})")
         try:
             if update is not None and self.get_setting(Keys.hide_gifts_tab, False):
                 if "gift" in str(update_name).lower():
@@ -175,6 +206,7 @@ class LiteGramPlugin(BasePlugin):
             del update
 
     def on_updates_hook(self, container_name: str, account: int, updates: Any) -> HookResult:
+        log_debug("TL_Updates", f"{container_name} (acc: {account})")
         try:
             if updates is not None and self.get_setting(Keys.hide_gifts_tab, False):
                 if "gift" in str(container_name).lower():
@@ -269,6 +301,7 @@ class LiteGramPlugin(BasePlugin):
 
     def on_plugin_unload(self) -> None:
         global _ACTIVE_LITEGRAM_INSTANCE
+        log_info("Lifecycle", "LiteGram plugin unloaded")
         try:
             dex_bridge.unload()
         except Exception:

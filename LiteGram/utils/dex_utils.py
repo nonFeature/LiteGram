@@ -7,6 +7,7 @@ from typing import Any
 from hook_utils import find_class
 
 from LiteGram.data.dex import DEX_B64, DEX_HASH
+from LiteGram.utils.log_utils import log_debug, log_error, log_info
 
 ENTRY_CLASS = "non.feature.litegram.core.LiteGramBridge"
 
@@ -83,6 +84,7 @@ class NativeBridge:
 
             self._invoke("load", parent_loader)
             self.loaded = True
+            log_info("DEX", "Core DEX bridge loaded successfully.")
             if plugin:
                 plugin.log("[LiteGram] Core DEX bridge loaded successfully.")
         except Exception as e:
@@ -94,6 +96,7 @@ class NativeBridge:
             self.clazz = None
             self.loader = None
             self._method_cache.clear()
+            log_error("DEX", f"Failed to load Core DEX bridge: {e}")
             if plugin:
                 plugin.log(f"[LiteGram] Failed to load Core DEX bridge: {e}\n{traceback.format_exc()}")
 
@@ -101,6 +104,7 @@ class NativeBridge:
         if self.clazz is not None and self.loaded:
             try:
                 self._invoke("unload")
+                log_info("DEX", "Core DEX bridge unloaded.")
             except Exception:
                 pass
         self.loaded = False
@@ -113,13 +117,9 @@ class NativeBridge:
             return
         try:
             self._invoke("setFlag", str(name), bool(enabled))
+            log_debug("DEX", f"set_flag({name}, {enabled})")
         except Exception as e:
-            try:
-                XposedBridge = find_class("de.robv.android.xposed.XposedBridge")
-                if XposedBridge:
-                    XposedBridge.log(f"LiteGram [dex_bridge] set_flag({name}, {enabled}) error: {e}")
-            except Exception:
-                pass
+            log_error("DEX", f"set_flag({name}, {enabled}) failed: {e}")
 
     def is_loaded(self) -> bool:
         return self.loaded and self.clazz is not None

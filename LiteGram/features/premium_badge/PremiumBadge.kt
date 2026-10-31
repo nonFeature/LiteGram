@@ -1,6 +1,8 @@
 package non.feature.litegram.premium_badge
 
 import android.graphics.drawable.Drawable
+import android.view.View
+import android.view.ViewGroup
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedBridge
 import java.lang.reflect.Field
@@ -181,6 +183,156 @@ object PremiumBadgeHook {
         } catch (_: Throwable) {}
     }
 
+    private fun disableParticles(drawable: Any?) {
+        if (drawable == null) return
+        try {
+            val m = ReflectionCache.getMethod(
+                drawable.javaClass,
+                "setParticles",
+                Boolean::class.javaPrimitiveType,
+                Boolean::class.javaPrimitiveType
+            )
+            if (m != null) {
+                m.invoke(drawable, false, true)
+                return
+            }
+        } catch (_: Throwable) {}
+        try {
+            for (m in drawable.javaClass.methods) {
+                if (m.name == "setParticles") {
+                    if (m.parameterTypes.size == 2) {
+                        m.invoke(drawable, false, true)
+                        return
+                    } else if (m.parameterTypes.size == 1 && m.parameterTypes[0] == Boolean::class.javaPrimitiveType) {
+                        m.invoke(drawable, false)
+                        return
+                    }
+                }
+            }
+        } catch (_: Throwable) {}
+        try {
+            for (f in drawable.javaClass.declaredFields) {
+                if (f.name.contains("particle", ignoreCase = true)) {
+                    f.isAccessible = true
+                    if (f.type == Boolean::class.javaPrimitiveType) {
+                        f.setBoolean(drawable, false)
+                    } else if (!f.type.isPrimitive) {
+                        f.set(drawable, null)
+                    }
+                }
+            }
+        } catch (_: Throwable) {}
+    }
+
+    private fun clearRightDrawableFromView(view: Any?) {
+        if (view == null) return
+        try {
+            val getRightMethod = ReflectionCache.getMethod(view.javaClass, "getRightDrawable")
+            if (getRightMethod != null) {
+                val right = getRightMethod.invoke(view)
+                if (right != null) {
+                    val rightClsName = right.javaClass.name
+                    if (rightClsName.contains("SwapAnimatedEmojiDrawable") ||
+                        rightClsName.contains("AnimatedEmojiDrawable") ||
+                        rightClsName.contains("Status") ||
+                        rightClsName.contains("Premium")
+                    ) {
+                        disableParticles(right)
+                        setDrawableNull(right)
+
+                        val setRightMethod = ReflectionCache.getMethod(
+                            view.javaClass,
+                            "setRightDrawable",
+                            Drawable::class.java
+                        )
+                        if (setRightMethod != null) {
+                            setRightMethod.invoke(view, null as Drawable?)
+                        } else {
+                            for (m in view.javaClass.methods) {
+                                if (m.name == "setRightDrawable" && m.parameterTypes.size == 1) {
+                                    m.invoke(view, null as Drawable?)
+                                    break
+                                }
+                            }
+                        }
+
+                        val rf = ReflectionCache.getField(view.javaClass, "rightDrawable")
+                        if (rf != null && rf.get(view) != null) {
+                            (rf.get(view) as? Drawable)?.callback = null
+                            rf.set(view, null)
+                            (view as? View)?.invalidate()
+                        }
+                    }
+                }
+                return
+            }
+        } catch (_: Throwable) {}
+
+        try {
+            if (view is android.widget.TextView) {
+                val drawables = view.compoundDrawables
+                if (drawables.size > 2 && drawables[2] != null) {
+                    val right = drawables[2]
+                    val rightClsName = right.javaClass.name
+                    if (rightClsName.contains("SwapAnimatedEmojiDrawable") ||
+                        rightClsName.contains("AnimatedEmojiDrawable") ||
+                        rightClsName.contains("Status") ||
+                        rightClsName.contains("Premium")
+                    ) {
+                        disableParticles(right)
+                        setDrawableNull(right)
+                        view.setCompoundDrawablesWithIntrinsicBounds(drawables[0], drawables[1], null, drawables[3])
+                    }
+                }
+            }
+        } catch (_: Throwable) {}
+    }
+
+    private fun cleanDrawerItem(obj: Any?) {
+        if (!hidePremiumBadge && !hideCollectibleStatus) return
+        if (obj == null) return
+        try {
+            for (fName in arrayOf("premiumStatusDrawable", "emojiStatusDrawable", "statusDrawable")) {
+                val drawable = ReflectionCache.getFieldValue(obj, fName)
+                if (drawable != null) {
+                    disableParticles(drawable)
+                    setDrawableNull(drawable)
+                }
+            }
+
+            for (f in obj.javaClass.declaredFields) {
+                val fname = f.name
+                if (fname.contains("statusDrawable", ignoreCase = true) ||
+                    fname.contains("premiumStatus", ignoreCase = true) ||
+                    fname.contains("emojiStatus", ignoreCase = true)
+                ) {
+                    try {
+                        f.isAccessible = true
+                        val drawable = f.get(obj)
+                        if (drawable != null) {
+                            disableParticles(drawable)
+                            setDrawableNull(drawable)
+                        }
+                    } catch (_: Throwable) {}
+                }
+            }
+
+            for (fName in arrayOf("nameTextView", "titleTextView", "textView", "nameView", "titleView")) {
+                val tv = ReflectionCache.getFieldValue(obj, fName)
+                if (tv != null) {
+                    clearRightDrawableFromView(tv)
+                }
+            }
+
+            if (obj is ViewGroup) {
+                for (i in 0 until obj.childCount) {
+                    val child = obj.getChildAt(i) ?: continue
+                    clearRightDrawableFromView(child)
+                }
+            }
+        } catch (_: Throwable) {}
+    }
+
     @JvmStatic
     fun init(cl: ClassLoader, unhooksList: MutableList<XC_MethodHook.Unhook> = localUnhooks) {
         userClass = ReflectionCache.findClass("org.telegram.tgnet.TLRPC\$User", cl)
@@ -208,6 +360,8 @@ object PremiumBadgeHook {
         val statusBadgeComponentClass = findStatusBadgeComponentClass(cl)
         val drawerHeaderViewClass = ReflectionCache.findClass("com.exteragram.messenger.drawer.DrawerHeaderView", cl)
         val accountRowViewClass = ReflectionCache.findClass("com.exteragram.messenger.drawer.DrawerAccountPickerView\$AccountRowView", cl)
+        val drawerProfileCellClass = ReflectionCache.findClass("org.telegram.ui.Cells.DrawerProfileCell", cl)
+        val drawerUserCellClass = ReflectionCache.findClass("org.telegram.ui.Cells.DrawerUserCell", cl)
         val profileActivityClass = ReflectionCache.findClass("org.telegram.ui.ProfileActivity", cl)
 
         // 1. UserObject.getEmojiStatusDocumentId -> null
@@ -307,6 +461,18 @@ object PremiumBadgeHook {
             }
         }, unhooksList)
 
+        // 6.1 SwapAnimatedEmojiDrawable.setParticles
+        hookAllMethods(swapAnimatedEmojiDrawableClass, "setParticles", object : XC_MethodHook() {
+            override fun beforeHookedMethod(param: MethodHookParam) {
+                if (hidePremiumBadge || hideCollectibleStatus) {
+                    val args = param.args
+                    if (args != null && args.isNotEmpty() && args[0] == true) {
+                        args[0] = false
+                    }
+                }
+            }
+        }, unhooksList)
+
         // 7. StatusBadgeComponent.updateDrawable
         hookAllMethods(statusBadgeComponentClass, "updateDrawable", object : XC_MethodHook() {
             override fun afterHookedMethod(param: MethodHookParam) {
@@ -337,17 +503,20 @@ object PremiumBadgeHook {
             }
         }, unhooksList)
 
-        // 8. DrawerHeaderView.updateUserInfo & AccountRowView.bind
+        // 8. DrawerHeaderView & AccountRowView & DrawerProfileCell & DrawerUserCell
         val drawerHook = object : XC_MethodHook() {
             override fun afterHookedMethod(param: MethodHookParam) {
-                if (!hidePremiumBadge) return
                 val obj = param.thisObject ?: return
-                val drawable = ReflectionCache.getFieldValue(obj, "premiumStatusDrawable") ?: return
-                setDrawableNull(drawable)
+                cleanDrawerItem(obj)
             }
         }
         hookAllMethods(drawerHeaderViewClass, "updateUserInfo", drawerHook, unhooksList)
+        hookAllMethods(drawerHeaderViewClass, "setUser", drawerHook, unhooksList)
         hookAllMethods(accountRowViewClass, "bind", drawerHook, unhooksList)
+        hookAllMethods(accountRowViewClass, "setAccount", drawerHook, unhooksList)
+        hookAllMethods(drawerProfileCellClass, "setUser", drawerHook, unhooksList)
+        hookAllMethods(drawerUserCellClass, "setAccount", drawerHook, unhooksList)
+        hookAllMethods(drawerUserCellClass, "didReceivedNotification", drawerHook, unhooksList)
 
         // 9. ProfileActivity.setCollectibleGiftStatus
         hookAllMethods(profileActivityClass, "setCollectibleGiftStatus", object : XC_MethodHook() {

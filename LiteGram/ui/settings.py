@@ -243,7 +243,6 @@ def _about_settings() -> list[Any]:
         Divider(text=t("github_sub")),
         Switch(
             text=t("enable_debug_logs"),
-            subtext=t("enable_debug_logs_sub"),
             key=Keys.enable_debug_logs,
         ),
     ]

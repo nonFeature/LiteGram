@@ -2,6 +2,8 @@ from typing import Any
 
 from base_plugin import MethodHook
 
+from LiteGram.utils.log_utils import log_debug
+
 
 class BaseHook(MethodHook):
     def __init__(self, plugin: Any = None, setting_key: str | None = None):
@@ -13,3 +15,6 @@ class BaseHook(MethodHook):
         if not self.setting_key or not self.plugin:
             return True
         return bool(self.plugin.get_setting(self.setting_key, False))
+
+    def log(self, message: str) -> None:
+        log_debug(self.__class__.__name__, message)
