@@ -1,29 +1,57 @@
+from typing import Any
+
 from hook_utils import find_class
 
 from LiteGram.data.constants import Keys
+from LiteGram.utils.dex_utils import dex_bridge
 from LiteGram.utils.xposed_utils import BaseHook
 
 
 # спизжено у @kvucoPlugins, извините 👉👈  # noqa: RUF003
 class TranslateControllerIsSummarizableHook(BaseHook):
-    def before_hooked_method(self, param):
+    def before_hooked_method(self, param: Any) -> None:
         if self.plugin.get_setting(Keys.hide_ai_summarize, False):
             param.setResult(False)
 
 
 class ChatActivityShowAiButtonHook(BaseHook):
-    def before_hooked_method(self, param):
+    def before_hooked_method(self, param: Any) -> None:
         if self.plugin.get_setting(Keys.hide_ai_button, False):
             from java.lang import Boolean
 
             try:
                 if param.args:
                     param.args[0] = Boolean(False)  # ty: ignore
+                obj = param.thisObject
+                if obj is not None:
+                    try:
+                        obj.shownAiButton = False
+                    except Exception:
+                        pass
+                    ai_btn = getattr(obj, "aiButton", None)
+                    if ai_btn is not None:
+                        ai_btn.setVisibility(8)
+                param.setResult(None)
             except Exception:
                 pass
 
 
-def register_hide_ai_features(plugin) -> None:
+class ExteraConfigTelegramAiEditorHook(BaseHook):
+    def before_hooked_method(self, param: Any) -> None:
+        if self.plugin.get_setting(Keys.hide_ai_button, False):
+            param.setResult(False)
+
+
+def update_hide_ai_button_dex_settings(plugin: Any) -> None:
+    try:
+        dex_bridge.set_flag(Keys.hide_ai_button, bool(plugin.get_setting(Keys.hide_ai_button, False)))
+    except Exception:
+        pass
+
+
+def register_hide_ai_features(plugin: Any) -> None:
+    update_hide_ai_button_dex_settings(plugin)
+
     # 1. Summarize button inside message bubble
     try:
         TranslateController = find_class("org.telegram.messenger.TranslateController")
@@ -32,7 +60,7 @@ def register_hide_ai_features(plugin) -> None:
     except Exception:
         pass
 
-    # 2. AI input button: showAiButton hooks
+    # 2. AI input button: showAiButton hooks (keyboards, attach alert, caption viewer)
     ai_classes = (
         "org.telegram.ui.Components.ChatActivityEnterView",
         "org.telegram.ui.Components.ChatAttachAlert",
@@ -45,3 +73,11 @@ def register_hide_ai_features(plugin) -> None:
                 plugin.hook_all_methods(clazz, "showAiButton", ChatActivityShowAiButtonHook(plugin))
         except Exception:
             pass
+
+    # 3. Original ExteraGram AI gating hook
+    try:
+        ExteraConfig = find_class("com.exteragram.messenger.ExteraConfig")
+        if ExteraConfig is not None:
+            plugin.hook_all_methods(ExteraConfig, "getTelegramAiEditor", ExteraConfigTelegramAiEditorHook(plugin))
+    except Exception:
+        pass

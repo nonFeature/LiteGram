@@ -30,6 +30,19 @@ def _on_communities_mode_change(val: Any) -> None:
 def _on_hide_articles_editor_toggle(val: bool) -> None:
     plugin = LiteGramPlugin.get_instance()
     plugin.set_setting(Keys.hide_articles_editor, val, reload_settings=True)
+    dex_bridge.set_flag(Keys.hide_articles_editor, val)
+
+
+def _on_simplified_articles_toggle(val: bool) -> None:
+    plugin = LiteGramPlugin.get_instance()
+    plugin.set_setting(Keys.simplified_articles_editor, val, reload_settings=False)
+    dex_bridge.set_flag(Keys.simplified_articles_editor, val)
+
+
+def _on_hide_ai_button_toggle(val: bool) -> None:
+    plugin = LiteGramPlugin.get_instance()
+    plugin.set_setting(Keys.hide_ai_button, val, reload_settings=False)
+    dex_bridge.set_flag(Keys.hide_ai_button, val)
 
 
 def _chat_settings() -> list[Any]:
@@ -103,6 +116,7 @@ def _chat_settings() -> list[Any]:
                     Switch(
                         text=t("simplified_articles_editor"),
                         key=Keys.simplified_articles_editor,
+                        on_change=_on_simplified_articles_toggle,
                     )
                 )
             settings.append(
@@ -142,7 +156,7 @@ def _chat_settings() -> list[Any]:
         settings.extend(
             [
                 Header(text=t("ai_features_header")),
-                Switch(text=t("hide_ai_button"), key=Keys.hide_ai_button),
+                Switch(text=t("hide_ai_button"), key=Keys.hide_ai_button, on_change=_on_hide_ai_button_toggle),
                 Switch(text=t("hide_ai_summarize"), key=Keys.hide_ai_summarize),
             ]
         )

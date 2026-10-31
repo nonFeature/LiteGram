@@ -5,6 +5,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.HorizontalScrollView
+import android.widget.ImageView
 import android.widget.PopupWindow
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedBridge
@@ -16,19 +17,24 @@ object HideArticlesHook {
 
     @Volatile @JvmStatic var hideArticlesEditor: Boolean = false
     @Volatile @JvmStatic var simplifiedArticlesEditor: Boolean = false
+    @Volatile @JvmStatic var hideAiButton: Boolean = false
 
     private val localUnhooks = ArrayList<XC_MethodHook.Unhook>()
 
     private var buttonClass: Class<*>? = null
     private var requiresPremiumDrawableClass: Class<*>? = null
+    private var aiButtonDrawableClass: Class<*>? = null
     private var showPremiumIconField: Field? = null
     private var toolbarPremiumButtonsField: Field? = null
+
+    private val inRichEditorCreateView = ThreadLocal<Boolean>()
 
     @JvmStatic
     fun setFlag(name: String, enabled: Boolean) {
         when (name) {
             "hideArticlesEditor", "hide_articles_editor" -> hideArticlesEditor = enabled
             "simplifiedArticlesEditor", "simplified_articles_editor" -> simplifiedArticlesEditor = enabled
+            "hideAiButton", "hide_ai_button" -> hideAiButton = enabled
         }
     }
 
@@ -44,10 +50,13 @@ object HideArticlesHook {
         }
         hideArticlesEditor = false
         simplifiedArticlesEditor = false
+        hideAiButton = false
         buttonClass = null
         requiresPremiumDrawableClass = null
+        aiButtonDrawableClass = null
         showPremiumIconField = null
         toolbarPremiumButtonsField = null
+        inRichEditorCreateView.remove()
     }
 
     private fun hookAllMethods(
@@ -65,6 +74,41 @@ object HideArticlesHook {
                 }
             }
         } catch (_: Throwable) {}
+    }
+
+    private fun isAiView(v: View): Boolean {
+        try {
+            if (v is ImageView) {
+                val d = v.drawable
+                if (d != null) {
+                    if (aiButtonDrawableClass != null && aiButtonDrawableClass!!.isInstance(d)) return true
+                    val dName = d.javaClass.name
+                    if (dName.contains("AiButton") || dName.contains("input_ai")) return true
+                }
+            }
+            val cd = v.contentDescription
+            if (cd != null) {
+                val s = cd.toString()
+                if (s.equals("AIEditor", ignoreCase = true) || s.contains("AI Editor", ignoreCase = true) || s == "AI") return true
+            }
+        } catch (_: Throwable) {}
+        return false
+    }
+
+    private fun hideAiViews(root: View?) {
+        if (root == null) return
+        if (isAiView(root)) {
+            root.visibility = View.GONE
+            val parent = root.parent as? ViewGroup
+            if (parent != null && parent.childCount == 1) {
+                parent.visibility = View.GONE
+            }
+        }
+        if (root is ViewGroup) {
+            for (i in 0 until root.childCount) {
+                hideAiViews(root.getChildAt(i))
+            }
+        }
     }
 
     private fun isRichEditorBottomButton(scrimView: View?, fragment: Any?): Boolean {
@@ -119,6 +163,8 @@ object HideArticlesHook {
     fun init(cl: ClassLoader, unhooksList: MutableList<XC_MethodHook.Unhook> = localUnhooks) {
         buttonClass = ReflectionCache.findClass("org.telegram.ui.iv.RichEditor\$Button", cl)
         requiresPremiumDrawableClass = ReflectionCache.findClass("org.telegram.ui.iv.RichEditor\$RequiresPremiumDrawable", cl)
+        aiButtonDrawableClass = ReflectionCache.findClass("org.telegram.ui.Components.AiButtonDrawable", cl)
+
         val richEditorToolbarClass = ReflectionCache.findClass("org.telegram.ui.iv.RichEditorToolbar", cl)
         val itemOptionsClass = ReflectionCache.findClass("org.telegram.ui.Components.ItemOptions", cl)
         val richEditorListViewClass = ReflectionCache.findClass("org.telegram.ui.iv.RichEditorListView", cl)
@@ -131,7 +177,25 @@ object HideArticlesHook {
             toolbarPremiumButtonsField = ReflectionCache.getField(richEditorToolbarClass, "premiumButtons")
         }
 
-        // 0. Hook MessagesController.richEditorAvailable & richEditorAllowed: completely hide rich/articles editor
+        val richEditorClass = ReflectionCache.findClass("org.telegram.ui.iv.RichEditor", cl)
+        val aiButtonField = if (richEditorClass != null) ReflectionCache.getField(richEditorClass, "aiButton") else null
+        val aiStyleButtonField = if (richEditorClass != null) ReflectionCache.getField(richEditorClass, "aiStyleButton") else null
+        val formattingLayout1Field = if (richEditorClass != null) ReflectionCache.getField(richEditorClass, "formattingLayout1") else null
+        val toolbarFormattingLayout1Field = if (richEditorToolbarClass != null) ReflectionCache.getField(richEditorToolbarClass, "formattingLayout1") else null
+
+        // 0. Hook Extera native AI gate: ExteraConfig.getTelegramAiEditor
+        val exteraConfigClass = ReflectionCache.findClass("com.exteragram.messenger.ExteraConfig", cl)
+        if (exteraConfigClass != null) {
+            hookAllMethods(exteraConfigClass, "getTelegramAiEditor", object : XC_MethodHook() {
+                override fun beforeHookedMethod(param: MethodHookParam) {
+                    if (hideAiButton || inRichEditorCreateView.get() == true) {
+                        param.setResult(false)
+                    }
+                }
+            }, unhooksList)
+        }
+
+        // 1. Hook MessagesController.richEditorAvailable & richEditorAllowed: completely hide rich/articles editor
         val messagesControllerClass = ReflectionCache.findClass("org.telegram.messenger.MessagesController", cl)
         if (messagesControllerClass != null) {
             val hideHook = object : XC_MethodHook() {
@@ -145,13 +209,96 @@ object HideArticlesHook {
             hookAllMethods(messagesControllerClass, "richEditorAllowed", hideHook, unhooksList)
         }
 
-        // 1. Hook RichEditor.Button.setPremiumLocked: hide premium/advanced buttons in simplified mode
+        // 2. Hook RichEditor.createView: suppress and hide AI buttons in simplified mode
+        if (richEditorClass != null) {
+            hookAllMethods(richEditorClass, "createView", object : XC_MethodHook() {
+                override fun beforeHookedMethod(param: MethodHookParam) {
+                    if (simplifiedArticlesEditor) {
+                        inRichEditorCreateView.set(true)
+                    }
+                }
+
+                override fun afterHookedMethod(param: MethodHookParam) {
+                    inRichEditorCreateView.set(false)
+                    if (!simplifiedArticlesEditor) return
+                    val editor = param.thisObject
+                    if (editor != null) {
+                        try {
+                            (aiButtonField?.get(editor) as? View)?.visibility = View.GONE
+                            (aiStyleButtonField?.get(editor) as? View)?.visibility = View.GONE
+                            (formattingLayout1Field?.get(editor) as? View)?.visibility = View.GONE
+                        } catch (_: Throwable) {}
+                    }
+                    hideAiViews(param.result as? View)
+                }
+            }, unhooksList)
+        }
+
+        // 3. Hook RichEditorToolbar constructors & methods: suppress and hide AI buttons in simplified mode
+        if (richEditorToolbarClass != null) {
+            try {
+                for (c in richEditorToolbarClass.declaredConstructors) {
+                    val unhook = XposedBridge.hookMethod(c, object : XC_MethodHook() {
+                        override fun beforeHookedMethod(param: MethodHookParam) {
+                            if (simplifiedArticlesEditor) {
+                                inRichEditorCreateView.set(true)
+                            }
+                        }
+
+                        override fun afterHookedMethod(param: MethodHookParam) {
+                            inRichEditorCreateView.set(false)
+                            if (!simplifiedArticlesEditor) return
+                            val toolbar = param.thisObject as? View
+                            hideAiViews(toolbar)
+                        }
+                    })
+                    if (unhook != null) {
+                        synchronized(unhooksList) { unhooksList.add(unhook) }
+                    }
+                }
+            } catch (_: Throwable) {}
+
+            hookAllMethods(richEditorToolbarClass, "setPremiumLocked", object : XC_MethodHook() {
+                override fun afterHookedMethod(param: MethodHookParam) {
+                    val toolbar = param.thisObject ?: return
+                    try {
+                        val list = toolbarPremiumButtonsField?.get(toolbar) as? List<*>
+                        if (list != null) {
+                            for (item in list) {
+                                val view = item as? View ?: continue
+                                val parent = view.parent as? ViewGroup
+                                if (simplifiedArticlesEditor) {
+                                    view.visibility = View.GONE
+                                    if (parent != null && parent.childCount == 1) {
+                                        parent.visibility = View.GONE
+                                    }
+                                } else {
+                                    view.visibility = View.VISIBLE
+                                    if (parent != null && parent.childCount == 1) {
+                                        parent.visibility = View.VISIBLE
+                                    }
+                                }
+                            }
+                        }
+                        val layout1 = toolbarFormattingLayout1Field?.get(toolbar) as? View
+                        if (layout1 != null && simplifiedArticlesEditor) {
+                            layout1.visibility = View.GONE
+                        }
+                    } catch (_: Throwable) {}
+                    if (simplifiedArticlesEditor) {
+                        hideAiViews(toolbar as? View)
+                    }
+                }
+            }, unhooksList)
+        }
+
+        // 4. Hook RichEditor.Button.setPremiumLocked: hide premium/advanced buttons in simplified mode
         if (buttonClass != null) {
             hookAllMethods(buttonClass, "setPremiumLocked", object : XC_MethodHook() {
                 override fun afterHookedMethod(param: MethodHookParam) {
                     val view = param.thisObject as? View ?: return
                     try {
-                        val parent = view.parent as? android.view.ViewGroup
+                        val parent = view.parent as? ViewGroup
                         if (simplifiedArticlesEditor) {
                             view.visibility = View.GONE
                             if (parent != null && parent.childCount == 1) {
@@ -168,49 +315,48 @@ object HideArticlesHook {
             }, unhooksList)
         }
 
-        // 2. Hook RichEditorToolbar.setPremiumLocked: ensure all toolbar premium buttons are toggled
-        if (richEditorToolbarClass != null) {
-            hookAllMethods(richEditorToolbarClass, "setPremiumLocked", object : XC_MethodHook() {
-                override fun afterHookedMethod(param: MethodHookParam) {
-                    val toolbar = param.thisObject ?: return
+        // 5. Hook ItemOptions.addChecked & add: hide advanced/premium items (headings, pullquote, footer) safely via View.GONE
+        if (itemOptionsClass != null) {
+            val getLastMethod = ReflectionCache.getMethod(itemOptionsClass, "getLast")
+            val linearLayoutField = ReflectionCache.getField(itemOptionsClass, "linearLayout")
+
+            fun hideLastItemIfPremium(options: Any?, args: Array<Any?>?) {
+                if (options == null || args == null) return
+                var isPremium = false
+                for (arg in args) {
+                    if (arg is Drawable && requiresPremiumDrawableClass != null && requiresPremiumDrawableClass!!.isInstance(arg)) {
+                        isPremium = true
+                        break
+                    }
+                }
+                if (isPremium) {
                     try {
-                        val list = toolbarPremiumButtonsField?.get(toolbar) as? List<*> ?: return
-                        for (item in list) {
-                            val view = item as? View ?: continue
-                            val parent = view.parent as? android.view.ViewGroup
-                            if (simplifiedArticlesEditor) {
-                                view.visibility = View.GONE
-                                if (parent != null && parent.childCount == 1) {
-                                    parent.visibility = View.GONE
-                                }
-                            } else {
-                                view.visibility = View.VISIBLE
-                                if (parent != null && parent.childCount == 1) {
-                                    parent.visibility = View.VISIBLE
-                                }
-                            }
+                        val lastView = if (getLastMethod != null) {
+                            getLastMethod.invoke(options) as? View
+                        } else {
+                            val linearLayout = linearLayoutField?.get(options) as? ViewGroup
+                            if (linearLayout != null && linearLayout.childCount > 0) {
+                                linearLayout.getChildAt(linearLayout.childCount - 1)
+                            } else null
+                        }
+                        if (lastView != null) {
+                            lastView.visibility = View.GONE
                         }
                     } catch (_: Throwable) {}
                 }
-            }, unhooksList)
-        }
+            }
 
-        // 3. Hook ItemOptions.addChecked: hide advanced/premium items (headings, pullquote, footer) from menus
-        if (itemOptionsClass != null) {
-            hookAllMethods(itemOptionsClass, "addChecked", object : XC_MethodHook() {
-                override fun beforeHookedMethod(param: MethodHookParam) {
+            val hidePremiumSubItemHook = object : XC_MethodHook() {
+                override fun afterHookedMethod(param: MethodHookParam) {
                     if (!simplifiedArticlesEditor) return
-                    val args = param.args ?: return
-                    for (arg in args) {
-                        if (arg is Drawable && requiresPremiumDrawableClass != null && requiresPremiumDrawableClass!!.isInstance(arg)) {
-                            param.setResult(param.thisObject)
-                            return
-                        }
-                    }
+                    hideLastItemIfPremium(param.thisObject, param.args)
                 }
-            }, unhooksList)
+            }
 
-            // 4. Hook ItemOptions.show and reposition: center toolbar formatting menus horizontally above the button
+            hookAllMethods(itemOptionsClass, "addChecked", hidePremiumSubItemHook, unhooksList)
+            hookAllMethods(itemOptionsClass, "add", hidePremiumSubItemHook, unhooksList)
+
+            // 6. Hook ItemOptions.show and reposition: center toolbar formatting menus horizontally above the button
             val scrimViewField = ReflectionCache.getField(itemOptionsClass, "scrimView")
             val fragmentField = ReflectionCache.getField(itemOptionsClass, "fragment")
             val gravityField = ReflectionCache.getField(itemOptionsClass, "gravity")
@@ -265,7 +411,7 @@ object HideArticlesHook {
             }, unhooksList)
         }
 
-        // 5. Hook RichEditorListView.seedEmptyArticle: remove default Heading 1 so new article preset starts with plain text only
+        // 7. Hook RichEditorListView.seedEmptyArticle: remove default Heading 1 so new article preset starts with plain text only
         if (richEditorListViewClass != null) {
             val rowsField = ReflectionCache.getField(richEditorListViewClass, "rows")
             val adapterField = ReflectionCache.getField(richEditorListViewClass, "adapter")
