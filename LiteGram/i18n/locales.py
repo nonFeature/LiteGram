@@ -247,7 +247,7 @@ STRINGS = {
                       "Ruff linting, and typing stubs for java, Xposed and android modules",
 
         "enable_debug_logs": "Plugin Logging",
-        
+
         # --- Bulletins ---
         "restart_required": "Restart the app for changes to take effect.",
         "restart": "RESTART",
