@@ -19,6 +19,9 @@ object PremiumBadgeHook {
 
     private var userClass: Class<*>? = null
     private var userVerifiedField: Field? = null
+    private var chatClass: Class<*>? = null
+    private var chatVerifiedField: Field? = null
+    private var tlObjectClass: Class<*>? = null
 
     private var badgeDtoClass: Class<*>? = null
     private var badgesControllerClass: Class<*>? = null
@@ -58,6 +61,9 @@ object PremiumBadgeHook {
 
         userClass = null
         userVerifiedField = null
+        chatClass = null
+        chatVerifiedField = null
+        tlObjectClass = null
         badgeDtoClass = null
         badgesControllerClass = null
         badgesControllerInstanceField = null
@@ -109,17 +115,31 @@ object PremiumBadgeHook {
         return null
     }
 
-    private fun hasExteraBadge(user: Any): Boolean {
+    private fun hasExteraBadge(obj: Any?): Boolean {
+        if (obj == null) return false
         try {
             if (badgesControllerClass == null) return false
             val instance = badgesControllerInstanceField?.get(null) ?: return false
             if (badgesControllerHasBadgeMethod != null) {
-                val res = badgesControllerHasBadgeMethod!!.invoke(instance, user)
+                val res = badgesControllerHasBadgeMethod!!.invoke(instance, obj)
                 if (res is Boolean && res) return true
             }
             if (badgesControllerGetBadgeMethod != null) {
-                val res = badgesControllerGetBadgeMethod!!.invoke(instance, user)
+                val res = badgesControllerGetBadgeMethod!!.invoke(instance, obj)
                 if (res != null) return true
+            }
+        } catch (_: Throwable) {}
+        return false
+    }
+
+    private fun isVerified(obj: Any?): Boolean {
+        if (obj == null) return false
+        try {
+            if (userClass != null && userClass!!.isInstance(obj)) {
+                if (userVerifiedField != null && userVerifiedField!!.getBoolean(obj)) return true
+            }
+            if (chatClass != null && chatClass!!.isInstance(obj)) {
+                if (chatVerifiedField != null && chatVerifiedField!!.getBoolean(obj)) return true
             }
         } catch (_: Throwable) {}
         return false
@@ -163,23 +183,26 @@ object PremiumBadgeHook {
                 try {
                     hint.javaClass.getMethod("hide").invoke(hint)
                 } catch (_: Throwable) {}
+                try {
+                    val container = ReflectionCache.getFieldValue(activity, "avatarContainer2")
+                    if (container is ViewGroup && hint is View) {
+                        hint.visibility = View.GONE
+                        container.removeView(hint)
+                    }
+                } catch (_: Throwable) {}
             }
             val container = ReflectionCache.getFieldValue(activity, "avatarContainer2")
-            if (container is android.view.ViewGroup) {
-                if (hint is android.view.View) {
-                    container.removeView(hint)
-                }
+            if (container is ViewGroup) {
                 for (i in container.childCount - 1 downTo 0) {
                     val child = container.getChildAt(i)
                     if (child != null && child.javaClass.name.contains("HintView")) {
+                        child.visibility = View.GONE
                         container.removeViewAt(i)
                     }
                 }
             }
             ReflectionCache.setFieldValue(activity, "collectibleHint", null)
             ReflectionCache.setFieldValue(activity, "collectibleHintVisible", false)
-            ReflectionCache.setFieldValue(activity, "collectibleStatus", null)
-            ReflectionCache.setFieldValue(activity, "emojiStatusGiftId", null)
         } catch (_: Throwable) {}
     }
 
@@ -289,7 +312,7 @@ object PremiumBadgeHook {
     }
 
     private fun cleanDrawerItem(obj: Any?) {
-        if (!hidePremiumBadge && !hideCollectibleStatus) return
+        if (!hidePremiumBadge) return
         if (obj == null) return
         try {
             for (fName in arrayOf("premiumStatusDrawable", "emojiStatusDrawable", "statusDrawable")) {
@@ -339,14 +362,35 @@ object PremiumBadgeHook {
         if (userClass != null) {
             userVerifiedField = ReflectionCache.getField(userClass, "verified")
         }
+        chatClass = ReflectionCache.findClass("org.telegram.tgnet.TLRPC\$Chat", cl)
+        if (chatClass != null) {
+            chatVerifiedField = ReflectionCache.getField(chatClass, "verified")
+        }
+        tlObjectClass = ReflectionCache.findClass("org.telegram.tgnet.TLObject", cl)
 
         badgeDtoClass = ReflectionCache.findClass("com.exteragram.messenger.api.dto.BadgeDTO", cl)
         badgesControllerClass = ReflectionCache.findClass("com.exteragram.messenger.badges.BadgesController", cl)
         if (badgesControllerClass != null) {
             badgesControllerInstanceField = ReflectionCache.getField(badgesControllerClass, "INSTANCE")
-            if (userClass != null) {
-                badgesControllerHasBadgeMethod = ReflectionCache.getMethod(badgesControllerClass, "hasBadge", userClass!!)
-                badgesControllerGetBadgeMethod = ReflectionCache.getMethod(badgesControllerClass, "getBadge", userClass!!)
+            if (tlObjectClass != null) {
+                badgesControllerHasBadgeMethod = ReflectionCache.getMethod(badgesControllerClass, "hasBadge", tlObjectClass!!)
+                badgesControllerGetBadgeMethod = ReflectionCache.getMethod(badgesControllerClass, "getBadge", tlObjectClass!!)
+            }
+            if (badgesControllerHasBadgeMethod == null) {
+                for (m in badgesControllerClass!!.methods) {
+                    if (m.name == "hasBadge" && m.parameterTypes.size == 1) {
+                        badgesControllerHasBadgeMethod = m
+                        break
+                    }
+                }
+            }
+            if (badgesControllerGetBadgeMethod == null) {
+                for (m in badgesControllerClass!!.methods) {
+                    if (m.name == "getBadge" && m.parameterTypes.size == 1) {
+                        badgesControllerGetBadgeMethod = m
+                        break
+                    }
+                }
             }
         }
 
@@ -385,10 +429,10 @@ object PremiumBadgeHook {
             }
         }, unhooksList)
 
-        // 3. DialogObject.isEmojiStatusCollectible -> false (only for EmojiStatus)
+        // 3. DialogObject.isEmojiStatusCollectible -> false (only when hiding premium badges)
         hookAllMethods(dialogObjectClass, "isEmojiStatusCollectible", object : XC_MethodHook() {
             override fun beforeHookedMethod(param: MethodHookParam) {
-                if (!hidePremiumBadge && !hideCollectibleStatus) return
+                if (!hidePremiumBadge) return
                 val args = param.args
                 if (args != null && args.isNotEmpty()) {
                     val first = args[0]
@@ -425,11 +469,14 @@ object PremiumBadgeHook {
                 if (badgeDtoClass != null && badgeDtoClass!!.isInstance(res)) {
                     return
                 }
+                val clsName = res.javaClass.name
+                if (clsName.contains("Badge")) {
+                    return
+                }
                 if (res is Number) {
                     param.result = null
                     return
                 }
-                val clsName = res.javaClass.name
                 if (clsName.contains("Drawable") || clsName.contains("Long") || clsName.contains("Integer") || clsName.contains("Number")) {
                     param.result = null
                 }
@@ -464,11 +511,10 @@ object PremiumBadgeHook {
         // 6.1 SwapAnimatedEmojiDrawable.setParticles
         hookAllMethods(swapAnimatedEmojiDrawableClass, "setParticles", object : XC_MethodHook() {
             override fun beforeHookedMethod(param: MethodHookParam) {
-                if (hidePremiumBadge || hideCollectibleStatus) {
-                    val args = param.args
-                    if (args != null && args.isNotEmpty() && args[0] == true) {
-                        args[0] = false
-                    }
+                if (!hidePremiumBadge) return
+                val args = param.args
+                if (args != null && args.isNotEmpty() && args[0] == true) {
+                    args[0] = false
                 }
             }
         }, unhooksList)
@@ -478,26 +524,23 @@ object PremiumBadgeHook {
             override fun afterHookedMethod(param: MethodHookParam) {
                 if (!hidePremiumBadge) return
                 val args = param.args ?: return
-                var user: Any? = null
-                if (userClass != null) {
-                    for (arg in args) {
-                        if (arg != null && userClass!!.isInstance(arg)) {
-                            user = arg
-                            break
-                        }
+                var targetObj: Any? = null
+                for (arg in args) {
+                    if (arg != null && ((userClass != null && userClass!!.isInstance(arg)) || (chatClass != null && chatClass!!.isInstance(arg)))) {
+                        targetObj = arg
+                        break
                     }
                 }
-                if (user != null) {
-                    try {
-                        if (userVerifiedField != null && userVerifiedField!!.getBoolean(user)) {
-                            return
-                        }
-                        if (hasExteraBadge(user)) {
-                            return
-                        }
-                    } catch (_: Throwable) {}
+                if (targetObj != null) {
+                    if (isVerified(targetObj) || hasExteraBadge(targetObj)) {
+                        return
+                    }
 
                     val res = param.result ?: return
+                    val resCls = res.javaClass.name
+                    if (resCls.contains("Verified") || resCls.contains("Combined")) {
+                        return
+                    }
                     setDrawableNull(res)
                 }
             }
@@ -524,6 +567,10 @@ object PremiumBadgeHook {
                 if (!hideCollectibleStatus && !hidePremiumBadge) return
                 val obj = param.thisObject ?: return
                 cleanupCollectibleHint(obj)
+                val statusArg = param.args?.getOrNull(0)
+                try {
+                    ReflectionCache.setFieldValue(obj, "collectibleStatus", statusArg)
+                } catch (_: Throwable) {}
                 param.setResult(null)
             }
         }, unhooksList)
@@ -563,7 +610,7 @@ object PremiumBadgeHook {
         if (topViewClass != null) {
             hookAllMethods(topViewClass, "setBackgroundEmojiId", object : XC_MethodHook() {
                 override fun beforeHookedMethod(param: MethodHookParam) {
-                    if (!hideCollectibleStatus && !hidePremiumBadge) return
+                    if (!hidePremiumBadge) return
                     val args = param.args ?: return
                     if (args.size > 1 && args[1] is Boolean) {
                         args[1] = false
@@ -581,7 +628,7 @@ object PremiumBadgeHook {
             }
 
             override fun afterHookedMethod(param: MethodHookParam) {
-                if (!hideCollectibleStatus && !hidePremiumBadge) return
+                if (!hidePremiumBadge) return
                 val obj = param.thisObject
                 if (obj != null) {
                     try {
@@ -600,23 +647,5 @@ object PremiumBadgeHook {
                 } catch (_: Throwable) {}
             }
         }, unhooksList)
-
-        // 11. Browser.openUrl: prevent opening NFT link when collectible info is hidden
-        val browserClass = ReflectionCache.findClass("org.telegram.messenger.browser.Browser", cl)
-        if (browserClass != null) {
-            hookAllMethods(browserClass, "openUrl", object : XC_MethodHook() {
-                override fun beforeHookedMethod(param: MethodHookParam) {
-                    if (!hideCollectibleStatus && !hidePremiumBadge) return
-                    val args = param.args ?: return
-                    for (arg in args) {
-                        val s = arg?.toString() ?: continue
-                        if (s.contains("/nft/")) {
-                            param.setResult(null)
-                            return
-                        }
-                    }
-                }
-            }, unhooksList)
-        }
     }
 }
