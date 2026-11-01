@@ -33,11 +33,6 @@ class ChatAttachAlertInitHook(BaseHook):
 
 def register_hide_todo(plugin) -> None:
     try:
-        from LiteGram.utils.utils import get_client_version, parse_version
-
-        if parse_version(get_client_version()) < (12, 9, 0):
-            return
-
         ChatAttachAlert = find_class("org.telegram.ui.Components.ChatAttachAlert")
         if ChatAttachAlert is not None:
             try:

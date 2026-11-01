@@ -15,6 +15,7 @@ from LiteGram.utils.settings_utils import (
     toggle_premium_stickers_options,
     toggle_settings_options,
 )
+from LiteGram.utils.utils import get_client_version, parse_version  # noqa: F401
 
 SETTINGS_OPTION_ROWS = Keys.SETTINGS_OPTION_ROWS
 
@@ -56,28 +57,19 @@ def _chat_settings() -> list[Any]:
             icon=resolve_icon("extera_outline"),
         ),
         Switch(text=t("hide_greeting_button"), key=Keys.hide_greeting_button, subtext=t("hide_greeting_button_sub")),
+        Selector(
+            text=t("hide_communities"),
+            key=Keys.hide_communities,
+            default=0,
+            items=[
+                t("hide_communities_default"),
+                t("hide_communities_all"),
+                t("hide_communities_badges_only"),
+                t("hide_communities_profile_only"),
+            ],
+            on_change=_on_communities_mode_change,
+        ),
     ]
-
-    try:
-        from LiteGram.utils.utils import get_client_version, parse_version
-
-        if parse_version(get_client_version()) >= (12, 9, 0):
-            chat_list_items.append(
-                Selector(
-                    text=t("hide_communities"),
-                    key=Keys.hide_communities,
-                    default=0,
-                    items=[
-                        t("hide_communities_default"),
-                        t("hide_communities_all"),
-                        t("hide_communities_badges_only"),
-                        t("hide_communities_profile_only"),
-                    ],
-                    on_change=_on_communities_mode_change,
-                )
-            )
-    except Exception:
-        pass
 
     settings = [
         *chat_list_items,
@@ -98,36 +90,30 @@ def _chat_settings() -> list[Any]:
         Switch(text=t("hide_emoji_search"), key=Keys.hide_emoji_search),
     ]
 
-    try:
-        from LiteGram.utils.utils import get_client_version, parse_version
-
-        if parse_version(get_client_version()) >= (12, 9, 0):
-            plugin = LiteGramPlugin.get_instance()
-            hide_articles = bool(plugin.get_setting(Keys.hide_articles_editor, False))
-            settings.append(
-                Switch(
-                    text=t("hide_articles_editor"),
-                    key=Keys.hide_articles_editor,
-                    on_change=_on_hide_articles_editor_toggle,
-                )
+    plugin = LiteGramPlugin.get_instance()
+    hide_articles = bool(plugin.get_setting(Keys.hide_articles_editor, False))
+    settings.append(
+        Switch(
+            text=t("hide_articles_editor"),
+            key=Keys.hide_articles_editor,
+            on_change=_on_hide_articles_editor_toggle,
+        )
+    )
+    if not hide_articles:
+        settings.append(
+            Switch(
+                text=t("simplified_articles_editor"),
+                key=Keys.simplified_articles_editor,
+                on_change=_on_simplified_articles_toggle,
             )
-            if not hide_articles:
-                settings.append(
-                    Switch(
-                        text=t("simplified_articles_editor"),
-                        key=Keys.simplified_articles_editor,
-                        on_change=_on_simplified_articles_toggle,
-                    )
-                )
-            settings.append(
-                Switch(
-                    text=t("hide_todo_button"),
-                    subtext=t("hide_todo_button_sub"),
-                    key=Keys.hide_todo_button,
-                )
-            )
-    except Exception:
-        pass
+        )
+    settings.append(
+        Switch(
+            text=t("hide_todo_button"),
+            subtext=t("hide_todo_button_sub"),
+            key=Keys.hide_todo_button,
+        )
+    )
 
     settings.extend(
         [
@@ -142,13 +128,10 @@ def _chat_settings() -> list[Any]:
 
     show_ai = False
     try:
-        from LiteGram.utils.utils import get_client_version, parse_version
+        from hook_utils import find_class
 
-        if parse_version(get_client_version()) >= (12, 6, 0):
-            from hook_utils import find_class
-
-            if find_class("com.exteragram.messenger.ai.AiController") is not None:
-                show_ai = True
+        if find_class("com.exteragram.messenger.ai.AiController") is not None:
+            show_ai = True
     except Exception:
         pass
 

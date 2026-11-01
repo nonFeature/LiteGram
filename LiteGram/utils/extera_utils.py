@@ -30,24 +30,12 @@ def open_extera_setting(alias: str, plugin_id: str | None = None) -> None:
 
 
 def resolve_extera_function(function_name: str) -> str:
-    try:
-        v = _parsed_version()
-        if function_name == Keys.drawer_options:
-            if v >= (12, 4, 1):
-                return "appNavigationSettings"
-            return "myProfileItem"
-    except Exception:
-        pass
+    if function_name == Keys.drawer_options:
+        return "appNavigationSettings"
     return function_name
 
 
 def resolve_icon(icon_name: str) -> str:
-    try:
-        v = _parsed_version()
-        if icon_name == "extera_outline" and v < (12, 4, 1):
-            return "etg_settings"
-        if icon_name == "etg_settings" and v >= (12, 4, 1):
-            return "extera_outline"
-    except Exception:
-        pass
+    if icon_name in ("extera_outline", "etg_settings"):
+        return "extera_outline"
     return icon_name

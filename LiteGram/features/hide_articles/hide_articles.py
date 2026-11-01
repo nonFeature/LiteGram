@@ -16,11 +16,6 @@ update_hide_articles_dex_settings = update_simplified_articles_settings
 
 def register_hide_articles(plugin: Any) -> None:
     try:
-        from LiteGram.utils.utils import get_client_version, parse_version
-
-        if parse_version(get_client_version()) < (12, 9, 0):
-            return
-
         update_simplified_articles_settings(plugin)
     except Exception:
         pass
