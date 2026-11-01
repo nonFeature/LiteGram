@@ -69,24 +69,6 @@ class LiteGramPlugin(BasePlugin):
         else:
             dex_bridge.set_flag(key, bool(value))
 
-        if key == Keys.hide_premium_features and value:
-            try:
-                from hook_utils import find_class
-
-                MessagesController = find_class("org.telegram.messenger.MessagesController")
-                if MessagesController:
-                    for i in range(4):
-                        try:
-                            instance = MessagesController.getInstance(i)
-                            if instance:
-                                field = instance.getClass().getDeclaredField("folderTags")
-                                field.setAccessible(True)
-                                field.setBoolean(instance, False)
-                        except Exception:
-                            pass
-            except Exception:
-                pass
-
     def _sync_dex_flags(self) -> None:
         mode = int(self.get_setting(Keys.hide_communities, 0) or 0)
         dex_bridge.set_flag(Keys.hide_communities_badges, mode in (1, 2))

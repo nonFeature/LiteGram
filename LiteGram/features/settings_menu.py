@@ -21,7 +21,7 @@ WALLET_BOT_ID = 1985737506
 def get_uitem_id(item):
     if item is None:
         return None
-    for field_name in ("id", "f2205id"):
+    for field_name in ("id",):
         try:
             value = getattr(item, field_name, None)
             if value is not None:

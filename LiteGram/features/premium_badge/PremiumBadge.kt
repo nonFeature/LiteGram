@@ -404,8 +404,6 @@ object PremiumBadgeHook {
         val statusBadgeComponentClass = findStatusBadgeComponentClass(cl)
         val drawerHeaderViewClass = ReflectionCache.findClass("com.exteragram.messenger.drawer.DrawerHeaderView", cl)
         val accountRowViewClass = ReflectionCache.findClass("com.exteragram.messenger.drawer.DrawerAccountPickerView\$AccountRowView", cl)
-        val drawerProfileCellClass = ReflectionCache.findClass("org.telegram.ui.Cells.DrawerProfileCell", cl)
-        val drawerUserCellClass = ReflectionCache.findClass("org.telegram.ui.Cells.DrawerUserCell", cl)
         val profileActivityClass = ReflectionCache.findClass("org.telegram.ui.ProfileActivity", cl)
 
         // 1. UserObject.getEmojiStatusDocumentId -> null
@@ -557,9 +555,6 @@ object PremiumBadgeHook {
         hookAllMethods(drawerHeaderViewClass, "setUser", drawerHook, unhooksList)
         hookAllMethods(accountRowViewClass, "bind", drawerHook, unhooksList)
         hookAllMethods(accountRowViewClass, "setAccount", drawerHook, unhooksList)
-        hookAllMethods(drawerProfileCellClass, "setUser", drawerHook, unhooksList)
-        hookAllMethods(drawerUserCellClass, "setAccount", drawerHook, unhooksList)
-        hookAllMethods(drawerUserCellClass, "didReceivedNotification", drawerHook, unhooksList)
 
         // 9. ProfileActivity.setCollectibleGiftStatus
         hookAllMethods(profileActivityClass, "setCollectibleGiftStatus", object : XC_MethodHook() {

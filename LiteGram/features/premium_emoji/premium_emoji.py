@@ -1,4 +1,4 @@
-from hook_utils import find_class, get_private_field
+from hook_utils import find_class
 
 from LiteGram.data.constants import Keys
 from LiteGram.main import LiteGramPlugin
@@ -18,7 +18,6 @@ def safe_find_class(class_name):
 # ============================================================
 
 EmojiSearchAdapter = safe_find_class("org.telegram.ui.Components.EmojiView$EmojiSearchAdapter")
-EmojiSearchAdapterRunnable = safe_find_class("org.telegram.ui.Components.EmojiView$EmojiSearchAdapter$5")
 SuggestEmojiView = safe_find_class("org.telegram.ui.Components.SuggestEmojiView")
 ArrayList = safe_find_class("java.util.ArrayList")
 MessageObject = safe_find_class("org.telegram.messenger.MessageObject")
@@ -138,81 +137,6 @@ def _filter_featured_sticker_sets(sets):
     return removed
 
 
-def _filter_search_results(results):
-    if not results:
-        return 0
-    removed = 0
-    i = results.size() - 1
-    while i >= 0:
-        r = results.get(i)
-        emoji = getattr(r, "emoji", None)
-        if emoji is None:
-            try:
-                emoji = str(r)
-            except Exception:
-                i -= 1
-                continue
-        if _is_non_stock(emoji):
-            results.remove(i)
-            removed += 1
-            i -= 1
-            continue
-        try:
-            if getattr(r, "premium", False):
-                results.remove(i)
-                removed += 1
-        except Exception:
-            pass
-        i -= 1
-    return removed
-
-
-def _reindex_search_sets(sets):
-    if not sets or not ArrayList:
-        return
-    rebuilt = ArrayList()
-    buffer = ArrayList()
-    dirty = False
-    for i in range(sets.size()):
-        item = sets.get(i)
-        if item and getattr(item, "title", None) is not None:
-            if buffer.size() > 0:
-                rebuilt.add(item)
-                for d in range(buffer.size()):
-                    rebuilt.add(buffer.get(d))
-            buffer = ArrayList()
-            continue
-        if _is_non_stock(item):
-            dirty = True
-        else:
-            buffer.add(item)
-    for d in range(buffer.size()):
-        rebuilt.add(buffer.get(d))
-    if dirty:
-        sets.clear()
-        sets.addAll(rebuilt)
-
-
-def _filter_search_packs(packs_list):
-    if not packs_list:
-        return 0
-    removed = 0
-    i = packs_list.size() - 1
-    while i >= 0:
-        pack_info = packs_list.get(i)
-        docs = getattr(pack_info, "documents", None)
-        if docs:
-            _filter_list(docs, drop_non_stock=True)
-            if docs.size() == 0:
-                packs_list.remove(i)
-                removed += 1
-        else:
-            packs_list.remove(i)
-            removed += 1
-        i -= 1
-    return removed
-
-
 # ============================================================
 # TL response handlers
 # ============================================================
@@ -250,48 +174,6 @@ def filter_response(request_name, response):
 # ============================================================
 # Search hooks
 # ============================================================
-
-
-class FilterSearchResultsHook(BaseHook):
-    def before_hooked_method(self, param):
-        if not self.is_enabled():
-            return
-        if not param.args or len(param.args) < 3:
-            return
-        _filter_search_results(param.args[1])
-        _reindex_search_sets(param.args[2])
-
-
-class FilterSearchV7Hook(BaseHook):
-    def __init__(self, plugin):
-        super().__init__(plugin, Keys.hide_premium_search)
-
-    def before_hooked_method(self, param):
-        if not self.is_enabled():
-            return
-        if not param.args or len(param.args) < 3:
-            return
-        _filter_search_results(param.args[1])
-        _reindex_search_sets(param.args[2])
-
-
-class FilterSearchV12_8_1Hook(BaseHook):
-    def before_hooked_method(self, param):
-        if not self.is_enabled():
-            return
-        if not param.args or len(param.args) < 5:
-            return
-
-        runnable_instance = param.thisObject
-        search_adapter = getattr(runnable_instance, "this$0", None)
-        if search_adapter:
-            result_pre = get_private_field(search_adapter, "resultPre")
-            if result_pre:
-                _filter_search_results(result_pre)
-
-        _filter_search_results(param.args[1])
-        _filter_search_packs(param.args[2])
-        _filter_search_packs(param.args[3])
 
 
 class BlockGlobalSearchHook(BaseHook):
@@ -378,25 +260,7 @@ def register_premium_emoji(plugin):
 
     if EmojiSearchAdapter:
         try:
-            plugin.hook_all_methods(EmojiSearchAdapter, "lambda$search$5", FilterSearchResultsHook(plugin, Keys.hide_premium_search))
-        except Exception:
-            pass
-        try:
-            plugin.hook_all_methods(EmojiSearchAdapter, "lambda$search$7", FilterSearchV7Hook(plugin))
-        except Exception:
-            pass
-        try:
-            plugin.hook_all_methods(EmojiSearchAdapter, "lambda$search$3", BlockGlobalSearchHook(plugin, Keys.hide_premium_search))
-        except Exception:
-            pass
-        try:
             plugin.hook_all_methods(EmojiSearchAdapter, "searchEmoji", BlockGlobalSearchHook(plugin, Keys.hide_premium_search))
-        except Exception:
-            pass
-
-    if EmojiSearchAdapterRunnable:
-        try:
-            plugin.hook_all_methods(EmojiSearchAdapterRunnable, "lambda$run$7", FilterSearchV12_8_1Hook(plugin, Keys.hide_premium_search))
         except Exception:
             pass
 

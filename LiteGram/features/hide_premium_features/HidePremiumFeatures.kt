@@ -15,12 +15,30 @@ object HidePremiumFeaturesHook {
     @Volatile @JvmStatic var inFilterCreate: Boolean = false
 
     private val localUnhooks = ArrayList<XC_MethodHook.Unhook>()
+    private var cachedMessagesControllerClass: Class<*>? = null
 
     @JvmStatic
     fun setFlag(name: String, enabled: Boolean) {
         when (name) {
-            "hidePremiumFeatures", "hide_premium_features" -> hidePremiumFeatures = enabled
+            "hidePremiumFeatures", "hide_premium_features" -> {
+                hidePremiumFeatures = enabled
+                if (enabled) {
+                    applyFolderTags()
+                }
+            }
         }
+    }
+
+    private fun applyFolderTags() {
+        val mc = cachedMessagesControllerClass ?: return
+        try {
+            val ftField = ReflectionCache.getField(mc, "folderTags") ?: return
+            val getInstanceMethod = ReflectionCache.getMethod(mc, "getInstance", Int::class.javaPrimitiveType) ?: return
+            for (i in 0 until 4) {
+                val inst = getInstanceMethod.invoke(null, i) ?: continue
+                ftField.setBoolean(inst, false)
+            }
+        } catch (_: Throwable) {}
     }
 
     @JvmStatic
@@ -36,6 +54,7 @@ object HidePremiumFeaturesHook {
 
         hidePremiumFeatures = false
         inFilterCreate = false
+        cachedMessagesControllerClass = null
     }
 
     private fun hookAllMethods(
@@ -166,6 +185,7 @@ object HidePremiumFeaturesHook {
         val textInfoPrivacyCellClass = ReflectionCache.findClass("org.telegram.ui.Cells.TextInfoPrivacyCell", cl)
         val filtersSetupClass = ReflectionCache.findClass("org.telegram.ui.FiltersSetupActivity", cl)
         val messagesControllerClass = ReflectionCache.findClass("org.telegram.messenger.MessagesController", cl)
+        cachedMessagesControllerClass = messagesControllerClass
         val userConfigClass = ReflectionCache.findClass("org.telegram.messenger.UserConfig", cl)
         val generalPrefsClass = ReflectionCache.findClass("com.exteragram.messenger.preferences.GeneralPreferencesActivity", cl)
         val settingsRegistryClass = ReflectionCache.findClass("com.exteragram.messenger.preferences.utils.SettingsRegistry", cl)
@@ -325,9 +345,7 @@ object HidePremiumFeaturesHook {
                     for (i in list.indices.reversed()) {
                         val item = list[i] ?: continue
                         try {
-                            val idVal = (ReflectionCache.getField(item.javaClass, "id")?.get(item) as? Number)?.toInt()
-                                ?: (ReflectionCache.getField(item.javaClass, "f1708id")?.get(item) as? Number)?.toInt()
-                                ?: -1
+                            val idVal = (ReflectionCache.getField(item.javaClass, "id")?.get(item) as? Number)?.toInt() ?: -1
                             if (idVal == 2) {
                                 list.removeAt(i)
                             }

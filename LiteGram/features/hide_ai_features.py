@@ -7,7 +7,6 @@ from LiteGram.utils.dex_utils import dex_bridge
 from LiteGram.utils.xposed_utils import BaseHook
 
 
-# спизжено у @kvucoPlugins, извините 👉👈  # noqa: RUF003
 class TranslateControllerIsSummarizableHook(BaseHook):
     def before_hooked_method(self, param: Any) -> None:
         if self.plugin.get_setting(Keys.hide_ai_summarize, False):
@@ -21,7 +20,7 @@ class ChatActivityShowAiButtonHook(BaseHook):
 
             try:
                 if param.args:
-                    param.args[0] = Boolean(False)  # ty: ignore
+                    param.args[0] = Boolean(False)  # type: ignore
                 obj = param.thisObject
                 if obj is not None:
                     try:
@@ -36,7 +35,7 @@ class ChatActivityShowAiButtonHook(BaseHook):
                 pass
 
 
-class ExteraConfigTelegramAiEditorHook(BaseHook):
+class AiControllerCanUseAiHook(BaseHook):
     def before_hooked_method(self, param: Any) -> None:
         if self.plugin.get_setting(Keys.hide_ai_button, False):
             param.setResult(False)
@@ -74,10 +73,10 @@ def register_hide_ai_features(plugin: Any) -> None:
         except Exception:
             pass
 
-    # 3. Original ExteraGram AI gating hook
+    # 3. Modern ExteraGram AI gating hook (AiController.canUseAI)
     try:
-        ExteraConfig = find_class("com.exteragram.messenger.ExteraConfig")
-        if ExteraConfig is not None:
-            plugin.hook_all_methods(ExteraConfig, "getTelegramAiEditor", ExteraConfigTelegramAiEditorHook(plugin))
+        AiController = find_class("com.exteragram.messenger.ai.AiController")
+        if AiController is not None:
+            plugin.hook_all_methods(AiController, "canUseAI", AiControllerCanUseAiHook(plugin))
     except Exception:
         pass
