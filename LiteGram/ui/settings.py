@@ -203,7 +203,7 @@ def _profile_settings() -> list[Any]:
 def _interface_settings() -> list[Any]:
     items: list[Any] = [
         Header(text=t("settings_options")),
-        Text(text=t("switch_all"), link_alias=Keys.switch_all, on_click=toggle_settings_options),
+        Text(text=t("switch_all"), link_alias=Keys.switch_all, on_click=toggle_settings_options, accent=True),
         *[Switch(text=t(text_key), key=key) for key, text_key in SETTINGS_OPTION_ROWS],
         Header(text=t("drawer_options")),
         Text(
