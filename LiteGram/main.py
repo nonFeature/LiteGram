@@ -16,6 +16,7 @@ from LiteGram.features.hide_emoji_search import register_hide_emoji_search
 from LiteGram.features.hide_group_stickers import register_hide_group_stickers
 from LiteGram.features.hide_premium_features import register_hide_premium_features
 from LiteGram.features.hide_todo import register_hide_todo
+from LiteGram.features.hide_wallet import register_hide_wallet
 from LiteGram.features.media_layout import register_media_layout
 from LiteGram.features.premium_badge import register_premium_badge
 from LiteGram.features.premium_emoji import filter_response, register_premium_emoji
@@ -85,6 +86,7 @@ class LiteGramPlugin(BasePlugin):
             Keys.simplified_articles_editor,
             Keys.hide_gift_cards,
             Keys.hide_giveaway_cards,
+            Keys.hide_transfer_cards,
             Keys.hide_star_reaction,
             Keys.hide_emoji_search,
             Keys.hide_profile_background_emoji,
@@ -108,6 +110,10 @@ class LiteGramPlugin(BasePlugin):
             Keys.hide_action_bar_add_shortcut,
             Keys.hide_action_bar_boost_group,
             Keys.hide_premium_features,
+            Keys.hide_profile_balance,
+            Keys.hide_profile_send_money,
+            Keys.hide_chat_send_money,
+            Keys.hide_wallet_row,
             Keys.enable_debug_logs,
         ):
             val = self.get_setting(key, False)
@@ -135,6 +141,7 @@ class LiteGramPlugin(BasePlugin):
             "TL_messages_getRecentStickers",
             "TL_messages_getStickers",
             "TL_messages_getStickerSet",
+            "TL_messages_getAttachMenuBots",
         ]
         for name in tl_hooks:
             try:
@@ -169,6 +176,14 @@ class LiteGramPlugin(BasePlugin):
                 or self.get_setting(Keys.hide_group_stickers, False)
             ):
                 filter_response(request_name, response)
+            hide_wallet = (
+                self.get_setting(Keys.hide_profile_balance, False)
+                or self.get_setting(Keys.hide_profile_send_money, False)
+                or self.get_setting(Keys.hide_chat_send_money, False)
+                or self.get_setting(Keys.hide_wallet_row, False)
+            )
+            if hide_wallet:
+                self._sanitize_wallet_payload(response)
             if self.get_setting(Keys.hide_gifts_tab, False):
                 if self._is_gift_request(request_name):
                     self._sanitize_gifts_payload(response)
@@ -180,6 +195,10 @@ class LiteGramPlugin(BasePlugin):
     def on_update_hook(self, update_name: str, account: int, update: Any) -> HookResult:
         log_debug("TL_Update", f"{update_name} (acc: {account})")
         try:
+            if update is not None:
+                hide_wallet = bool(self.get_setting(Keys.hide_profile_balance, False))
+                if hide_wallet and ("wallet" in str(update_name).lower() or "gram" in str(update_name).lower()):
+                    self._sanitize_wallet_payload(update)
             if update is not None and self.get_setting(Keys.hide_gifts_tab, False):
                 if "gift" in str(update_name).lower():
                     self._sanitize_gifts_payload(update)
@@ -190,6 +209,10 @@ class LiteGramPlugin(BasePlugin):
     def on_updates_hook(self, container_name: str, account: int, updates: Any) -> HookResult:
         log_debug("TL_Updates", f"{container_name} (acc: {account})")
         try:
+            if updates is not None:
+                hide_wallet = bool(self.get_setting(Keys.hide_profile_balance, False))
+                if hide_wallet and ("wallet" in str(container_name).lower() or "gram" in str(container_name).lower()):
+                    self._sanitize_wallet_payload(updates)
             if updates is not None and self.get_setting(Keys.hide_gifts_tab, False):
                 if "gift" in str(container_name).lower():
                     self._sanitize_gifts_payload(updates)
@@ -256,6 +279,60 @@ class LiteGramPlugin(BasePlugin):
             except Exception:
                 pass
 
+    @staticmethod
+    def _sanitize_wallet_payload(obj, visited=None, depth=0):
+        if obj is None or depth > 4 or isinstance(obj, (int, float, str, bool, bytes)):
+            return
+        if visited is None:
+            visited = set()
+        try:
+            oid = id(obj)
+            if oid in visited:
+                return
+            visited.add(oid)
+        except Exception:
+            pass
+        try:
+            if hasattr(obj, "wallet_card"):
+                obj.wallet_card = None
+            if hasattr(obj, "can_view_revenue"):
+                obj.can_view_revenue = False
+            if hasattr(obj, "can_view_stars_revenue"):
+                obj.can_view_stars_revenue = False
+            bots = getattr(obj, "bots", None)
+            if bots is not None:
+                if hasattr(bots, "size") and hasattr(bots, "remove"):
+                    i = bots.size() - 1
+                    while i >= 0:
+                        b = bots.get(i)
+                        b_id = getattr(b, "bot_id", None)
+                        b_name = str(getattr(b, "short_name", "")).lower()
+                        if b_id == 1985737506 or b_name == "wallet":
+                            bots.remove(i)
+                        i -= 1
+                elif hasattr(bots, "__iter__"):
+                    to_remove = [b for b in bots if getattr(b, "bot_id", None) == 1985737506 or str(getattr(b, "short_name", "")).lower() == "wallet"]
+                    for b in to_remove:
+                        try:
+                            bots.remove(b)
+                        except Exception:
+                            pass
+        except Exception:
+            pass
+        for key in ("users", "chats", "list", "items", "bots"):
+            try:
+                val = getattr(obj, key, None)
+                if val is not None and hasattr(val, "__iter__"):
+                    for item in val:
+                        LiteGramPlugin._sanitize_wallet_payload(item, visited, depth + 1)
+            except Exception:
+                pass
+        for key in ("user", "chat", "full_user", "full_chat", "peer", "data", "result", "attach_menu_bots"):
+            try:
+                LiteGramPlugin._sanitize_wallet_payload(getattr(obj, key, None), visited, depth + 1)
+            except Exception:
+                pass
+
     def create_settings(self) -> list[Any]:
         return get_main_settings_list()
 
@@ -279,6 +356,7 @@ class LiteGramPlugin(BasePlugin):
         register_hide_todo(self)
         register_hide_communities(self)
         register_hide_group_stickers(self)
+        register_hide_wallet(self)
         register_settings_header(self)
 
     def on_plugin_unload(self) -> None:

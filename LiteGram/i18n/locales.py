@@ -15,8 +15,9 @@ STRINGS = {
         "switch_all": "Переключить все",
         "hide_premium_row": "Скрыть «Telegram Premium»",
         "hide_stars_row": "Скрыть «Мои Звёзды»",
-        "hide_ton_row": "Скрыть «Мои TON»",
         "hide_wallet_row": "Скрыть «Wallet»",
+        "hide_gram_row": "Скрыть «Мои Gram»",
+        "hide_ton_row": "Скрыть «Мои Gram»",
         "hide_business_row": "Скрыть «Telegram для бизнеса»",
         "hide_send_a_gift_row": "Скрыть «Отправить подарок»",
         "hide_help_section": "Скрыть раздел «Помощь»",
@@ -43,6 +44,7 @@ STRINGS = {
         "hide_profile_actions_gift_button": "Скрыть кнопку отправки подарка",
         "hide_profile_actions_stories_button": "Скрыть кнопку новой истории",
         "hide_profile_actions_stream_button": "Скрыть кнопки трансляции и видеочата",
+        "hide_profile_send_money": "Скрыть «Отправить деньги»",
 
         # --- Profile Tabs ---
         "profile_tabs": "Вкладки в профиле",
@@ -65,6 +67,7 @@ STRINGS = {
         "hide_profile_music": "Скрыть музыкальный трек",
         "hide_profile_business": "Скрыть бизнес-информацию",
         "hide_profile_business_sub": "Гео/часы работы",
+        "hide_profile_balance": "Скрыть баланс в профиле",
 
         # --- Action Bar ---
         "action_bar": "Три точки",
@@ -81,12 +84,14 @@ STRINGS = {
         "hide_bottom_gift_button": "Скрыть кнопку подарка в поле ввода",
         "hide_gift_cards": "Скрыть карточки подарков в чате",
         "hide_giveaway_cards": "Скрыть розыгрыши в чатах",
+        "hide_transfer_cards": "Скрыть карточки переводов в чате",
         "hide_collectible_status": "Скрыть collectible-статус",
         "hide_collectible_status_sub": "Если в статусе стоит подарок",
 
         "hide_stars_rating": "Скрыть рейтинг звёзд",
         "hide_star_reaction": "Скрыть реакции за звёзды",
         "hide_emoji_search": "Скрыть эмодзи в поле поиска",
+        "hide_chat_send_money": "Скрыть «Отправить деньги» в меню сообщения",
 
         # --- Keyboard Options ---
         "premium_emoji_settings_header": "Скрытие кастомных эмодзи",
@@ -104,6 +109,7 @@ STRINGS = {
         "premium_features_header": "Премиум-Функции",
         "hide_premium_features": "Скрыть премиум-функции",
         "hide_premium_features_sub": "Скрывает некоторые настройки конфиденциальности, теги папок, и перевод чатов",
+
         "hide_articles_editor": "Скрыть редактор статей",
         "simplified_articles_editor": "Упрощенный редактор статей",
         "hide_todo_button": "Скрыть списки задач",
@@ -141,8 +147,9 @@ STRINGS = {
         "switch_all": "Switch All",
         "hide_premium_row": "Hide «Telegram Premium»",
         "hide_stars_row": "Hide «My Stars»",
-        "hide_ton_row": "Hide «My TON»",
         "hide_wallet_row": "Hide «Wallet»",
+        "hide_gram_row": "Hide «My Gram»",
+        "hide_ton_row": "Hide «My Gram»",
         "hide_business_row": "Hide «Telegram Business»",
         "hide_send_a_gift_row": "Hide «Send a Gift»",
         "hide_help_section": "Hide «Help» Section",
@@ -169,6 +176,7 @@ STRINGS = {
         "hide_profile_actions_gift_button": "Hide Gift Button",
         "hide_profile_actions_stories_button": "Hide Stories Button",
         "hide_profile_actions_stream_button": "Hide Live Stream & Video Chat Button",
+        "hide_profile_send_money": "Hide «Send Money»",
 
         # --- Profile Tabs ---
         "profile_tabs": "Profile Tabs",
@@ -191,6 +199,7 @@ STRINGS = {
         "hide_profile_music": "Hide music track",
         "hide_profile_business": "Hide business info",
         "hide_profile_business_sub": "Geo/working hours",
+        "hide_profile_balance": "Hide balance in profile",
 
         # --- Action Bar ---
         "action_bar": "Three dots",
@@ -207,12 +216,14 @@ STRINGS = {
         "hide_bottom_gift_button": "Hide Gift Button from Input Field",
         "hide_gift_cards": "Hide Gift Cards in Chat",
         "hide_giveaway_cards": "Hide Giveaways",
+        "hide_transfer_cards": "Hide Transfer Cards in Chat",
         "hide_collectible_status": "Hide Collectible Status",
         "hide_collectible_status_sub": "If there is a gift in the status",
 
         "hide_stars_rating": "Hide Stars Rating",
         "hide_star_reaction": "Hide Star Reaction",
         "hide_emoji_search": "Hide emoji in search field",
+        "hide_chat_send_money": "Hide «Send Money» in Context Menu",
 
         # --- Keyboard Options ---
         "premium_emoji_settings_header": "Hide Custom Emoji",
@@ -230,6 +241,7 @@ STRINGS = {
         "premium_features_header": "Premium Features",
         "hide_premium_features": "Hide premium features",
         "hide_premium_features_sub": "Hides some privacy settings, folder tags, and chat translation",
+
         "hide_articles_editor": "Hide articles editor",
         "simplified_articles_editor": "Simplified articles editor",
         "hide_todo_button": "Hide To-Do lists",

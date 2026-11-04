@@ -1,4 +1,5 @@
 GITHUB_URL = "https://github.com/nonFeature/LiteGram"
+WALLET_BOT_ID = 1985737506
 
 
 # Even though camelCase isn't like python
@@ -8,11 +9,16 @@ class Keys:
     switch_all = "switchAll"
     hide_premium_row = "hidePremiumRow"
     hide_stars_row = "hideStarsRow"
-    hide_ton_row = "hideTonRow"
     hide_wallet_row = "hideWalletRow"
+    hide_ton_row = "hideTonRow"
     hide_business_row = "hideBusinessRow"
     hide_send_a_gift_row = "hideSendAGiftRow"
     hide_help_section = "hideHelpSection"
+
+    # --- Wallet / Money Features Hiding ---
+    hide_profile_balance = "hideProfileBalance"
+    hide_profile_send_money = "hideProfileSendMoney"
+    hide_chat_send_money = "hideChatSendMoney"
 
     # --- Category Link Aliases (deep links) ---
     chatSettings = "chatSettings"
@@ -99,6 +105,7 @@ class Keys:
     hide_bottom_gift_button = "hideBottomGiftButton"
     hide_gift_cards = "hideGiftCards"
     hide_giveaway_cards = "hideGiveawayCards"
+    hide_transfer_cards = "hideTransferCards"
     hide_collectible_status = "hideCollectibleStatus"
     hide_stars_rating = "hideStarsRating"
     hide_star_reaction = "hideStarReaction"
@@ -113,7 +120,6 @@ class Keys:
     SETTINGS_OPTION_ROWS = (
         (hide_premium_row, "hide_premium_row"),
         (hide_stars_row, "hide_stars_row"),
-        (hide_ton_row, "hide_ton_row"),
         (hide_wallet_row, "hide_wallet_row"),
         (hide_business_row, "hide_business_row"),
         (hide_send_a_gift_row, "hide_send_a_gift_row"),

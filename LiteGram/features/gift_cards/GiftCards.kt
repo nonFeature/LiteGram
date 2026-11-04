@@ -17,6 +17,7 @@ object GiftCardsHook {
 
     @Volatile @JvmStatic var hideGiftCards: Boolean = false
     @Volatile @JvmStatic var hideGiveawayCards: Boolean = false
+    @Volatile @JvmStatic var hideTransferCards: Boolean = false
 
     private const val HIDDEN_VIEW_TYPE = -1000
 
@@ -72,6 +73,7 @@ object GiftCardsHook {
         when (name) {
             "hideGiftCards", "hide_gift_cards" -> hideGiftCards = enabled
             "hideGiveawayCards", "hide_giveaway_cards" -> hideGiveawayCards = enabled
+            "hideTransferCards", "hide_transfer_cards" -> hideTransferCards = enabled
         }
     }
 
@@ -88,6 +90,7 @@ object GiftCardsHook {
 
         hideGiftCards = false
         hideGiveawayCards = false
+        hideTransferCards = false
 
         chatActivityAdapterClass = null
         messagesStartRowField = null
@@ -224,6 +227,25 @@ object GiftCardsHook {
         return false
     }
 
+    private fun isTransferMessage(msg: Any): Boolean {
+        try {
+            val owner = messageOwnerField?.get(msg) ?: return false
+            val action = actionField?.get(owner)
+            if (action != null) {
+                val actionName = action.javaClass.name
+                if (actionName.contains("GramTransfer") ||
+                    actionName.contains("PaymentSent") ||
+                    actionName.contains("PaymentRefunded") ||
+                    actionName.contains("PrizeStars") ||
+                    actionName.contains("WalletTonConnect")
+                ) {
+                    return true
+                }
+            }
+        } catch (_: Throwable) {}
+        return false
+    }
+
     private fun isGiveawayMessage(msg: Any): Boolean {
         try {
             val type = messageTypeField?.getInt(msg) ?: 0
@@ -280,10 +302,21 @@ object GiftCardsHook {
             ReflectionCache.findClass(cn, cl)?.let { giftObjectClasses.add(it) }
         }
 
+        val chatActionCellClass = ReflectionCache.findClass("org.telegram.ui.Cells.ChatActionCell", cl)
+        if (chatActionCellClass != null) {
+            hookAllMethods(chatActionCellClass, "hasWalletActionLayout", object : XC_MethodHook(120) {
+                override fun beforeHookedMethod(param: MethodHookParam) {
+                    if (hideTransferCards) {
+                        param.result = false
+                    }
+                }
+            }, unhooksList)
+        }
+
         // 1. Hook getItemViewType(int position)
         hookAllMethods(chatActivityAdapterClass, "getItemViewType", object : XC_MethodHook(120) {
             override fun beforeHookedMethod(param: MethodHookParam) {
-                if (!hideGiftCards && !hideGiveawayCards) return
+                if (!hideGiftCards && !hideGiveawayCards && !hideTransferCards) return
                 val args = param.args
                 if (args == null || args.isEmpty()) return
                 val position = args[0] as? Int ?: return
@@ -294,7 +327,8 @@ object GiftCardsHook {
                     val msg = getMessage(adapter, position) ?: return
                     val isGift = hideGiftCards && isGiftMessage(msg)
                     val isGiveaway = hideGiveawayCards && isGiveawayMessage(msg)
-                    if (isGift || isGiveaway) {
+                    val isTransfer = hideTransferCards && isTransferMessage(msg)
+                    if (isGift || isGiveaway || isTransfer) {
                         param.setResult(HIDDEN_VIEW_TYPE)
                     }
                 } finally {
@@ -306,7 +340,7 @@ object GiftCardsHook {
         // 2. Hook onCreateViewHolder(ViewGroup parent, int viewType)
         hookAllMethods(chatActivityAdapterClass, "onCreateViewHolder", object : XC_MethodHook(120) {
             override fun beforeHookedMethod(param: MethodHookParam) {
-                if (!hideGiftCards && !hideGiveawayCards) return
+                if (!hideGiftCards && !hideGiveawayCards && !hideTransferCards) return
                 val args = param.args
                 if (args == null || args.size < 2) return
                 val viewType = args[1] as? Int ?: return
@@ -341,7 +375,7 @@ object GiftCardsHook {
         // 3. Hook onBindViewHolder(ViewHolder holder, int position)
         hookAllMethods(chatActivityAdapterClass, "onBindViewHolder", object : XC_MethodHook(120) {
             override fun beforeHookedMethod(param: MethodHookParam) {
-                if (!hideGiftCards && !hideGiveawayCards) return
+                if (!hideGiftCards && !hideGiveawayCards && !hideTransferCards) return
                 val args = param.args
                 if (args == null || args.size < 2) return
                 val position = args[1] as? Int ?: return
@@ -352,7 +386,8 @@ object GiftCardsHook {
                     val msg = getMessage(adapter, position) ?: return
                     val isGift = hideGiftCards && isGiftMessage(msg)
                     val isGiveaway = hideGiveawayCards && isGiveawayMessage(msg)
-                    if (isGift || isGiveaway) {
+                    val isTransfer = hideTransferCards && isTransferMessage(msg)
+                    if (isGift || isGiveaway || isTransfer) {
                         param.setResult(null)
                     }
                 } finally {

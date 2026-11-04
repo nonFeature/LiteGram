@@ -15,7 +15,7 @@ from LiteGram.utils.settings_utils import (
     toggle_premium_stickers_options,
     toggle_settings_options,
 )
-from LiteGram.utils.utils import get_client_version, parse_version  # noqa: F401
+from LiteGram.utils.utils import get_client_version, parse_version
 
 SETTINGS_OPTION_ROWS = Keys.SETTINGS_OPTION_ROWS
 
@@ -85,9 +85,11 @@ def _chat_settings() -> list[Any]:
         Switch(text=t("hide_bottom_gift_button"), key=Keys.hide_bottom_gift_button),
         Switch(text=t("hide_gift_cards"), key=Keys.hide_gift_cards),
         Switch(text=t("hide_giveaway_cards"), key=Keys.hide_giveaway_cards),
+        Switch(text=t("hide_transfer_cards"), key=Keys.hide_transfer_cards),
         Switch(text=t("hide_star_reaction"), key=Keys.hide_star_reaction),
         Switch(text=t("hide_group_stickers"), key=Keys.hide_group_stickers),
         Switch(text=t("hide_emoji_search"), key=Keys.hide_emoji_search),
+        Switch(text=t("hide_chat_send_money"), key=Keys.hide_chat_send_money),
     ]
 
     plugin = LiteGramPlugin.get_instance()
@@ -161,6 +163,7 @@ def _profile_settings() -> list[Any]:
         Switch(text=t("hide_profile_actions_stories_button"), key=Keys.hide_profile_actions_stories_button),
         Switch(text=t("hide_profile_actions_gift_button"), key=Keys.hide_profile_actions_gift_button),
         Switch(text=t("hide_profile_actions_stream_button"), key=Keys.hide_profile_actions_stream_button),
+        Switch(text=t("hide_profile_send_money"), key=Keys.hide_profile_send_money),
         Header(text=t("profile_tabs")),
         Switch(text=t("hide_stories_tab"), key=Keys.hide_stories_tab),
         Switch(text=t("hide_gifts_tab"), key=Keys.hide_gifts_tab),
@@ -194,17 +197,26 @@ def _profile_settings() -> list[Any]:
             Switch(text=t("hide_bot_verification"), key=Keys.hide_bot_verification),
             Switch(text=t("hide_profile_music"), key=Keys.hide_profile_music),
             Switch(text=t("hide_profile_business"), subtext=t("hide_profile_business_sub"), key=Keys.hide_profile_business),
+            Switch(text=t("hide_profile_balance"), key=Keys.hide_profile_balance),
         ]
     )
 
     return elements
 
 
+def _settings_row_title(key: str, text_key: str) -> str:
+    if key == Keys.hide_wallet_row:
+        if parse_version(get_client_version()) >= (13, 0, 0):
+            return t("hide_wallet_row")
+        return t("hide_gram_row")
+    return t(text_key)
+
+
 def _interface_settings() -> list[Any]:
     items: list[Any] = [
         Header(text=t("settings_options")),
         Text(text=t("switch_all"), link_alias=Keys.switch_all, on_click=toggle_settings_options, accent=True),
-        *[Switch(text=t(text_key), key=key) for key, text_key in SETTINGS_OPTION_ROWS],
+        *[Switch(text=_settings_row_title(key, text_key), key=key) for key, text_key in SETTINGS_OPTION_ROWS],
         Header(text=t("drawer_options")),
         Text(
             text=t("manage_drawer_options"),

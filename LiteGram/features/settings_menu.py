@@ -6,13 +6,14 @@ from LiteGram.utils.xposed_utils import BaseHook
 MODERN_ROW_TO_KEY = {
     11: Keys.hide_premium_row,
     12: Keys.hide_stars_row,
-    13: Keys.hide_ton_row,
+    13: Keys.hide_wallet_row,
     15: Keys.hide_business_row,
     16: Keys.hide_send_a_gift_row,
     17: Keys.hide_help_section,
     18: Keys.hide_help_section,
     19: Keys.hide_help_section,
     23: Keys.hide_help_section,
+    25: Keys.hide_wallet_row,
 }
 MODERN_HELP_ROW_IDS = {17, 18, 19, 23}
 WALLET_BOT_ID = 1985737506
@@ -87,7 +88,7 @@ class SettingsActivityFillItemsHook(BaseHook):
             return
 
         hide_help_section = self.plugin.get_setting(Keys.hide_help_section, False)
-        hide_wallet_row = self.plugin.get_setting(Keys.hide_wallet_row, False)
+        hide_wallet_row = self.plugin.get_setting(Keys.hide_wallet_row, False) or self.plugin.get_setting(Keys.hide_ton_row, False)
         indices_to_remove = set()
         help_row_indices = []
 
@@ -96,14 +97,24 @@ class SettingsActivityFillItemsHook(BaseHook):
             item_id = get_uitem_id(item)
             setting_key = MODERN_ROW_TO_KEY.get(item_id)
 
-            if setting_key and self.plugin.get_setting(setting_key, False):
+            should_remove = False
+            if setting_key:
+                if setting_key == Keys.hide_wallet_row and hide_wallet_row:
+                    should_remove = True
+                elif self.plugin.get_setting(setting_key, False):
+                    should_remove = True
+            if should_remove:
                 indices_to_remove.add(index)
+                if item_id == 25 and index + 1 < size and get_uitem_view_type(items.get(index + 1)) in (0, 7):
+                    indices_to_remove.add(index + 1)
 
             if hide_help_section and item_id in MODERN_HELP_ROW_IDS:
                 help_row_indices.append(index)
 
             if hide_wallet_row and is_wallet_item(item):
                 indices_to_remove.add(index)
+                if item_id == 25 and index + 1 < size and get_uitem_view_type(items.get(index + 1)) in (0, 7):
+                    indices_to_remove.add(index + 1)
 
         if hide_help_section and help_row_indices:
             header_index = min(help_row_indices) - 1
@@ -126,11 +137,19 @@ class SettingsActivityOnClickHook(BaseHook):
         item = param.args[0]
         item_id = get_uitem_id(item)
         setting_key = MODERN_ROW_TO_KEY.get(item_id)
-        if setting_key and self.plugin.get_setting(setting_key, False):
+        should_block = False
+        if setting_key:
+            if setting_key in (Keys.hide_wallet_row, Keys.hide_ton_row) and (
+                self.plugin.get_setting(Keys.hide_wallet_row, False) or self.plugin.get_setting(Keys.hide_ton_row, False)
+            ):
+                should_block = True
+            elif self.plugin.get_setting(setting_key, False):
+                should_block = True
+        if should_block:
             param.setResult(None)
             return
 
-        if self.plugin.get_setting(Keys.hide_wallet_row, False) and is_wallet_item(item):
+        if (self.plugin.get_setting(Keys.hide_wallet_row, False) or self.plugin.get_setting(Keys.hide_ton_row, False)) and is_wallet_item(item):
             param.setResult(None)
 
 

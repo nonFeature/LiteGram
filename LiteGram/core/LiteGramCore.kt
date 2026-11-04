@@ -8,6 +8,7 @@ import non.feature.litegram.hide_articles.HideArticlesHook
 import non.feature.litegram.hide_communities.HideCommunitiesHook
 import non.feature.litegram.hide_emoji_search.HideEmojiSearchHook
 import non.feature.litegram.hide_premium_features.HidePremiumFeaturesHook
+import non.feature.litegram.hide_wallet.HideWalletHook
 import non.feature.litegram.media_layout.MediaLayoutHook
 import non.feature.litegram.premium_badge.PremiumBadgeHook
 import non.feature.litegram.premium_emoji.PremiumEmojiHook
@@ -31,6 +32,7 @@ class LiteGramCore {
         try { ProfileActionsHook.init(cl, hooks) } catch (_: Throwable) {}
         try { ActionBarHook.init(cl, hooks) } catch (_: Throwable) {}
         try { HidePremiumFeaturesHook.init(cl, hooks) } catch (_: Throwable) {}
+        try { HideWalletHook.init(cl, hooks) } catch (_: Throwable) {}
     }
 
     fun unload() {
@@ -46,6 +48,7 @@ class LiteGramCore {
         try { ProfileActionsHook.unload() } catch (_: Throwable) {}
         try { ActionBarHook.unload() } catch (_: Throwable) {}
         try { HidePremiumFeaturesHook.unload() } catch (_: Throwable) {}
+        try { HideWalletHook.unload() } catch (_: Throwable) {}
 
         synchronized(hooks) {
             for (u in hooks) {
@@ -72,5 +75,6 @@ class LiteGramCore {
         try { ProfileActionsHook.setFlag(name, enabled) } catch (_: Throwable) {}
         try { ActionBarHook.setFlag(name, enabled) } catch (_: Throwable) {}
         try { HidePremiumFeaturesHook.setFlag(name, enabled) } catch (_: Throwable) {}
+        try { HideWalletHook.setFlag(name, enabled) } catch (_: Throwable) {}
     }
 }
