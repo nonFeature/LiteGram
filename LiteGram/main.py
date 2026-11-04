@@ -67,6 +67,7 @@ class LiteGramPlugin(BasePlugin):
             mode = int(value or 0)
             dex_bridge.set_flag(Keys.hide_communities_badges, mode in (1, 2))
             dex_bridge.set_flag(Keys.hide_communities_profile, mode in (1, 3))
+            dex_bridge.set_flag(Keys.hide_communities_cards, mode == 1)
         else:
             dex_bridge.set_flag(key, bool(value))
 
@@ -74,6 +75,7 @@ class LiteGramPlugin(BasePlugin):
         mode = int(self.get_setting(Keys.hide_communities, 0) or 0)
         dex_bridge.set_flag(Keys.hide_communities_badges, mode in (1, 2))
         dex_bridge.set_flag(Keys.hide_communities_profile, mode in (1, 3))
+        dex_bridge.set_flag(Keys.hide_communities_cards, mode == 1)
         for key in (
             Keys.hide_premium_emoji_keyboard,
             Keys.hide_premium_stickers_recent,

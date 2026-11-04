@@ -1,9 +1,12 @@
 package non.feature.litegram.hide_communities
 
 import android.view.View
+import android.view.ViewGroup
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedBridge
+import java.lang.reflect.Constructor
 import java.lang.reflect.Field
+import java.lang.reflect.Method
 import java.util.ArrayList
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
@@ -13,6 +16,9 @@ object HideCommunitiesHook {
 
     @Volatile @JvmStatic var hideCommunitiesBadges: Boolean = false
     @Volatile @JvmStatic var hideCommunitiesProfile: Boolean = false
+    @Volatile @JvmStatic var hideCommunitiesCards: Boolean = false
+
+    private const val HIDDEN_VIEW_TYPE = -1001
 
     private val localUnhooks = ArrayList<XC_MethodHook.Unhook>()
 
@@ -20,6 +26,18 @@ object HideCommunitiesHook {
     private var userClass: Class<*>? = null
     private var chatLinkedCommunityField: Field? = null
     private var userLinkedCommunityField: Field? = null
+
+    private var chatActivityAdapterClass: Class<*>? = null
+    private var messagesStartRowField: Field? = null
+    private var getMessagesMethod: Method? = null
+    private var messagesField: Field? = null
+    private var recyclerListViewHolderConstructor: Constructor<*>? = null
+    private var recyclerViewLayoutParamsConstructor: Constructor<*>? = null
+    private var messageObjectClass: Class<*>? = null
+    private var messageTypeField: Field? = null
+    private var messageOwnerField: Field? = null
+    private var messageActionField: Field? = null
+    private var communityActionClass: Class<*>? = null
 
     private var profileCommunityItemField: Field? = null
     private var profileCurrentChatField: Field? = null
@@ -46,6 +64,8 @@ object HideCommunitiesHook {
             hideCommunitiesBadges = enabled
         } else if (name == "hideCommunitiesProfile" || name == "hide_communities_profile") {
             hideCommunitiesProfile = enabled
+        } else if (name == "hideCommunitiesCards" || name == "hide_communities_cards") {
+            hideCommunitiesCards = enabled
         }
     }
 
@@ -66,6 +86,17 @@ object HideCommunitiesHook {
         userClass = null
         chatLinkedCommunityField = null
         userLinkedCommunityField = null
+        chatActivityAdapterClass = null
+        messagesStartRowField = null
+        getMessagesMethod = null
+        messagesField = null
+        recyclerListViewHolderConstructor = null
+        recyclerViewLayoutParamsConstructor = null
+        messageObjectClass = null
+        messageTypeField = null
+        messageOwnerField = null
+        messageActionField = null
+        communityActionClass = null
         profileCommunityItemField = null
         profileCurrentChatField = null
         profileCurrentUserField = null
@@ -409,5 +440,142 @@ object HideCommunitiesHook {
                 } catch (_: Throwable) {}
             }
         }, unhooksList)
+
+        // ==================== 3. CHAT CARDS (community service messages) ====================
+
+        chatActivityAdapterClass = ReflectionCache.findClass("org.telegram.ui.ChatActivity\$ChatActivityAdapter", cl)
+        messageObjectClass = ReflectionCache.findClass("org.telegram.messenger.MessageObject", cl)
+        communityActionClass = ReflectionCache.findClass("org.telegram.tgnet.TLRPC\$TL_messageActionChangeCommunity", cl)
+
+        messageTypeField = ReflectionCache.getField(messageObjectClass, "type")
+        messageOwnerField = ReflectionCache.getField(messageObjectClass, "messageOwner")
+        messageActionField = ReflectionCache.getField(
+            ReflectionCache.findClass("org.telegram.tgnet.TLRPC\$Message", cl),
+            "action"
+        )
+
+        if (chatActivityAdapterClass != null) {
+            messagesStartRowField = ReflectionCache.getField(chatActivityAdapterClass, "messagesStartRow")
+            getMessagesMethod = ReflectionCache.getMethod(chatActivityAdapterClass, "getMessages")
+            messagesField = ReflectionCache.getField(chatActivityAdapterClass, "messages")
+
+            val recyclerListViewHolderClass = ReflectionCache.findClass("org.telegram.ui.Components.RecyclerListView\$Holder", cl)
+            recyclerListViewHolderConstructor = try {
+                recyclerListViewHolderClass?.getConstructor(View::class.java)
+            } catch (_: Throwable) {
+                null
+            }
+
+            val recyclerViewLayoutParamsClass = ReflectionCache.findClass("androidx.recyclerview.widget.RecyclerView\$LayoutParams", cl)
+            recyclerViewLayoutParamsConstructor = try {
+                recyclerViewLayoutParamsClass?.getConstructor(Int::class.javaPrimitiveType, Int::class.javaPrimitiveType)
+            } catch (_: Throwable) {
+                null
+            }
+
+            // 3.1 Community service message rows get a dedicated (hidden) view type
+            hookAllMethods(chatActivityAdapterClass, "getItemViewType", object : XC_MethodHook(120) {
+                override fun beforeHookedMethod(param: MethodHookParam) {
+                    if (!hideCommunitiesCards) return
+                    val args = param.args ?: return
+                    if (args.isEmpty()) return
+                    val position = args[0] as? Int ?: return
+                    val adapter = param.thisObject ?: return
+                    if (isCommunityServiceMessage(getAdapterMessage(adapter, position))) {
+                        param.setResult(HIDDEN_VIEW_TYPE)
+                    }
+                }
+            }, unhooksList)
+
+            // 3.2 Zero-height empty holder for hidden rows
+            hookAllMethods(chatActivityAdapterClass, "onCreateViewHolder", object : XC_MethodHook(120) {
+                override fun beforeHookedMethod(param: MethodHookParam) {
+                    if (!hideCommunitiesCards) return
+                    val args = param.args ?: return
+                    if (args.size < 2) return
+                    if ((args[1] as? Int) != HIDDEN_VIEW_TYPE) return
+                    val parent = args[0] as? ViewGroup ?: return
+
+                    val lp = try {
+                        recyclerViewLayoutParamsConstructor?.newInstance(-1, 0) as? ViewGroup.LayoutParams
+                    } catch (_: Throwable) {
+                        null
+                    } ?: ViewGroup.LayoutParams(-1, 0)
+
+                    val empty = View(parent.context).apply {
+                        layoutParams = lp
+                        minimumHeight = 0
+                        visibility = View.GONE
+                    }
+
+                    val holder = try {
+                        recyclerListViewHolderConstructor?.newInstance(empty)
+                    } catch (_: Throwable) {
+                        null
+                    }
+                    if (holder != null) {
+                        param.setResult(holder)
+                    }
+                }
+            }, unhooksList)
+
+            // 3.3 Hidden rows are never bound
+            hookAllMethods(chatActivityAdapterClass, "onBindViewHolder", object : XC_MethodHook(120) {
+                override fun beforeHookedMethod(param: MethodHookParam) {
+                    if (!hideCommunitiesCards) return
+                    val args = param.args ?: return
+                    if (args.size < 2) return
+                    val position = args[1] as? Int ?: return
+                    val adapter = param.thisObject ?: return
+                    if (isCommunityServiceMessage(getAdapterMessage(adapter, position))) {
+                        param.setResult(null)
+                    }
+                }
+            }, unhooksList)
+        }
+    }
+
+    private fun getAdapterMessage(adapter: Any, position: Int): Any? {
+        val startRow = try {
+            messagesStartRowField?.get(adapter) as? Int
+        } catch (_: Throwable) {
+            null
+        } ?: return null
+        if (startRow < 0 || position < startRow) return null
+
+        val messages = try {
+            if (getMessagesMethod != null) getMessagesMethod!!.invoke(adapter) else messagesField?.get(adapter)
+        } catch (_: Throwable) {
+            try {
+                messagesField?.get(adapter)
+            } catch (_: Throwable) {
+                null
+            }
+        } ?: return null
+
+        val index = position - startRow
+        return when (messages) {
+            is List<*> -> if (index < messages.size) messages[index] else null
+            is Array<*> -> if (index < messages.size) messages[index] else null
+            else -> try {
+                ReflectionCache.getMethod(messages.javaClass, "get", Int::class.javaPrimitiveType)?.invoke(messages, index)
+            } catch (_: Throwable) {
+                null
+            }
+        }
+    }
+
+    private fun isCommunityServiceMessage(message: Any?): Boolean {
+        if (message == null) return false
+        try {
+            if (messageObjectClass != null && !messageObjectClass!!.isInstance(message)) return false
+            if (messageTypeField != null && messageTypeField!!.getInt(message) == 37) return true
+            val owner = messageOwnerField?.get(message) ?: return false
+            val action = messageActionField?.get(owner) ?: return false
+            val actionClass = communityActionClass
+            if (actionClass != null) return actionClass.isInstance(action)
+            return action.javaClass.name == "org.telegram.tgnet.TLRPC\$TL_messageActionChangeCommunity"
+        } catch (_: Throwable) {}
+        return false
     }
 }

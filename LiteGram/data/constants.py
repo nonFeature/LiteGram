@@ -37,6 +37,7 @@ class Keys:
     hide_communities = "hideCommunities"
     hide_communities_badges = "hideCommunitiesBadges"
     hide_communities_profile = "hideCommunitiesProfile"
+    hide_communities_cards = "hideCommunitiesCards"
 
     # --- Profile Buttons ---
     hide_profile_actions_stories_button = "hideProfileActionsStoriesButton"

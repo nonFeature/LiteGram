@@ -26,6 +26,7 @@ def _on_communities_mode_change(val: Any) -> None:
     plugin.set_setting(Keys.hide_communities, mode, reload_settings=False)
     dex_bridge.set_flag(Keys.hide_communities_badges, mode in (1, 2))
     dex_bridge.set_flag(Keys.hide_communities_profile, mode in (1, 3))
+    dex_bridge.set_flag(Keys.hide_communities_cards, mode == 1)
 
 
 def _on_hide_articles_editor_toggle(val: bool) -> None:

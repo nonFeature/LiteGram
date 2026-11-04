@@ -14,6 +14,7 @@ def update_hide_communities_dex_settings(plugin: Any) -> None:
     mode = int(plugin.get_setting(Keys.hide_communities, 0) or 0)
     dex_bridge.set_flag(Keys.hide_communities_badges, mode in (1, 2))
     dex_bridge.set_flag(Keys.hide_communities_profile, mode in (1, 3))
+    dex_bridge.set_flag(Keys.hide_communities_cards, mode == 1)
 
 
 def unload_hide_communities_dex() -> None:
