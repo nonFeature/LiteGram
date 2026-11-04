@@ -50,7 +50,7 @@ object HideWalletHook {
             "hideProfileBalance", "hide_profile_balance" -> hideProfileBalance = enabled
             "hideProfileSendMoney", "hide_profile_send_money" -> hideProfileSendMoney = enabled
             "hideChatSendMoney", "hide_chat_send_money" -> hideChatSendMoney = enabled
-            "hideWalletRow", "hide_wallet_row", "hideTonRow", "hide_ton_row" -> hideWalletRow = enabled
+            "hideWalletRow", "hide_wallet_row" -> hideWalletRow = enabled
         }
     }
 

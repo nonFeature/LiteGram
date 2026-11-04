@@ -88,7 +88,7 @@ class SettingsActivityFillItemsHook(BaseHook):
             return
 
         hide_help_section = self.plugin.get_setting(Keys.hide_help_section, False)
-        hide_wallet_row = self.plugin.get_setting(Keys.hide_wallet_row, False) or self.plugin.get_setting(Keys.hide_ton_row, False)
+        hide_wallet_row = bool(self.plugin.get_setting(Keys.hide_wallet_row, False))
         indices_to_remove = set()
         help_row_indices = []
 
@@ -139,9 +139,7 @@ class SettingsActivityOnClickHook(BaseHook):
         setting_key = MODERN_ROW_TO_KEY.get(item_id)
         should_block = False
         if setting_key:
-            if setting_key in (Keys.hide_wallet_row, Keys.hide_ton_row) and (
-                self.plugin.get_setting(Keys.hide_wallet_row, False) or self.plugin.get_setting(Keys.hide_ton_row, False)
-            ):
+            if setting_key == Keys.hide_wallet_row and self.plugin.get_setting(Keys.hide_wallet_row, False):
                 should_block = True
             elif self.plugin.get_setting(setting_key, False):
                 should_block = True
@@ -149,7 +147,7 @@ class SettingsActivityOnClickHook(BaseHook):
             param.setResult(None)
             return
 
-        if (self.plugin.get_setting(Keys.hide_wallet_row, False) or self.plugin.get_setting(Keys.hide_ton_row, False)) and is_wallet_item(item):
+        if self.plugin.get_setting(Keys.hide_wallet_row, False) and is_wallet_item(item):
             param.setResult(None)
 
 

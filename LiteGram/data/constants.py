@@ -10,7 +10,6 @@ class Keys:
     hide_premium_row = "hidePremiumRow"
     hide_stars_row = "hideStarsRow"
     hide_wallet_row = "hideWalletRow"
-    hide_ton_row = "hideTonRow"
     hide_business_row = "hideBusinessRow"
     hide_send_a_gift_row = "hideSendAGiftRow"
     hide_help_section = "hideHelpSection"
