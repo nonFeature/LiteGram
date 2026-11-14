@@ -123,6 +123,18 @@ class LiteGramPlugin(BasePlugin):
             val = self.get_setting(key, False)
             dex_bridge.set_flag(key, bool(val))
 
+    def _migrate_hide_group_keys(self) -> None:
+        # The short-lived show/hide Selector rows stored these as ints (0/1);
+        # the checkbox sheets use booleans again. Normalize once on load so
+        # the UI and the hooks read the same value.
+        for key in Keys.HIDE_GROUP_KEYS:
+            try:
+                val = self.get_setting(key, None)
+            except Exception:
+                continue
+            if val is not None and not isinstance(val, bool):
+                self.set_setting(key, bool(val))
+
     def on_plugin_load(self) -> None:
         global _ACTIVE_LITEGRAM_INSTANCE
         if _ACTIVE_LITEGRAM_INSTANCE is not None and _ACTIVE_LITEGRAM_INSTANCE is not self:
@@ -134,6 +146,7 @@ class LiteGramPlugin(BasePlugin):
         LiteGramPlugin._instance = self
         log_info("Lifecycle", "LiteGram plugin loaded")
         dex_bridge.load(self, force=True)
+        self._migrate_hide_group_keys()
         self._sync_dex_flags()
         tl_hooks = [
             "TL_messages_getEmojiStickers",

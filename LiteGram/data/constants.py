@@ -6,7 +6,6 @@ WALLET_BOT_ID = 1985737506
 # But it's looks overall better and etg uses the same format (consistency)
 class Keys:
     # --- Settings Options ---
-    switch_all = "switchAll"
     hide_premium_row = "hidePremiumRow"
     hide_stars_row = "hideStarsRow"
     hide_wallet_row = "hideWalletRow"
@@ -23,9 +22,10 @@ class Keys:
 
     # --- Category Link Aliases (deep links) ---
     chatSettings = "chatSettings"
+    chatElementsSettings = "chatElementsSettings"
+    emojiSettings = "emojiSettings"
     profileSettings = "profileSettings"
     interfaceSettings = "interfaceSettings"
-    walletSettings = "walletSettings"
     aboutSettings = "aboutSettings"
 
     # --- Drawer Options ---
@@ -64,7 +64,6 @@ class Keys:
     hide_premium_emoji_reactions = "hidePremiumEmojiReactions"
     hide_premium_search = "hidePremiumSearch"
     hide_premium_suggestions = "hidePremiumSuggestions"
-    switch_all_premium_emoji = "switchAllPremiumEmoji"
     PREMIUM_EMOJI_ROWS = (
         (hide_premium_emoji_keyboard, "hide_premium_emoji_keyboard"),
         (hide_premium_emoji_reactions, "hide_premium_emoji_reactions"),
@@ -75,7 +74,6 @@ class Keys:
     hide_premium_stickers_recent = "hidePremiumStickersRecent"
     hide_premium_stickers_search = "hidePremiumStickersSearch"
     hide_premium_stickers_grid = "hidePremiumStickersGrid"
-    switch_all_premium_stickers = "switchAllPremiumStickers"
     PREMIUM_STICKERS_ROWS = (
         (hide_premium_stickers_recent, "hide_premium_stickers_recent"),
         (hide_premium_stickers_search, "hide_premium_stickers_search"),
@@ -123,7 +121,11 @@ class Keys:
     SETTINGS_OPTION_ROWS = (
         (hide_premium_row, "hide_premium_row"),
         (hide_stars_row, "hide_stars_row"),
+        (hide_wallet_row, "hide_wallet_row"),
         (hide_business_row, "hide_business_row"),
         (hide_send_a_gift_row, "hide_send_a_gift_row"),
         (hide_help_section, "hide_help_section"),
     )
+
+    # --- Keys edited via the checkbox sheets (stored as bool) ---
+    HIDE_GROUP_KEYS = tuple(key for key, _ in SETTINGS_OPTION_ROWS + PREMIUM_EMOJI_ROWS + PREMIUM_STICKERS_ROWS)

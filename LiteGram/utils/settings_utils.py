@@ -1,11 +1,11 @@
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
+from typing import Any
 
 from android.view import View
 from org.telegram.messenger import R as R_tg  # ty: ignore
 from ui.bulletin import BulletinHelper
 from ui.settings import Switch as BaseSwitch
 
-from LiteGram.data.constants import Keys
 from LiteGram.i18n.i18n import t
 from LiteGram.main import LiteGramPlugin
 from LiteGram.utils.extera_utils import open_extera_setting
@@ -50,30 +50,95 @@ def Switch(
     )
 
 
-def toggle_group_options(row_keys: list[str], default_val: bool = False) -> None:
-    plugin_instance = LiteGramPlugin.get_instance()
-    new_state = any(not bool(plugin_instance.get_setting(key, default_val)) for key in row_keys)
-    for i, key in enumerate(row_keys):
-        plugin_instance.set_setting(key, new_state, reload_settings=(i == len(row_keys) - 1))
+_EXPANDED_GROUPS: set[str] = set()
 
 
-def toggle_settings_options(_: View | None = None) -> None:
-    toggle_group_options([key for key, _ in Keys.SETTINGS_OPTION_ROWS])
+def _stable_row_id(key: str) -> int:
+    return hash(key) & 0x7FFFFFFF
 
 
-def toggle_premium_emoji_options(_: View | None = None) -> None:
-    toggle_group_options([key for key, _ in Keys.PREMIUM_EMOJI_ROWS], default_val=True)
+def _hidden_count(rows: Sequence[tuple[str, str]]) -> int:
+    plugin = LiteGramPlugin.get_instance()
+    return sum(1 for key, _ in rows if bool(plugin.get_setting(key, False)))
 
 
-def toggle_premium_stickers_options(_: View | None = None) -> None:
-    toggle_group_options(
-        [
-            Keys.hide_premium_stickers_recent,
-            Keys.hide_premium_stickers_search,
-            Keys.hide_premium_stickers_grid,
-        ],
-        default_val=True,
+def _reload_settings_page(anchor_key: str) -> None:
+    # Rebuild the settings page by re-writing one key with its current value;
+    # the value is unchanged, only the reload side effect matters.
+    plugin = LiteGramPlugin.get_instance()
+    plugin.set_setting(anchor_key, bool(plugin.get_setting(anchor_key, False)), reload_settings=True)
+
+
+def _toggle_group_expanded(group_key: str, anchor_key: str) -> None:
+    if group_key in _EXPANDED_GROUPS:
+        _EXPANDED_GROUPS.discard(group_key)
+    else:
+        _EXPANDED_GROUPS.add(group_key)
+    _reload_settings_page(anchor_key)
+
+
+def _toggle_whole_group(rows: Sequence[tuple[str, str]]) -> None:
+    plugin = LiteGramPlugin.get_instance()
+    new_state = any(not bool(plugin.get_setting(key, False)) for key, _ in rows)
+    for key, _ in rows:
+        plugin.set_setting(key, new_state, reload_settings=False)
+    _reload_settings_page(rows[0][0])
+
+
+def _toggle_group_child(key: str) -> None:
+    plugin = LiteGramPlugin.get_instance()
+    plugin.set_setting(key, not bool(plugin.get_setting(key, False)), reload_settings=True)
+
+
+def hide_group_rows(group_key: str, title: str, rows: Sequence[tuple[str, str]]) -> list[Any]:
+    """Expandable switch group in the style of extera's own SwitchGroup
+    (exteraSettings?s=md3Styles): a switch row with an "n/N" counter that
+    expands into round checkboxes, one per (key, text_key).
+
+    Row/switch/children are raw UItems wrapped in the SDK's Custom row type;
+    tapping the row expands/collapses it, the switch toggles the whole group.
+    Everything is stored as plain booleans via set_setting (which also syncs
+    the DEX flags); expansion state is in-memory only.
+    """
+    from android_utils import OnClickListener
+    from org.telegram.ui.Components import UItem  # ty: ignore
+    from ui.settings import Custom
+
+    hidden = _hidden_count(rows)
+    total = len(rows)
+
+    group_item = UItem.asExteraExpandableSwitch(
+        _stable_row_id(group_key),
+        title,
+        f"{hidden}/{total}",
+        OnClickListener(lambda view: _toggle_whole_group(rows)),
     )
+    group_item.setChecked(hidden > 0)
+    group_item.setCollapsed(group_key not in _EXPANDED_GROUPS)
+
+    items: list[Any] = [
+        Custom(
+            item=group_item,
+            on_click=lambda view: _toggle_group_expanded(group_key, rows[0][0]),
+        )
+    ]
+
+    if group_key in _EXPANDED_GROUPS:
+        plugin = LiteGramPlugin.get_instance()
+        for key, text_key in rows:
+            child_item = UItem.asRoundCheckbox(_stable_row_id(key), t(text_key))
+            child_item.setChecked(bool(plugin.get_setting(key, False)))
+            child_item.pad()
+
+            def make_on_child_click(setting_key: str) -> Callable[[View], None]:
+                def on_child_click(view: View) -> None:
+                    _toggle_group_child(setting_key)
+
+                return on_child_click
+
+            items.append(Custom(item=child_item, on_click=make_on_child_click(key)))
+
+    return items
 
 
 def on_toggle_with_restart(key: str) -> Callable[[bool], None]:
