@@ -86,7 +86,7 @@ def _chat_elements_settings() -> list[Any]:
         Switch(text=t("hide_giveaway_cards"), key=Keys.hide_giveaway_cards),
         Switch(text=t("hide_transfer_cards"), key=Keys.hide_transfer_cards),
         Switch(text=t("hide_star_reaction"), key=Keys.hide_star_reaction),
-        Switch(text=t("hide_chat_send_money"), key=Keys.hide_chat_send_money),
+        Switch(text=t("hide_send_money"), key=Keys.hide_chat_send_money),
         Header(text=t("chat_input")),
     ]
 
@@ -185,7 +185,7 @@ def _profile_settings() -> list[Any]:
             Switch(text=t("hide_profile_music"), key=Keys.hide_profile_music),
             Switch(text=t("hide_profile_business"), key=Keys.hide_profile_business, subtext=t("profile_business_info")),
             Switch(text=t("hide_profile_balance"), key=Keys.hide_profile_balance),
-            Switch(text=t("hide_profile_send_money"), key=Keys.hide_profile_send_money),
+            Switch(text=t("hide_send_money"), key=Keys.hide_profile_send_money),
         ]
     )
 

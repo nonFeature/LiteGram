@@ -87,8 +87,6 @@ STRINGS = {
         "hide_profile_actions_gift_button": "Скрыть кнопку подарка",
         "hide_profile_actions_stories_button": "Скрыть кнопку историй",
         "hide_profile_actions_stream_button": "Скрыть кнопки трансляции и видеочата",
-        "hide_profile_send_money": "Скрыть «Отправить деньги»",
-
         # --- Profile Tabs ---
         "profile_tabs": "Вкладки в профиле",
         "hide_stories_tab": "Скрыть «Истории»",
@@ -121,7 +119,7 @@ STRINGS = {
         "premium_features_info": "Часть настроек конфиденциальности, теги папок и перевод чатов",
 
         # --- Chat Money ---
-        "hide_chat_send_money": "Скрыть «Отправить деньги» в чате",
+        "hide_send_money": "Скрыть «Отправить деньги»",
 
         # --- About Plugin ---
         "about_plugin": "О плагине",
@@ -156,8 +154,7 @@ STRINGS = {
         "hide_help_section": "«Help» section",
 
         # --- Wallet ---
-        "hide_wallet_drawer": "Hide «Wallet» in the side menu",
-        "hide_wallet_attach": "Hide «Wallet» in the attachment menu",
+        "hide_wallet": "Hide «Wallet»",
 
         # --- Drawer Options ---
         "drawer_options": "Side menu",
@@ -223,7 +220,6 @@ STRINGS = {
         "hide_profile_actions_gift_button": "Hide the gift button",
         "hide_profile_actions_stories_button": "Hide the stories button",
         "hide_profile_actions_stream_button": "Hide the live stream and video chat buttons",
-        "hide_profile_send_money": "Hide «Send Money» in the profile",
 
         # --- Profile Tabs ---
         "profile_tabs": "Profile tabs",
@@ -257,7 +253,7 @@ STRINGS = {
         "premium_features_info": "Some privacy settings, folder tags, and chat translation",
 
         # --- Chat Money ---
-        "hide_chat_send_money": "Hide «Send Money» in chats",
+        "hide_send_money": "Hide «Send Money»",
 
         # --- About Plugin ---
         "about_plugin": "About",
