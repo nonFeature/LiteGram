@@ -224,8 +224,10 @@ object MediaLayoutHook {
             if (mediaPages != null) {
                 for (i in 0 until minOf(2, mediaPages.size)) {
                     val page = mediaPages[i] as? ViewGroup ?: continue
+                    // never write -1 here: SharedMediaLayout.switchToCurrentSelectedMode()
+                    // does sharedMediaData[selectedType] (array of 9) with no bounds check
                     try {
-                        ReflectionCache.getField(page.javaClass, "selectedType")?.setInt(page, -1)
+                        ReflectionCache.getField(page.javaClass, "selectedType")?.setInt(page, 0)
                     } catch (_: Throwable) {}
 
                     if (savedContainer != null && savedContainer.parent == page) {
