@@ -5,6 +5,7 @@ STRINGS = {
         "category_chat": "Чат",
         "category_profile": "Профиль",
         "category_interface": "Интерфейс",
+        "category_wallet": "Кошелёк",
         "category_about": "О плагине",
 
         "plugin_description": "Гибко настраиваемый плагин для удаления платных и лишних функций из Telegram",
@@ -15,11 +16,15 @@ STRINGS = {
         "switch_all": "Переключить все",
         "hide_premium_row": "Скрыть «Telegram Premium»",
         "hide_stars_row": "Скрыть «Мои Звёзды»",
-        "hide_wallet_row": "Скрыть «Деньги»",
-        "hide_gram_row": "Скрыть «Мои Gram»",
+        "hide_wallet_row": "Скрыть «Деньги» в настройках",
+        "hide_gram_row": "Скрыть «Мои Gram» в настройках",
         "hide_business_row": "Скрыть «Telegram для бизнеса»",
         "hide_send_a_gift_row": "Скрыть «Отправить подарок»",
         "hide_help_section": "Скрыть раздел «Помощь»",
+
+        # --- Wallet ---
+        "hide_wallet_drawer": "Скрыть «Кошелёк» в боковом меню",
+        "hide_wallet_attach": "Скрыть «Кошелёк» в меню вложений",
 
         # --- Drawer Options ---
         "drawer_options": "Боковое меню",
@@ -43,7 +48,7 @@ STRINGS = {
         "hide_profile_actions_gift_button": "Скрыть кнопку отправки подарка",
         "hide_profile_actions_stories_button": "Скрыть кнопку новой истории",
         "hide_profile_actions_stream_button": "Скрыть кнопки трансляции и видеочата",
-        "hide_profile_send_money": "Скрыть «Отправить деньги»",
+        "hide_profile_send_money": "Скрыть «Отправить деньги» в профиле",
 
         # --- Profile Tabs ---
         "profile_tabs": "Вкладки в профиле",
@@ -90,7 +95,7 @@ STRINGS = {
         "hide_stars_rating": "Скрыть рейтинг звёзд",
         "hide_star_reaction": "Скрыть реакции за звёзды",
         "hide_emoji_search": "Скрыть эмодзи в поле поиска",
-        "hide_chat_send_money": "Скрыть «Отправить деньги» в меню сообщения",
+        "hide_chat_send_money": "Скрыть «Отправить деньги» в чате",
 
         # --- Keyboard Options ---
         "premium_emoji_settings_header": "Скрытие кастомных эмодзи",
@@ -136,6 +141,7 @@ STRINGS = {
         "category_chat": "Chat",
         "category_profile": "Profile",
         "category_interface": "Interface",
+        "category_wallet": "Wallet",
         "category_about": "About",
 
         "plugin_description": "A highly customizable plugin to remove paid and bloated features from Telegram",
@@ -146,11 +152,15 @@ STRINGS = {
         "switch_all": "Switch All",
         "hide_premium_row": "Hide «Telegram Premium»",
         "hide_stars_row": "Hide «My Stars»",
-        "hide_wallet_row": "Hide «Wallet»",
-        "hide_gram_row": "Hide «My Gram»",
+        "hide_wallet_row": "Hide «Wallet» in Settings",
+        "hide_gram_row": "Hide «My Gram» in Settings",
         "hide_business_row": "Hide «Telegram Business»",
         "hide_send_a_gift_row": "Hide «Send a Gift»",
         "hide_help_section": "Hide «Help» Section",
+
+        # --- Wallet ---
+        "hide_wallet_drawer": "Hide «Wallet» in Side Menu",
+        "hide_wallet_attach": "Hide «Wallet» in Attachment Menu",
 
         # --- Drawer Options ---
         "drawer_options": "Drawer Options",
@@ -174,7 +184,7 @@ STRINGS = {
         "hide_profile_actions_gift_button": "Hide Gift Button",
         "hide_profile_actions_stories_button": "Hide Stories Button",
         "hide_profile_actions_stream_button": "Hide Live Stream & Video Chat Button",
-        "hide_profile_send_money": "Hide «Send Money»",
+        "hide_profile_send_money": "Hide «Send Money» in Profile",
 
         # --- Profile Tabs ---
         "profile_tabs": "Profile Tabs",
@@ -221,7 +231,7 @@ STRINGS = {
         "hide_stars_rating": "Hide Stars Rating",
         "hide_star_reaction": "Hide Star Reaction",
         "hide_emoji_search": "Hide emoji in search field",
-        "hide_chat_send_money": "Hide «Send Money» in Context Menu",
+        "hide_chat_send_money": "Hide «Send Money» in Chat",
 
         # --- Keyboard Options ---
         "premium_emoji_settings_header": "Hide Custom Emoji",

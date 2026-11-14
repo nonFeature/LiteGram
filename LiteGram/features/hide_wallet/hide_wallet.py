@@ -6,10 +6,12 @@ from LiteGram.utils.dex_utils import dex_bridge
 
 def update_hide_wallet_dex_settings(plugin: Any) -> None:
     for key in (
+        Keys.hide_wallet_row,
+        Keys.hide_wallet_drawer,
+        Keys.hide_wallet_attach,
         Keys.hide_profile_balance,
         Keys.hide_profile_send_money,
         Keys.hide_chat_send_money,
-        Keys.hide_wallet_row,
     ):
         try:
             val = bool(plugin.get_setting(key, False))

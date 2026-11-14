@@ -15,6 +15,8 @@ class Keys:
     hide_help_section = "hideHelpSection"
 
     # --- Wallet / Money Features Hiding ---
+    hide_wallet_drawer = "hideWalletDrawer"
+    hide_wallet_attach = "hideWalletAttach"
     hide_profile_balance = "hideProfileBalance"
     hide_profile_send_money = "hideProfileSendMoney"
     hide_chat_send_money = "hideChatSendMoney"
@@ -23,6 +25,7 @@ class Keys:
     chatSettings = "chatSettings"
     profileSettings = "profileSettings"
     interfaceSettings = "interfaceSettings"
+    walletSettings = "walletSettings"
     aboutSettings = "aboutSettings"
 
     # --- Drawer Options ---
@@ -120,7 +123,6 @@ class Keys:
     SETTINGS_OPTION_ROWS = (
         (hide_premium_row, "hide_premium_row"),
         (hide_stars_row, "hide_stars_row"),
-        (hide_wallet_row, "hide_wallet_row"),
         (hide_business_row, "hide_business_row"),
         (hide_send_a_gift_row, "hide_send_a_gift_row"),
         (hide_help_section, "hide_help_section"),

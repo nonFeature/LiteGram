@@ -90,7 +90,6 @@ def _chat_settings() -> list[Any]:
         Switch(text=t("hide_star_reaction"), key=Keys.hide_star_reaction),
         Switch(text=t("hide_group_stickers"), key=Keys.hide_group_stickers),
         Switch(text=t("hide_emoji_search"), key=Keys.hide_emoji_search),
-        Switch(text=t("hide_chat_send_money"), key=Keys.hide_chat_send_money),
     ]
 
     plugin = LiteGramPlugin.get_instance()
@@ -164,7 +163,6 @@ def _profile_settings() -> list[Any]:
         Switch(text=t("hide_profile_actions_stories_button"), key=Keys.hide_profile_actions_stories_button),
         Switch(text=t("hide_profile_actions_gift_button"), key=Keys.hide_profile_actions_gift_button),
         Switch(text=t("hide_profile_actions_stream_button"), key=Keys.hide_profile_actions_stream_button),
-        Switch(text=t("hide_profile_send_money"), key=Keys.hide_profile_send_money),
         Header(text=t("profile_tabs")),
         Switch(text=t("hide_stories_tab"), key=Keys.hide_stories_tab),
         Switch(text=t("hide_gifts_tab"), key=Keys.hide_gifts_tab),
@@ -198,7 +196,6 @@ def _profile_settings() -> list[Any]:
             Switch(text=t("hide_bot_verification"), key=Keys.hide_bot_verification),
             Switch(text=t("hide_profile_music"), key=Keys.hide_profile_music),
             Switch(text=t("hide_profile_business"), subtext=t("hide_profile_business_sub"), key=Keys.hide_profile_business),
-            Switch(text=t("hide_profile_balance"), key=Keys.hide_profile_balance),
         ]
     )
 
@@ -211,6 +208,17 @@ def _settings_row_title(key: str, text_key: str) -> str:
             return t("hide_wallet_row")
         return t("hide_gram_row")
     return t(text_key)
+
+
+def _wallet_settings() -> list[Any]:
+    return [
+        Switch(text=_settings_row_title(Keys.hide_wallet_row, "hide_wallet_row"), key=Keys.hide_wallet_row),
+        Switch(text=t("hide_wallet_drawer"), key=Keys.hide_wallet_drawer),
+        Switch(text=t("hide_wallet_attach"), key=Keys.hide_wallet_attach),
+        Switch(text=t("hide_profile_balance"), key=Keys.hide_profile_balance),
+        Switch(text=t("hide_profile_send_money"), key=Keys.hide_profile_send_money),
+        Switch(text=t("hide_chat_send_money"), key=Keys.hide_chat_send_money),
+    ]
 
 
 def _interface_settings() -> list[Any]:
@@ -249,5 +257,6 @@ def get_main_settings_list() -> list[Any]:
         Text(text=t("category_chat"), icon="msg_discussion", create_sub_fragment=_chat_settings, link_alias=Keys.chatSettings),
         Text(text=t("category_profile"), icon="msg_contacts", create_sub_fragment=_profile_settings, link_alias=Keys.profileSettings),
         Text(text=t("category_interface"), icon="msg_settings", create_sub_fragment=_interface_settings, link_alias=Keys.interfaceSettings),
+        Text(text=t("category_wallet"), icon="ic_gram", create_sub_fragment=_wallet_settings, link_alias=Keys.walletSettings),
         Text(text=t("category_about"), icon="msg_help", create_sub_fragment=_about_settings, link_alias=Keys.aboutSettings),
     ]

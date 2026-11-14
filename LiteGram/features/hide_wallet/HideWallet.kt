@@ -4,53 +4,43 @@ import android.view.View
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedBridge
 import java.util.ArrayList
-import java.util.Collections
 import non.feature.litegram.core.ReflectionCache
 
+/**
+ * Wallet hiding — one switch per surface:
+ * - hideWalletRow         -> settings list row (SettingsActivity.addWalletItem)
+ * - hideWalletDrawer      -> side menu WALLET entry + wallet bot in the drawer bots section
+ * - hideWalletAttach      -> chat attachment panel: wallet bot + "Money" (send Gram) button
+ * - hideProfileBalance    -> balance view / wallet card / revenue rows in profiles
+ * - hideProfileSendMoney  -> "Send Money" in profile (3-dots menu + wallet card dialog)
+ * - hideChatSendMoney     -> "Send Money" in chat (message context menu + TON address sheet)
+ *
+ * exteragram gates most wallet UI on config.wallet_available. The ConfigBoolean.get hook
+ * answers it per-surface: the caller is identified by the innermost app frame in the
+ * stack, so each switch kills exactly its own entry points.
+ */
 object HideWalletHook {
 
     const val WALLET_BOT_ID = 1985737506L
-    const val ACTION_SEND_MONEY = 117
-    const val SUBITEM_PROFILE_SEND_MONEY = 48
-    const val MAIN_MENU_WALLET_ID = 107
-    const val SETTINGS_WALLET_ROW = 25
-    const val SETTINGS_GRAM_ROW = 13
 
+    @Volatile @JvmStatic var hideWalletRow: Boolean = false
+    @Volatile @JvmStatic var hideWalletDrawer: Boolean = false
+    @Volatile @JvmStatic var hideWalletAttach: Boolean = false
     @Volatile @JvmStatic var hideProfileBalance: Boolean = false
     @Volatile @JvmStatic var hideProfileSendMoney: Boolean = false
     @Volatile @JvmStatic var hideChatSendMoney: Boolean = false
-    @Volatile @JvmStatic var hideWalletRow: Boolean = false
 
     private val localUnhooks = ArrayList<XC_MethodHook.Unhook>()
-
-    val shouldHideDrawer: Boolean
-        get() = hideWalletRow
-
-    val shouldHideSettings: Boolean
-        get() = hideWalletRow
-
-    val shouldHideProfileBalance: Boolean
-        get() = hideProfileBalance
-
-    val shouldHideProfileSendMoney: Boolean
-        get() = hideProfileSendMoney
-
-    val shouldHideAttachMenuWallet: Boolean
-        get() = false
-
-    val shouldHideChatSendMoney: Boolean
-        get() = hideChatSendMoney
-
-    val shouldDisableWalletConfig: Boolean
-        get() = hideProfileBalance || hideProfileSendMoney || hideChatSendMoney || hideWalletRow
 
     @JvmStatic
     fun setFlag(name: String, enabled: Boolean) {
         when (name) {
+            "hideWalletRow", "hide_wallet_row" -> hideWalletRow = enabled
+            "hideWalletDrawer", "hide_wallet_drawer" -> hideWalletDrawer = enabled
+            "hideWalletAttach", "hide_wallet_attach" -> hideWalletAttach = enabled
             "hideProfileBalance", "hide_profile_balance" -> hideProfileBalance = enabled
             "hideProfileSendMoney", "hide_profile_send_money" -> hideProfileSendMoney = enabled
             "hideChatSendMoney", "hide_chat_send_money" -> hideChatSendMoney = enabled
-            "hideWalletRow", "hide_wallet_row" -> hideWalletRow = enabled
         }
     }
 
@@ -65,10 +55,12 @@ object HideWalletHook {
             localUnhooks.clear()
         }
 
+        hideWalletRow = false
+        hideWalletDrawer = false
+        hideWalletAttach = false
         hideProfileBalance = false
         hideProfileSendMoney = false
         hideChatSendMoney = false
-        hideWalletRow = false
     }
 
     private fun hookAllMethods(
@@ -88,9 +80,86 @@ object HideWalletHook {
         } catch (_: Throwable) {}
     }
 
+    private fun isWalletBot(bot: Any?): Boolean {
+        bot ?: return false
+        return try {
+            val botId = (ReflectionCache.getField(bot.javaClass, "bot_id")?.get(bot) as? Number)?.toLong() ?: 0L
+            val shortName = ReflectionCache.getField(bot.javaClass, "short_name")?.get(bot)?.toString()
+            botId == WALLET_BOT_ID || shortName.equals("wallet", ignoreCase = true)
+        } catch (_: Throwable) {
+            false
+        }
+    }
+
+    /** Innermost app frame of the stack — the class that actually reads the config value. */
+    private fun nearestCaller(stack: Array<StackTraceElement>): String? {
+        for (el in stack) {
+            val cn = el.className
+            if (cn.startsWith("org.telegram.ui.") || cn.startsWith("com.exteragram.messenger.")) {
+                return cn
+            }
+        }
+        return null
+    }
+
     @JvmStatic
     fun init(cl: ClassLoader, unhooksList: MutableList<XC_MethodHook.Unhook> = localUnhooks) {
-        // 1. Hook AppGlobalConfig.ConfigBoolean.get(): global wallet availability kill switch
+        // 1. Settings row: SettingsActivity.addWalletItem adds the wallet UItem
+        val settingsActivityClass = ReflectionCache.findClass("org.telegram.ui.SettingsActivity", cl)
+        if (settingsActivityClass != null) {
+            hookAllMethods(settingsActivityClass, "addWalletItem", object : XC_MethodHook(120) {
+                override fun beforeHookedMethod(param: MethodHookParam) {
+                    if (hideWalletRow) {
+                        param.result = null
+                    }
+                }
+            }, unhooksList)
+        }
+
+        // 2. Drawer bots section: purge the wallet bot from the list MainMenuHelper builds
+        val mainMenuHelperClass = ReflectionCache.findClass("com.exteragram.messenger.utils.chats.MainMenuHelper", cl)
+        if (mainMenuHelperClass != null) {
+            hookAllMethods(mainMenuHelperClass, "getAttachMenuBotItems", object : XC_MethodHook(120) {
+                override fun afterHookedMethod(param: MethodHookParam) {
+                    if (!hideWalletDrawer) return
+                    val list = param.result as? MutableList<*> ?: return
+                    val it = list.iterator()
+                    while (it.hasNext()) {
+                        val item = it.next() ?: continue
+                        try {
+                            val botField = try {
+                                ReflectionCache.getField(item.javaClass, "bot")?.get(item)
+                            } catch (_: Throwable) {
+                                null
+                            }
+                            val bot = botField ?: try {
+                                ReflectionCache.getMethod(item.javaClass, "bot")?.invoke(item)
+                            } catch (_: Throwable) {
+                                null
+                            }
+                            if (isWalletBot(bot)) {
+                                it.remove()
+                            }
+                        } catch (_: Throwable) {}
+                    }
+                }
+            }, unhooksList)
+        }
+
+        // 3. Chat attachment panel: wallet bot shortcut (display-time filter per bot)
+        val mediaDataControllerClass = ReflectionCache.findClass("org.telegram.messenger.MediaDataController", cl)
+        if (mediaDataControllerClass != null) {
+            hookAllMethods(mediaDataControllerClass, "canShowAttachMenuBot", object : XC_MethodHook(120) {
+                override fun beforeHookedMethod(param: MethodHookParam) {
+                    if (!hideWalletAttach) return
+                    if (isWalletBot(param.args?.getOrNull(0))) {
+                        param.result = false
+                    }
+                }
+            }, unhooksList)
+        }
+
+        // 4. Per-surface answers for config.wallet_available
         val configBooleanClass = ReflectionCache.findClass("org.telegram.messenger.AppGlobalConfig\$ConfigBoolean", cl)
         if (configBooleanClass != null) {
             val handlerField = ReflectionCache.getField(configBooleanClass, "handler")
@@ -99,35 +168,28 @@ object HideWalletHook {
 
             hookAllMethods(configBooleanClass, "get", object : XC_MethodHook(120) {
                 override fun beforeHookedMethod(param: MethodHookParam) {
-                    if (!shouldDisableWalletConfig) return
+                    if (!hideWalletDrawer && !hideProfileSendMoney && !hideChatSendMoney) return
                     try {
                         val handler = handlerField?.get(param.thisObject) ?: return
-                        val name = nameField?.get(handler)?.toString() ?: return
-                        if (name == "wallet_available" || name == "wallet_paid_message_recipient_message_amount_check") {
-                            param.result = false
-                        }
-                    } catch (_: Throwable) {}
-                }
-            }, unhooksList)
-        }
-
-        // 2. Hook MediaDataController.getAttachMenuBots(): purge Wallet bot from cached list
-        val mediaDataControllerClass = ReflectionCache.findClass("org.telegram.messenger.MediaDataController", cl)
-        if (mediaDataControllerClass != null) {
-            hookAllMethods(mediaDataControllerClass, "getAttachMenuBots", object : XC_MethodHook(120) {
-                override fun afterHookedMethod(param: MethodHookParam) {
-                    if (!shouldDisableWalletConfig && !shouldHideDrawer && !shouldHideAttachMenuWallet) return
-                    val attachBotsObj = param.result ?: return
-                    try {
-                        val botsField = ReflectionCache.getField(attachBotsObj.javaClass, "bots")
-                        val botsList = botsField?.get(attachBotsObj) as? MutableList<*> ?: return
-                        val it = botsList.iterator()
-                        while (it.hasNext()) {
-                            val bot = it.next() ?: continue
-                            val botId = (ReflectionCache.getField(bot.javaClass, "bot_id")?.get(bot) as? Number)?.toLong() ?: 0L
-                            val shortName = ReflectionCache.getField(bot.javaClass, "short_name")?.get(bot)?.toString() ?: ""
-                            if (botId == WALLET_BOT_ID || shortName.equals("wallet", ignoreCase = true)) {
-                                it.remove()
+                        if (nameField?.get(handler)?.toString() != "wallet_available") return
+                        val caller = nearestCaller(Thread.currentThread().stackTrace) ?: return
+                        when {
+                            // message context menu (id 117) + TON address sheet
+                            caller.startsWith("org.telegram.ui.ChatActivity") -> {
+                                if (hideChatSendMoney) param.result = false
+                            }
+                            // attach panel "Money" button (ChatAttachAlert$ButtonsAdapter) — belongs to the attach surface
+                            caller.startsWith("org.telegram.ui.Components.ChatAttachAlert") -> {
+                                if (hideWalletAttach) param.result = false
+                            }
+                            // profile 3-dots subitem, wallet card dialog "Send Money" button
+                            caller.startsWith("org.telegram.ui.ProfileActivity") ||
+                                caller.startsWith("org.telegram.ui.Wallet.ProfileWalletCardDialog") -> {
+                                if (hideProfileSendMoney) param.result = false
+                            }
+                            // side menu WALLET entry (MainMenuHelper.resolveMenuItem)
+                            caller.startsWith("com.exteragram.messenger.utils.chats.MainMenuHelper") -> {
+                                if (hideWalletDrawer) param.result = false
                             }
                         }
                     } catch (_: Throwable) {}
@@ -135,134 +197,61 @@ object HideWalletHook {
             }, unhooksList)
         }
 
-        // 3. Side menu / Drawer hooks
-        val mainMenuHelperClass = ReflectionCache.findClass("com.exteragram.messenger.utils.chats.MainMenuHelper", cl)
-        if (mainMenuHelperClass != null) {
-            hookAllMethods(mainMenuHelperClass, "getAttachMenuBotItems", object : XC_MethodHook(120) {
-                override fun afterHookedMethod(param: MethodHookParam) {
-                    if (!shouldHideDrawer) return
-                    val list = param.result as? MutableList<*> ?: return
-                    val it = list.iterator()
-                    while (it.hasNext()) {
-                        val item = it.next() ?: continue
-                        try {
-                            val bot = ReflectionCache.getField(item.javaClass, "bot")?.get(item)
-                            val botId = (ReflectionCache.getField(bot?.javaClass, "bot_id")?.get(bot) as? Number)?.toLong() ?: 0L
-                            val name = ReflectionCache.getField(item.javaClass, "name")?.get(item)?.toString() ?: ""
-                            if (botId == WALLET_BOT_ID || name.contains("wallet", ignoreCase = true) || name.contains("кошелек", ignoreCase = true) || name.contains("кошелёк", ignoreCase = true)) {
-                                it.remove()
-                            }
-                        } catch (_: Throwable) {}
-                    }
-                }
-            }, unhooksList)
-
-            hookAllMethods(mainMenuHelperClass, "resolveDrawerMenuItems", object : XC_MethodHook(120) {
-                override fun beforeHookedMethod(param: MethodHookParam) {
-                    if (!shouldHideDrawer) return
-                    val itemId = (param.args?.getOrNull(0) as? Number)?.toInt() ?: return
-                    if (itemId == MAIN_MENU_WALLET_ID || itemId == 3) {
-                        param.result = Collections.emptyList<Any>()
-                    }
-                }
-            }, unhooksList)
-        }
-
-        val itemOptionsClass = ReflectionCache.findClass("org.telegram.ui.Components.ItemOptions", cl)
-        if (itemOptionsClass != null) {
-            hookAllMethods(itemOptionsClass, "addBot", object : XC_MethodHook(120) {
-                override fun beforeHookedMethod(param: MethodHookParam) {
-                    if (!shouldHideDrawer) return
-                    val bot = param.args?.getOrNull(0) ?: return
-                    try {
-                        val botId = (ReflectionCache.getField(bot.javaClass, "bot_id")?.get(bot) as? Number)?.toLong() ?: 0L
-                        val shortName = ReflectionCache.getField(bot.javaClass, "short_name")?.get(bot)?.toString() ?: ""
-                        if (botId == WALLET_BOT_ID || shortName.equals("wallet", ignoreCase = true)) {
-                            param.result = param.thisObject
-                        }
-                    } catch (_: Throwable) {}
-                }
-            }, unhooksList)
-        }
-
-        // 4. Settings: suppress addWalletItem (row 25)
-        val settingsActivityClass = ReflectionCache.findClass("org.telegram.ui.SettingsActivity", cl)
-        if (settingsActivityClass != null) {
-            hookAllMethods(settingsActivityClass, "addWalletItem", object : XC_MethodHook(120) {
-                override fun beforeHookedMethod(param: MethodHookParam) {
-                    if (shouldHideSettings) {
-                        param.result = null
-                    }
-                }
-            }, unhooksList)
-        }
-
-        // 5. ProfileActivity: balance view, wallet card, 3-dots send money, bot/channel balance rows
+        // 5. Profile: balance view, wallet card, bot/channel balance rows.
+        // Soft/preemptive: sanitize the info objects BEFORE ProfileActivity reads them,
+        // so hasBalance computes false natively and the pill never appears (no flicker,
+        // no reserved space) instead of hiding an already-built view after the fact.
         val profileActivityClass = ReflectionCache.findClass("org.telegram.ui.ProfileActivity", cl)
-        val actionBarMenuItemClass = ReflectionCache.findClass("org.telegram.ui.ActionBar.ActionBarMenuItem", cl)
         if (profileActivityClass != null) {
             val balanceViewField = ReflectionCache.getField(profileActivityClass, "balanceView")
             val hasBalanceField = ReflectionCache.getField(profileActivityClass, "hasBalance")
-            val botStarsBalanceRowField = ReflectionCache.getField(profileActivityClass, "botStarsBalanceRow")
-            val botTonBalanceRowField = ReflectionCache.getField(profileActivityClass, "botTonBalanceRow")
-            val channelBalanceRowField = ReflectionCache.getField(profileActivityClass, "channelBalanceRow")
-            val channelBalanceSectionRowField = ReflectionCache.getField(profileActivityClass, "channelBalanceSectionRow")
-            val balanceDividerRowField = ReflectionCache.getField(profileActivityClass, "balanceDividerRow")
+            val userInfoField = ReflectionCache.getField(profileActivityClass, "userInfo")
+            val chatInfoField = ReflectionCache.getField(profileActivityClass, "info")
 
-            hookAllMethods(profileActivityClass, "createView", object : XC_MethodHook(120) {
-                override fun afterHookedMethod(param: MethodHookParam) {
-                    val act = param.thisObject ?: return
-                    if (shouldHideProfileBalance) {
+            fun sanitizeProfileInfo(act: Any) {
+                try {
+                    userInfoField?.get(act)?.let { uf ->
                         try {
-                            (balanceViewField?.get(act) as? View)?.visibility = View.GONE
-                            hasBalanceField?.setBoolean(act, false)
+                            ReflectionCache.getField(uf.javaClass, "wallet_card")?.set(uf, null)
+                            ReflectionCache.getField(uf.javaClass, "can_view_revenue")?.setBoolean(uf, false)
                         } catch (_: Throwable) {}
                     }
-                }
-            }, unhooksList)
-
-            hookAllMethods(profileActivityClass, "updateRows", object : XC_MethodHook(120) {
-                override fun afterHookedMethod(param: MethodHookParam) {
-                    val act = param.thisObject ?: return
-                    if (shouldHideProfileBalance) {
+                    chatInfoField?.get(act)?.let { cf ->
                         try {
-                            (balanceViewField?.get(act) as? View)?.visibility = View.GONE
-                            hasBalanceField?.setBoolean(act, false)
-                            botStarsBalanceRowField?.setInt(act, -1)
-                            botTonBalanceRowField?.setInt(act, -1)
-                            channelBalanceRowField?.setInt(act, -1)
-                            channelBalanceSectionRowField?.setInt(act, -1)
-                            balanceDividerRowField?.setInt(act, -1)
+                            ReflectionCache.getField(cf.javaClass, "can_view_stars_revenue")?.setBoolean(cf, false)
+                            ReflectionCache.getField(cf.javaClass, "can_view_revenue")?.setBoolean(cf, false)
                         } catch (_: Throwable) {}
                     }
-                }
-            }, unhooksList)
-
-            // Hide SubItem 48 (WalletSendMoney) in 3-dots menu
-            if (actionBarMenuItemClass != null) {
-                hookAllMethods(actionBarMenuItemClass, "addSubItem", object : XC_MethodHook(120) {
-                    override fun beforeHookedMethod(param: MethodHookParam) {
-                        if (!shouldHideProfileSendMoney) return
-                        val id = (param.args?.getOrNull(0) as? Number)?.toInt() ?: return
-                        if (id == SUBITEM_PROFILE_SEND_MONEY) {
-                            param.result = null
-                        }
-                    }
-                }, unhooksList)
+                } catch (_: Throwable) {}
             }
 
-            hookAllMethods(profileActivityClass, "onItemClick", object : XC_MethodHook(120) {
+            val preHook = object : XC_MethodHook(120) {
                 override fun beforeHookedMethod(param: MethodHookParam) {
-                    if (!shouldHideProfileSendMoney) return
-                    val id = (param.args?.getOrNull(0) as? Number)?.toInt() ?: return
-                    if (id == SUBITEM_PROFILE_SEND_MONEY) {
-                        param.result = null
-                    }
+                    if (!hideProfileBalance) return
+                    sanitizeProfileInfo(param.thisObject ?: return)
                 }
-            }, unhooksList)
+            }
+            // exteragram calls it updateRows, ayugram renamed it to updateRowsIds — hook both
+            hookAllMethods(profileActivityClass, "createView", preHook, unhooksList)
+            hookAllMethods(profileActivityClass, "updateRows", preHook, unhooksList)
+            hookAllMethods(profileActivityClass, "updateRowsIds", preHook, unhooksList)
+
+            // backstop: if anything still manages to show the pill, force it back off
+            val postHook = object : XC_MethodHook(120) {
+                override fun afterHookedMethod(param: MethodHookParam) {
+                    if (!hideProfileBalance) return
+                    val act = param.thisObject ?: return
+                    try {
+                        (balanceViewField?.get(act) as? View)?.visibility = View.GONE
+                        hasBalanceField?.setBoolean(act, false)
+                    } catch (_: Throwable) {}
+                }
+            }
+            hookAllMethods(profileActivityClass, "updateRows", postHook, unhooksList)
+            hookAllMethods(profileActivityClass, "updateRowsIds", postHook, unhooksList)
         }
 
-        // 6. UserFull & ChatFull deserialization: clear wallet_card and revenue flags
+        // 6. Data layer for the profile surface: no wallet card / revenue flags at birth
         val userFullClass = ReflectionCache.findClass("org.telegram.tgnet.TLRPC\$UserFull", cl)
         if (userFullClass != null) {
             val walletCardField = ReflectionCache.getField(userFullClass, "wallet_card")
@@ -271,7 +260,7 @@ object HideWalletHook {
             hookAllMethods(userFullClass, "TLdeserialize", object : XC_MethodHook(120) {
                 override fun afterHookedMethod(param: MethodHookParam) {
                     val uf = param.result ?: return
-                    if (shouldHideProfileBalance) {
+                    if (hideProfileBalance) {
                         try {
                             walletCardField?.set(uf, null)
                             canViewRevenueField?.setBoolean(uf, false)
@@ -289,25 +278,11 @@ object HideWalletHook {
             hookAllMethods(chatFullClass, "TLdeserialize", object : XC_MethodHook(120) {
                 override fun afterHookedMethod(param: MethodHookParam) {
                     val cf = param.result ?: return
-                    if (shouldHideProfileBalance) {
+                    if (hideProfileBalance) {
                         try {
                             canViewStarsRevenueField?.setBoolean(cf, false)
                             canViewRevenueChatField?.setBoolean(cf, false)
                         } catch (_: Throwable) {}
-                    }
-                }
-            }, unhooksList)
-        }
-
-        // 7. ChatActivity: suppress message context menu action 117 (WalletSendMoney)
-        val chatActivityClass = ReflectionCache.findClass("org.telegram.ui.ChatActivity", cl)
-        if (chatActivityClass != null) {
-            hookAllMethods(chatActivityClass, "onItemClick", object : XC_MethodHook(120) {
-                override fun beforeHookedMethod(param: MethodHookParam) {
-                    if (!shouldHideChatSendMoney) return
-                    val id = (param.args?.getOrNull(0) as? Number)?.toInt() ?: return
-                    if (id == ACTION_SEND_MONEY) {
-                        param.result = null
                     }
                 }
             }, unhooksList)
