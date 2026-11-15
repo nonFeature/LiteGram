@@ -32,10 +32,6 @@ class LiteGramSettingsHeaderHook(BaseHook):
             if get_private_field(activity, "createSubFragmentCallback") is not None:
                 return
 
-            searching = get_private_field(activity, "searching")
-            if searching:
-                return
-
             header = _create_litegram_settings_header(activity.getContext())
             if header:
                 from com.exteragram.messenger.plugins.models import HeaderSetting

@@ -6,7 +6,7 @@ from LiteGram.data.constants import GITHUB_URL, Keys
 from LiteGram.i18n.i18n import t
 from LiteGram.main import LiteGramPlugin
 from LiteGram.utils.dex_utils import dex_bridge
-from LiteGram.utils.extera_utils import resolve_icon
+from LiteGram.utils.extera_utils import is_version_at_least, resolve_icon
 from LiteGram.utils.settings_utils import (
     Switch,
     hide_group_rows,
@@ -86,7 +86,6 @@ def _chat_elements_settings() -> list[Any]:
         Switch(text=t("hide_giveaway_cards"), key=Keys.hide_giveaway_cards),
         Switch(text=t("hide_transfer_cards"), key=Keys.hide_transfer_cards),
         Switch(text=t("hide_star_reaction"), key=Keys.hide_star_reaction),
-        Switch(text=t("hide_send_money"), key=Keys.hide_chat_send_money),
         Header(text=t("chat_input")),
     ]
 
@@ -109,6 +108,9 @@ def _chat_elements_settings() -> list[Any]:
         )
     settings.append(Switch(text=t("hide_todo_button"), key=Keys.hide_todo_button))
     settings.append(Switch(text=t("hide_wallet"), key=Keys.hide_wallet_attach))
+    if is_version_at_least(13, 1, 1):
+        # Send Money exists only since 13.1.1; on 12.x the switch would be a no-op
+        settings.append(Switch(text=t("hide_send_money"), key=Keys.hide_chat_send_money))
 
     show_ai = False
     try:
@@ -184,10 +186,13 @@ def _profile_settings() -> list[Any]:
             Switch(text=t("hide_bot_verification"), key=Keys.hide_bot_verification),
             Switch(text=t("hide_profile_music"), key=Keys.hide_profile_music),
             Switch(text=t("hide_profile_business"), key=Keys.hide_profile_business, subtext=t("profile_business_info")),
-            Switch(text=t("hide_profile_balance"), key=Keys.hide_profile_balance),
-            Switch(text=t("hide_send_money"), key=Keys.hide_profile_send_money),
         ]
     )
+
+    if is_version_at_least(13, 1, 1):
+        # balance pill & Send Money exist only since 13.1.1; on 12.x the switches are no-ops
+        elements.append(Switch(text=t("hide_profile_balance"), key=Keys.hide_profile_balance))
+        elements.append(Switch(text=t("hide_send_money"), key=Keys.hide_profile_send_money))
 
     return elements
 

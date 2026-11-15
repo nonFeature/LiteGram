@@ -41,7 +41,6 @@ object HideCommunitiesHook {
 
     private var profileCommunityItemField: Field? = null
     private var profileCurrentChatField: Field? = null
-    private var profileCurrentUserField: Field? = null
     private var profileLinkedCommunityRowField: Field? = null
     private var profileLinkedCommunityDividerRowField: Field? = null
 
@@ -56,7 +55,6 @@ object HideCommunitiesHook {
     private val origDrawChatComm = ThreadLocal<Long>()
     private val origDrawUserComm = ThreadLocal<Long>()
     private val origProfileChatComm = ThreadLocal<Long>()
-    private val origProfileUserComm = ThreadLocal<Long>()
 
     @JvmStatic
     fun setFlag(name: String, enabled: Boolean) {
@@ -99,7 +97,6 @@ object HideCommunitiesHook {
         communityActionClass = null
         profileCommunityItemField = null
         profileCurrentChatField = null
-        profileCurrentUserField = null
         profileLinkedCommunityRowField = null
         profileLinkedCommunityDividerRowField = null
         dialogCellChatField = null
@@ -110,7 +107,6 @@ object HideCommunitiesHook {
         origDrawChatComm.remove()
         origDrawUserComm.remove()
         origProfileChatComm.remove()
-        origProfileUserComm.remove()
     }
 
     private fun hookAllMethods(
@@ -171,7 +167,6 @@ object HideCommunitiesHook {
         if (profileActivityClass != null) {
             profileCommunityItemField = ReflectionCache.getField(profileActivityClass, "communityItem")
             profileCurrentChatField = ReflectionCache.getField(profileActivityClass, "currentChat")
-            profileCurrentUserField = ReflectionCache.getField(profileActivityClass, "currentUser")
             profileLinkedCommunityRowField = ReflectionCache.getField(profileActivityClass, "linkedCommunityRow")
             profileLinkedCommunityDividerRowField = ReflectionCache.getField(profileActivityClass, "linkedCommunityDividerRow")
         }
@@ -382,18 +377,6 @@ object HideCommunitiesHook {
                         }
                     }
 
-                    val currentUser = if (profileCurrentUserField != null) {
-                        profileCurrentUserField!!.get(activity)
-                    } else {
-                        ReflectionCache.getFieldValue(activity, "currentUser")
-                    }
-                    if (currentUser != null && userLinkedCommunityField != null) {
-                        val orig = userLinkedCommunityField!!.getLong(currentUser)
-                        if (orig != 0L) {
-                            origProfileUserComm.set(orig)
-                            userLinkedCommunityField!!.setLong(currentUser, 0L)
-                        }
-                    }
                 } catch (_: Throwable) {}
             }
 
@@ -411,19 +394,6 @@ object HideCommunitiesHook {
                         }
                         if (currentChat != null && chatLinkedCommunityField != null) {
                             chatLinkedCommunityField!!.setLong(currentChat, origChat)
-                        }
-                    }
-
-                    val origUser = origProfileUserComm.get()
-                    if (origUser != null && origUser != 0L) {
-                        origProfileUserComm.remove()
-                        val currentUser = if (profileCurrentUserField != null) {
-                            profileCurrentUserField!!.get(activity)
-                        } else {
-                            ReflectionCache.getFieldValue(activity, "currentUser")
-                        }
-                        if (currentUser != null && userLinkedCommunityField != null) {
-                            userLinkedCommunityField!!.setLong(currentUser, origUser)
                         }
                     }
 

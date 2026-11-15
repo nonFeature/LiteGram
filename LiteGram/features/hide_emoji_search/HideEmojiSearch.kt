@@ -1,6 +1,5 @@
 package non.feature.litegram.hide_emoji_search
 
-import android.view.View
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedBridge
 import java.util.ArrayList
@@ -67,17 +66,6 @@ object HideEmojiSearchHook {
                 val args = param.args
                 if (args != null && args.isNotEmpty()) {
                     args[0] = false
-                }
-            }
-        }, unhooksList)
-
-        // 2. Hook onLayout: force view visibility to GONE
-        hookAllMethods(stickerCategoriesListViewClass, "onLayout", object : XC_MethodHook(120) {
-            override fun afterHookedMethod(param: MethodHookParam) {
-                if (!hideEmojiSearch) return
-                val view = param.thisObject as? View ?: return
-                if (view.visibility != View.GONE) {
-                    view.visibility = View.GONE
                 }
             }
         }, unhooksList)

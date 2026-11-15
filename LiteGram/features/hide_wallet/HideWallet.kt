@@ -197,95 +197,50 @@ object HideWalletHook {
             }, unhooksList)
         }
 
-        // 5. Profile: balance view, wallet card, bot/channel balance rows.
-        // Soft/preemptive: sanitize the info objects BEFORE ProfileActivity reads them,
-        // so hasBalance computes false natively and the pill never appears (no flicker,
-        // no reserved space) instead of hiding an already-built view after the fact.
+        // 5. Profile: hide the balance pill only, nothing else.
+        // wallet_card is nulled just for the duration of updateRows*/createView so
+        // hasBalance computes false natively (no flicker, no reserved space), then
+        // restored — the wallet card dialog and revenue rows stay untouched.
         val profileActivityClass = ReflectionCache.findClass("org.telegram.ui.ProfileActivity", cl)
         if (profileActivityClass != null) {
             val balanceViewField = ReflectionCache.getField(profileActivityClass, "balanceView")
             val hasBalanceField = ReflectionCache.getField(profileActivityClass, "hasBalance")
             val userInfoField = ReflectionCache.getField(profileActivityClass, "userInfo")
-            val chatInfoField = ReflectionCache.getField(profileActivityClass, "info")
+            val userFullClass = ReflectionCache.findClass("org.telegram.tgnet.TLRPC\$UserFull", cl)
+            val walletCardField = if (userFullClass != null) ReflectionCache.getField(userFullClass, "wallet_card") else null
+            val stash = ThreadLocal<Array<Any?>>()
 
-            fun sanitizeProfileInfo(act: Any) {
-                try {
-                    userInfoField?.get(act)?.let { uf ->
-                        try {
-                            ReflectionCache.getField(uf.javaClass, "wallet_card")?.set(uf, null)
-                            ReflectionCache.getField(uf.javaClass, "can_view_revenue")?.setBoolean(uf, false)
-                        } catch (_: Throwable) {}
-                    }
-                    chatInfoField?.get(act)?.let { cf ->
-                        try {
-                            ReflectionCache.getField(cf.javaClass, "can_view_stars_revenue")?.setBoolean(cf, false)
-                            ReflectionCache.getField(cf.javaClass, "can_view_revenue")?.setBoolean(cf, false)
-                        } catch (_: Throwable) {}
-                    }
-                } catch (_: Throwable) {}
-            }
-
-            val preHook = object : XC_MethodHook(120) {
+            val pillHook = object : XC_MethodHook(120) {
                 override fun beforeHookedMethod(param: MethodHookParam) {
-                    if (!hideProfileBalance) return
-                    sanitizeProfileInfo(param.thisObject ?: return)
+                    if (!hideProfileBalance || walletCardField == null) return
+                    val act = param.thisObject ?: return
+                    try {
+                        val uf = userInfoField?.get(act) ?: return
+                        stash.set(arrayOf(uf, walletCardField.get(uf)))
+                        walletCardField.set(uf, null)
+                    } catch (_: Throwable) {}
                 }
-            }
-            // exteragram calls it updateRows, ayugram renamed it to updateRowsIds — hook both
-            hookAllMethods(profileActivityClass, "createView", preHook, unhooksList)
-            hookAllMethods(profileActivityClass, "updateRows", preHook, unhooksList)
-            hookAllMethods(profileActivityClass, "updateRowsIds", preHook, unhooksList)
 
-            // backstop: if anything still manages to show the pill, force it back off
-            val postHook = object : XC_MethodHook(120) {
                 override fun afterHookedMethod(param: MethodHookParam) {
                     if (!hideProfileBalance) return
                     val act = param.thisObject ?: return
                     try {
+                        val stashed = stash.get()
+                        if (stashed != null) {
+                            stash.remove()
+                            try {
+                                walletCardField?.set(stashed[0], stashed[1])
+                            } catch (_: Throwable) {}
+                        }
                         (balanceViewField?.get(act) as? View)?.visibility = View.GONE
                         hasBalanceField?.setBoolean(act, false)
                     } catch (_: Throwable) {}
                 }
             }
-            hookAllMethods(profileActivityClass, "updateRows", postHook, unhooksList)
-            hookAllMethods(profileActivityClass, "updateRowsIds", postHook, unhooksList)
-        }
-
-        // 6. Data layer for the profile surface: no wallet card / revenue flags at birth
-        val userFullClass = ReflectionCache.findClass("org.telegram.tgnet.TLRPC\$UserFull", cl)
-        if (userFullClass != null) {
-            val walletCardField = ReflectionCache.getField(userFullClass, "wallet_card")
-            val canViewRevenueField = ReflectionCache.getField(userFullClass, "can_view_revenue")
-
-            hookAllMethods(userFullClass, "TLdeserialize", object : XC_MethodHook(120) {
-                override fun afterHookedMethod(param: MethodHookParam) {
-                    val uf = param.result ?: return
-                    if (hideProfileBalance) {
-                        try {
-                            walletCardField?.set(uf, null)
-                            canViewRevenueField?.setBoolean(uf, false)
-                        } catch (_: Throwable) {}
-                    }
-                }
-            }, unhooksList)
-        }
-
-        val chatFullClass = ReflectionCache.findClass("org.telegram.tgnet.TLRPC\$ChatFull", cl)
-        if (chatFullClass != null) {
-            val canViewStarsRevenueField = ReflectionCache.getField(chatFullClass, "can_view_stars_revenue")
-            val canViewRevenueChatField = ReflectionCache.getField(chatFullClass, "can_view_revenue")
-
-            hookAllMethods(chatFullClass, "TLdeserialize", object : XC_MethodHook(120) {
-                override fun afterHookedMethod(param: MethodHookParam) {
-                    val cf = param.result ?: return
-                    if (hideProfileBalance) {
-                        try {
-                            canViewStarsRevenueField?.setBoolean(cf, false)
-                            canViewRevenueChatField?.setBoolean(cf, false)
-                        } catch (_: Throwable) {}
-                    }
-                }
-            }, unhooksList)
+            // exteragram calls it updateRows, ayugram renamed it to updateRowsIds — hook both
+            hookAllMethods(profileActivityClass, "createView", pillHook, unhooksList)
+            hookAllMethods(profileActivityClass, "updateRows", pillHook, unhooksList)
+            hookAllMethods(profileActivityClass, "updateRowsIds", pillHook, unhooksList)
         }
     }
 }

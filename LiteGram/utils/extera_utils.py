@@ -14,6 +14,17 @@ def _parsed_version():
     return _cached_parsed_version
 
 
+def is_version_at_least(major: int, minor: int = 0, patch: int = 0) -> bool:
+    """True when the running client is >= major.minor.patch; unknown version -> True."""
+    try:
+        parsed = tuple(_parsed_version())
+        if parsed == (0, 0, 0):
+            return True
+        return parsed >= (major, minor, patch)
+    except Exception:
+        return True
+
+
 # thx jadx
 def open_extera_setting(alias: str, plugin_id: str | None = None) -> None:
     try:

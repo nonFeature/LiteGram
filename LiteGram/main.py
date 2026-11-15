@@ -241,29 +241,9 @@ class LiteGramPlugin(BasePlugin):
         except Exception:
             pass
         try:
-            for field in ("gifts", "saved_gifts", "profileGifts", "profile_gifts", "profileTabs"):
-                container = getattr(obj, field, None)
-                if container is not None and hasattr(container, "clear"):
-                    container.clear()
-            tabs = getattr(obj, "tabs", None)
-            if tabs is not None:
-                try:
-                    if hasattr(tabs, "size") and hasattr(tabs, "remove"):
-                        i = tabs.size() - 1
-                        while i >= 0:
-                            tab = tabs.get(i)
-                            if hasattr(tab, "id") and tab.id == 14:
-                                tabs.remove(i)
-                            i -= 1
-                    elif hasattr(tabs, "__iter__"):
-                        to_remove = [t for t in tabs if hasattr(t, "id") and t.id == 14]
-                        for t in to_remove:
-                            try:
-                                tabs.remove(t)
-                            except Exception:
-                                pass
-                except Exception:
-                    pass
+            container = getattr(obj, "gifts", None)
+            if container is not None and hasattr(container, "clear"):
+                container.clear()
         except Exception:
             pass
         for key in ("users", "chats", "list", "items"):

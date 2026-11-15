@@ -552,9 +552,7 @@ object PremiumBadgeHook {
             }
         }
         hookAllMethods(drawerHeaderViewClass, "updateUserInfo", drawerHook, unhooksList)
-        hookAllMethods(drawerHeaderViewClass, "setUser", drawerHook, unhooksList)
         hookAllMethods(accountRowViewClass, "bind", drawerHook, unhooksList)
-        hookAllMethods(accountRowViewClass, "setAccount", drawerHook, unhooksList)
 
         // 9. ProfileActivity.setCollectibleGiftStatus
         hookAllMethods(profileActivityClass, "setCollectibleGiftStatus", object : XC_MethodHook() {
@@ -589,7 +587,7 @@ object PremiumBadgeHook {
             }
         }, unhooksList)
 
-        // 9.3 ProfileActivity onFragmentResume & onTransitionAnimationEnd
+        // 9.3 ProfileActivity onTransitionAnimationEnd
         val resumeHook = object : XC_MethodHook() {
             override fun afterHookedMethod(param: MethodHookParam) {
                 if (!hideCollectibleStatus && !hidePremiumBadge) return
@@ -597,7 +595,6 @@ object PremiumBadgeHook {
                 cleanupCollectibleHint(obj)
             }
         }
-        hookAllMethods(profileActivityClass, "onFragmentResume", resumeHook, unhooksList)
         hookAllMethods(profileActivityClass, "onTransitionAnimationEnd", resumeHook, unhooksList)
 
         // 9.4 ProfileActivity$TopView.setBackgroundEmojiId

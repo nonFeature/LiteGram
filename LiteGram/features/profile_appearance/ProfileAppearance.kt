@@ -61,16 +61,18 @@ object ProfileAppearanceHook {
         methodName: String,
         hook: XC_MethodHook,
         targetList: MutableList<XC_MethodHook.Unhook>
-    ) {
-        if (clazz == null) return
+    ): Int {
+        if (clazz == null) return 0
         try {
             val result = XposedBridge.hookAllMethods(clazz, methodName, hook)
             if (result != null) {
                 synchronized(targetList) {
                     targetList.addAll(result)
                 }
+                return result.size
             }
         } catch (_: Throwable) {}
+        return 0
     }
 
     private fun hookAllConstructors(
@@ -184,7 +186,7 @@ object ProfileAppearanceHook {
             }, unhooksList)
         }
 
-        // 5. Bot Verification: DialogObject.getBotVerification*, ProfileActivity.getBotVerificationDrawable, ChatActivity.updateTopPanelView
+        // 5. Bot Verification: DialogObject.getBotVerification*, ProfileActivity.getBotVerificationDrawable, ChatActivity.updateTopPanel
         val dialogObjectClass = ReflectionCache.findClass("org.telegram.messenger.DialogObject", cl)
         if (dialogObjectClass != null) {
             hookAllMethods(dialogObjectClass, "getBotVerificationIcon", object : XC_MethodHook(120) {
@@ -205,7 +207,17 @@ object ProfileAppearanceHook {
         }
 
         val profileActivityClass = ReflectionCache.findClass("org.telegram.ui.ProfileActivity", cl)
+        val userFullClass = ReflectionCache.findClass("org.telegram.tgnet.TLRPC\$UserFull", cl)
+        val savedMusicField = if (userFullClass != null) ReflectionCache.getField(userFullClass, "saved_music") else null
+        val businessWorkHoursField = if (userFullClass != null) ReflectionCache.getField(userFullClass, "business_work_hours") else null
+        val businessLocationField = if (userFullClass != null) ReflectionCache.getField(userFullClass, "business_location") else null
+
         if (profileActivityClass != null) {
+            val profileUserInfoField = ReflectionCache.getField(profileActivityClass, "userInfo")
+            val bizHoursRowField = ReflectionCache.getField(profileActivityClass, "bizHoursRow")
+            val bizLocationRowField = ReflectionCache.getField(profileActivityClass, "bizLocationRow")
+            val musicViewField = ReflectionCache.getField(profileActivityClass, "musicView")
+
             hookAllMethods(profileActivityClass, "getBotVerificationDrawable", object : XC_MethodHook(120) {
                 override fun beforeHookedMethod(param: MethodHookParam) {
                     if (hideBotVerification) {
@@ -213,18 +225,51 @@ object ProfileAppearanceHook {
                     }
                 }
             }, unhooksList)
+
+            val profileBusinessHook = object : XC_MethodHook(120) {
+                override fun beforeHookedMethod(param: MethodHookParam) {
+                    val act = param.thisObject ?: return
+                    try {
+                        val uf = profileUserInfoField?.get(act)
+                        if (uf != null) {
+                            if (hideProfileBusiness) {
+                                businessWorkHoursField?.set(uf, null)
+                                businessLocationField?.set(uf, null)
+                            }
+                            if (hideProfileMusic) {
+                                savedMusicField?.set(uf, null)
+                            }
+                        }
+                    } catch (_: Throwable) {}
+                }
+
+                override fun afterHookedMethod(param: MethodHookParam) {
+                    val act = param.thisObject ?: return
+                    try {
+                        if (hideProfileBusiness) {
+                            bizHoursRowField?.setInt(act, -1)
+                            bizLocationRowField?.setInt(act, -1)
+                        }
+                        if (hideProfileMusic) {
+                            (musicViewField?.get(act) as? View)?.visibility = View.GONE
+                        }
+                    } catch (_: Throwable) {}
+                }
+            }
+            hookAllMethods(profileActivityClass, "createView", profileBusinessHook, unhooksList)
+            hookAllMethods(profileActivityClass, "updateRows", profileBusinessHook, unhooksList)
+            hookAllMethods(profileActivityClass, "updateRowsIds", profileBusinessHook, unhooksList)
         }
 
         val chatActivityClass = ReflectionCache.findClass("org.telegram.ui.ChatActivity", cl)
         if (chatActivityClass != null) {
             val userInfoField = ReflectionCache.getField(chatActivityClass, "userInfo")
             val chatInfoField = ReflectionCache.getField(chatActivityClass, "chatInfo")
-            val userFullClass = ReflectionCache.findClass("org.telegram.tgnet.TLRPC\$UserFull", cl)
             val chatFullClass = ReflectionCache.findClass("org.telegram.tgnet.TLRPC\$ChatFull", cl)
             val userBotVerificationField = if (userFullClass != null) ReflectionCache.getField(userFullClass, "bot_verification") else null
             val chatBotVerificationField = if (chatFullClass != null) ReflectionCache.getField(chatFullClass, "bot_verification") else null
 
-            hookAllMethods(chatActivityClass, "updateTopPanelView", object : XC_MethodHook(120) {
+            hookAllMethods(chatActivityClass, "updateTopPanel", object : XC_MethodHook(120) {
                 override fun beforeHookedMethod(param: MethodHookParam) {
                     if (!hideBotVerification) return
                     val instance = param.thisObject ?: return
@@ -242,13 +287,8 @@ object ProfileAppearanceHook {
             }, unhooksList)
         }
 
-        // 6. UserFull fields: saved_music, business_work_hours, business_location
-        val userFullClass = ReflectionCache.findClass("org.telegram.tgnet.TLRPC\$UserFull", cl)
+        // 6. UserFull fields: saved_music, business_work_hours, business_location (deserialization fallback)
         if (userFullClass != null) {
-            val savedMusicField = ReflectionCache.getField(userFullClass, "saved_music")
-            val businessWorkHoursField = ReflectionCache.getField(userFullClass, "business_work_hours")
-            val businessLocationField = ReflectionCache.getField(userFullClass, "business_location")
-
             hookAllMethods(userFullClass, "TLdeserialize", object : XC_MethodHook(120) {
                 override fun afterHookedMethod(param: MethodHookParam) {
                     val userFull = param.result ?: return

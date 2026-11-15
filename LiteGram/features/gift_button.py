@@ -34,12 +34,6 @@ class ChatActivityEnterViewAddGiftViewHook(BaseHook):
             pass
 
 
-class ChatActivityShowGiftButtonHook(BaseHook):
-    def before_hooked_method(self, param):
-        if self.is_enabled():
-            param.setResult(None)
-
-
 class ChatActivityChannelButtonsLayoutShowButtonHook(BaseHook):
     def before_hooked_method(self, param):
         if self.is_enabled():
@@ -63,13 +57,6 @@ def register_gift_button(plugin) -> None:
             pass
         try:
             plugin.hook_all_methods(ChatActivityEnterView, "addView", ChatActivityEnterViewAddGiftViewHook(plugin, Keys.hide_bottom_gift_button))
-        except Exception:
-            pass
-
-    ChatActivity = find_class("org.telegram.ui.ChatActivity")
-    if ChatActivity:
-        try:
-            plugin.hook_all_methods(ChatActivity, "showGiftButton", ChatActivityShowGiftButtonHook(plugin, Keys.hide_bottom_gift_button))
         except Exception:
             pass
 

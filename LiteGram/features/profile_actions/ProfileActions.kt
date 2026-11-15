@@ -87,8 +87,6 @@ object ProfileActionsHook {
                 }
             }, unhooksList)
 
-            val visibleActionsField = ReflectionCache.getField(profileActionsViewClass, "visibleActions")
-            val actionsListField = ReflectionCache.getField(profileActionsViewClass, "actionsList")
             val allAvailableActionsField = ReflectionCache.getField(profileActionsViewClass, "allAvailableActions")
 
             hookAllMethods(profileActionsViewClass, "applyVisibleActions", object : XC_MethodHook(100) {
@@ -113,8 +111,6 @@ object ProfileActionsHook {
                     }
 
                     try {
-                        removeKeys(visibleActionsField?.get(obj))
-                        removeKeys(actionsListField?.get(obj))
                         removeKeys(allAvailableActionsField?.get(obj))
                     } catch (_: Throwable) {}
                 }
