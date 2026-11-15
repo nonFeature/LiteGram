@@ -170,7 +170,7 @@ def _profile_settings() -> list[Any]:
             icon=resolve_icon("extera_outline"),
         ),
         Switch(text=t("hide_profile_background_emoji"), key=Keys.hide_profile_background_emoji),
-        Switch(text=t("hide_profile_pinned_gifts"), key=Keys.hide_profile_pinned_gifts, subtext=t("profile_appearance_info")),
+        Switch(text=t("hide_profile_pinned_gifts"), key=Keys.hide_profile_pinned_gifts),
         Switch(text=t("hide_profile_colorful_background"), key=Keys.hide_profile_colorful_background),
         Switch(text=t("hide_profile_editor_gifts"), key=Keys.hide_profile_editor_gifts, subtext=t("profile_editor_gifts_info")),
         Switch(text=t("hide_boost_badge"), key=Keys.hide_boost_badge),

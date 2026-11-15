@@ -79,14 +79,14 @@ STRINGS = {
         "hide_premium_stickers_grid": "На панели выбора",
         "sticker_panel_header": "Панель стикеров",
         "hide_group_stickers": "Скрыть стикерпак группы",
-        "hide_emoji_search": "Скрыть категории стикеров",
-        "emoji_search_info": "Убирает полоску с паками и поиском под панелью стикеров",
+        "hide_emoji_search": "Скрыть категории",
+        "emoji_search_info": "В поле поиска",
 
         # --- Profile Buttons ---
         "profile_buttons": "Кнопки в профиле",
-        "hide_profile_actions_gift_button": "Скрыть кнопку подарка",
-        "hide_profile_actions_stories_button": "Скрыть кнопку историй",
-        "hide_profile_actions_stream_button": "Скрыть кнопки трансляции и видеочата",
+        "hide_profile_actions_gift_button": "Скрыть «Подарить подарок»",
+        "hide_profile_actions_stories_button": "Скрыть кнопку «Новой истории»",
+        "hide_profile_actions_stream_button": "Скрыть кнопку «Трансляция»/«Видеочат»",
         # --- Profile Tabs ---
         "profile_tabs": "Вкладки в профиле",
         "hide_stories_tab": "Скрыть «Истории»",
@@ -97,12 +97,11 @@ STRINGS = {
         "manage_reply_elements": "Настроить оформление ответов",
         "hide_profile_background_emoji": "Скрыть фоновые эмодзи",
         "hide_profile_pinned_gifts": "Скрыть подарки вокруг аватара",
-        "profile_appearance_info": "Эмодзи и подарки вокруг аватара",
         "hide_profile_colorful_background": "Скрыть цветной фон",
         "hide_profile_editor_gifts": "Скрыть подарки в редакторе оформления",
         "profile_editor_gifts_info": "В меню выбора цвета и фонового эмодзи",
         "hide_boost_badge": "Скрыть значок буста",
-        "hide_premium_badge": "Скрыть значок Premium",
+        "hide_premium_badge": "Скрыть Premium-статус",
         "premium_badge_info": "Заодно отключает видеоаватары в списке чатов и в чате",
         "hide_bot_verification": "Скрыть значок верификации от организации",
         "hide_profile_music": "Скрыть трек",
@@ -124,8 +123,7 @@ STRINGS = {
         # --- About Plugin ---
         "about_plugin": "О плагине",
         "github_repository": "Репозиторий на GitHub (поставь ⭐!)",
-        "github_sub": "Без телеметрии. Модульная архитектура на Python, свой скрипт сборки, "
-                      "Ruff-линтинг и стабы типов для java, xposed и android",
+        "github_sub": "Можно было и на elyx-формат перейти, но лень, и так свой билдер есть...",
 
         "enable_debug_logs": "Логи плагина",
 
@@ -212,14 +210,14 @@ STRINGS = {
         "hide_premium_stickers_grid": "In the picker",
         "sticker_panel_header": "Sticker panel",
         "hide_group_stickers": "Hide the group sticker pack",
-        "hide_emoji_search": "Hide sticker categories",
-        "emoji_search_info": "Removes the strip with packs and search under the sticker panel",
+        "hide_emoji_search": "Hide categories",
+        "emoji_search_info": "In the search field",
 
         # --- Profile Buttons ---
         "profile_buttons": "Profile buttons",
-        "hide_profile_actions_gift_button": "Hide the gift button",
-        "hide_profile_actions_stories_button": "Hide the stories button",
-        "hide_profile_actions_stream_button": "Hide the live stream and video chat buttons",
+        "hide_profile_actions_gift_button": "Hide «Send a Gift»",
+        "hide_profile_actions_stories_button": "Hide the «New Story» button",
+        "hide_profile_actions_stream_button": "Hide the «Live Stream» / «Video Chat» button",
 
         # --- Profile Tabs ---
         "profile_tabs": "Profile tabs",
@@ -231,12 +229,11 @@ STRINGS = {
         "manage_reply_elements": "Customize reply appearance",
         "hide_profile_background_emoji": "Hide background emoji",
         "hide_profile_pinned_gifts": "Hide gifts around the avatar",
-        "profile_appearance_info": "Emoji and gifts around the avatar",
         "hide_profile_colorful_background": "Hide the colorful background",
         "hide_profile_editor_gifts": "Hide gifts in the appearance editor",
         "profile_editor_gifts_info": "In the color and background emoji picker",
         "hide_boost_badge": "Hide the boost badge",
-        "hide_premium_badge": "Hide the Premium badge",
+        "hide_premium_badge": "Hide Premium status",
         "premium_badge_info": "Also disables video avatars in the chat list and in chats",
         "hide_bot_verification": "Hide the organization verification badge",
         "hide_profile_music": "Hide the music track",
@@ -258,8 +255,7 @@ STRINGS = {
         # --- About Plugin ---
         "about_plugin": "About",
         "github_repository": "GitHub repository (leave a ⭐!)",
-        "github_sub": "No telemetry. Modular Python architecture, a custom build script, "
-                      "Ruff linting, and typing stubs for the java, xposed, and android modules.",
+        "github_sub": "Could have switched to elyx format, but too lazy, custom builder works fine anyway...",
 
         "enable_debug_logs": "Plugin logging",
 
