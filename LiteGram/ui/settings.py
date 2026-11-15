@@ -150,9 +150,21 @@ def _on_premium_badge_toggle(val: bool) -> None:
     plugin.set_setting(Keys.hide_premium_badge, val, reload_settings=True)
 
 
+def _on_hide_gifts_tab_toggle(val: bool) -> None:
+    plugin = LiteGramPlugin.get_instance()
+    plugin.set_setting(Keys.hide_gifts_tab, val, reload_settings=True)
+
+
+def _on_colorful_bg_toggle(val: bool) -> None:
+    plugin = LiteGramPlugin.get_instance()
+    plugin.set_setting(Keys.hide_profile_colorful_background, val, reload_settings=True)
+
+
 def _profile_settings() -> list[Any]:
     plugin = LiteGramPlugin.get_instance()
     hide_premium = bool(plugin.get_setting(Keys.hide_premium_badge, False))
+    hide_gifts_tab = bool(plugin.get_setting(Keys.hide_gifts_tab, False))
+    hide_colorful_bg = bool(plugin.get_setting(Keys.hide_profile_colorful_background, False))
 
     elements = [
         Header(text=t("profile_buttons")),
@@ -161,7 +173,7 @@ def _profile_settings() -> list[Any]:
         Switch(text=t("hide_profile_actions_stream_button"), key=Keys.hide_profile_actions_stream_button),
         Header(text=t("profile_tabs")),
         Switch(text=t("hide_stories_tab"), key=Keys.hide_stories_tab),
-        Switch(text=t("hide_gifts_tab"), key=Keys.hide_gifts_tab),
+        Switch(text=t("hide_gifts_tab"), on_change=_on_hide_gifts_tab_toggle, key=Keys.hide_gifts_tab),
         Header(text=t("profile_appearance")),
         Text(
             text=t("manage_reply_elements"),
@@ -169,13 +181,25 @@ def _profile_settings() -> list[Any]:
             on_click=open_extera_tab(Keys.reply_elements),
             icon=resolve_icon("extera_outline"),
         ),
-        Switch(text=t("hide_profile_background_emoji"), key=Keys.hide_profile_background_emoji),
-        Switch(text=t("hide_profile_pinned_gifts"), key=Keys.hide_profile_pinned_gifts),
-        Switch(text=t("hide_profile_colorful_background"), key=Keys.hide_profile_colorful_background),
-        Switch(text=t("hide_profile_editor_gifts"), key=Keys.hide_profile_editor_gifts, subtext=t("profile_editor_gifts_info")),
-        Switch(text=t("hide_boost_badge"), key=Keys.hide_boost_badge),
-        Switch(text=t("hide_premium_badge"), on_change=_on_premium_badge_toggle, key=Keys.hide_premium_badge, subtext=t("premium_badge_info")),
     ]
+
+    if not hide_colorful_bg:
+        elements.append(Switch(text=t("hide_profile_background_emoji"), key=Keys.hide_profile_background_emoji))
+    if not hide_gifts_tab:
+        elements.append(Switch(text=t("hide_profile_pinned_gifts"), key=Keys.hide_profile_pinned_gifts))
+
+    elements.extend(
+        [
+            Switch(
+                text=t("hide_profile_colorful_background"),
+                on_change=_on_colorful_bg_toggle,
+                key=Keys.hide_profile_colorful_background,
+            ),
+            Switch(text=t("hide_profile_editor_gifts"), key=Keys.hide_profile_editor_gifts, subtext=t("profile_editor_gifts_info")),
+            Switch(text=t("hide_boost_badge"), key=Keys.hide_boost_badge),
+            Switch(text=t("hide_premium_badge"), on_change=_on_premium_badge_toggle, key=Keys.hide_premium_badge, subtext=t("premium_badge_info")),
+        ]
+    )
 
     if not hide_premium:
         elements.append(Switch(text=t("hide_collectible_status"), key=Keys.hide_collectible_status, subtext=t("collectible_status_info")))

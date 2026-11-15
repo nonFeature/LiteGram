@@ -7,6 +7,7 @@ import java.lang.reflect.Field
 import java.lang.reflect.Method
 import java.util.ArrayList
 import non.feature.litegram.core.ReflectionCache
+import non.feature.litegram.media_layout.MediaLayoutHook
 
 object ProfileAppearanceHook {
 
@@ -98,7 +99,7 @@ object ProfileAppearanceHook {
         if (starGiftPatternsClass != null) {
             hookAllMethods(starGiftPatternsClass, "drawProfileAnimatedPattern", object : XC_MethodHook(120) {
                 override fun beforeHookedMethod(param: MethodHookParam) {
-                    if (hideProfileBackgroundEmoji) {
+                    if (hideProfileBackgroundEmoji || hideProfileColorfulBackground) {
                         param.setResult(null)
                     }
                 }
@@ -110,7 +111,7 @@ object ProfileAppearanceHook {
         if (profileGiftsViewClass != null) {
             hookAllConstructors(profileGiftsViewClass, object : XC_MethodHook(120) {
                 override fun afterHookedMethod(param: MethodHookParam) {
-                    if (hideProfilePinnedGifts) {
+                    if (hideProfilePinnedGifts || MediaLayoutHook.hideGiftsTab) {
                         try {
                             (param.thisObject as? View)?.visibility = View.GONE
                         } catch (_: Throwable) {}
@@ -120,7 +121,7 @@ object ProfileAppearanceHook {
 
             hookAllMethods(profileGiftsViewClass, "update", object : XC_MethodHook(120) {
                 override fun beforeHookedMethod(param: MethodHookParam) {
-                    if (hideProfilePinnedGifts) {
+                    if (hideProfilePinnedGifts || MediaLayoutHook.hideGiftsTab) {
                         try {
                             (param.thisObject as? View)?.visibility = View.GONE
                         } catch (_: Throwable) {}
