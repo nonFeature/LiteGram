@@ -218,7 +218,6 @@ def _interface_settings() -> list[Any]:
 
 def _about_settings() -> list[Any]:
     return [
-        Header(text=t("about_plugin")),
         Text(text=t("github_repository"), icon="msg_link", on_click=open_url_view(GITHUB_URL)),
         Divider(text=t("github_sub")),
         Switch(

@@ -121,7 +121,6 @@ STRINGS = {
         "hide_send_money": "Скрыть «Отправить деньги»",
 
         # --- About Plugin ---
-        "about_plugin": "О плагине",
         "github_repository": "Репозиторий на GitHub (поставь ⭐!)",
         "github_sub": "Можно было и на elyx-формат перейти, но лень, и так свой билдер есть...",
 
@@ -253,7 +252,6 @@ STRINGS = {
         "hide_send_money": "Hide «Send Money»",
 
         # --- About Plugin ---
-        "about_plugin": "About",
         "github_repository": "GitHub repository (leave a ⭐!)",
         "github_sub": "Could have switched to elyx format, but too lazy, custom builder works fine anyway...",
 
