@@ -4,7 +4,7 @@ from typing import Any
 from android.view import View
 from org.telegram.messenger import R as R_tg  # ty: ignore
 from ui.bulletin import BulletinHelper
-from ui.settings import Selector as BaseSelector, Switch as BaseSwitch  # ty: ignore
+from ui.settings import Selector as BaseSelector, Switch as BaseSwitch
 
 from LiteGram.i18n.i18n import t
 from LiteGram.main import LiteGramPlugin
@@ -131,7 +131,7 @@ def hide_group_rows(group_key: str, title: str, rows: Sequence[tuple[str, str]])
     """
     from android_utils import OnClickListener
     from org.telegram.ui.Components import UItem  # ty: ignore
-    from ui.settings import Custom
+    from ui.settings import Custom  # ty: ignore[unresolved-import]
 
     hidden = _hidden_count(rows)
     total = len(rows)
