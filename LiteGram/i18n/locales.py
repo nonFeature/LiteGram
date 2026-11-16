@@ -68,12 +68,13 @@ STRINGS = {
         "hide_ai_summarize": "Скрыть кнопку саммари",
 
         # --- Emoji & Stickers ---
-        "premium_emoji_settings_header": "Кастомные эмодзи",
+        "sticker_hide_header": "Скрывать...",
+        "premium_emoji_settings_header": "Кастомные эмодзи...",
         "hide_premium_emoji_keyboard": "В клавиатуре",
         "hide_premium_emoji_reactions": "В реакциях",
         "hide_premium_search": "В поиске",
         "hide_premium_suggestions": "В подсказках",
-        "premium_stickers_settings_header": "Премиум-стикеры",
+        "premium_stickers_settings_header": "Премиум-стикеры...",
         "hide_premium_stickers_recent": "В недавних",
         "hide_premium_stickers_search": "В поиске",
         "hide_premium_stickers_grid": "На панели выбора",
@@ -198,12 +199,13 @@ STRINGS = {
         "hide_ai_summarize": "Hide the summarize button",
 
         # --- Emoji & Stickers ---
-        "premium_emoji_settings_header": "Custom emoji",
+        "sticker_hide_header": "Hide...",
+        "premium_emoji_settings_header": "Custom emoji...",
         "hide_premium_emoji_keyboard": "In the keyboard",
         "hide_premium_emoji_reactions": "In reactions",
         "hide_premium_search": "In search",
         "hide_premium_suggestions": "In suggestions",
-        "premium_stickers_settings_header": "Premium stickers",
+        "premium_stickers_settings_header": "Premium stickers...",
         "hide_premium_stickers_recent": "In recents",
         "hide_premium_stickers_search": "In search",
         "hide_premium_stickers_grid": "In the picker",

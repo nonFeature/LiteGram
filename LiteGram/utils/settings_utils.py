@@ -4,7 +4,7 @@ from typing import Any
 from android.view import View
 from org.telegram.messenger import R as R_tg  # ty: ignore
 from ui.bulletin import BulletinHelper
-from ui.settings import Switch as BaseSwitch
+from ui.settings import Selector as BaseSelector, Switch as BaseSwitch  # ty: ignore
 
 from LiteGram.i18n.i18n import t
 from LiteGram.main import LiteGramPlugin
@@ -47,6 +47,35 @@ def Switch(
         on_change=_switch_on_change,
         on_long_click=on_long_click,
         link_alias=link_alias,
+    )
+
+
+def Selector(
+    key: str,
+    text: str,
+    items: Sequence[str] | None = None,
+    default: int = 0,
+    icon: str | None = None,
+    on_change: Callable[[Any], None] | None = None,
+    on_long_click: Callable[[View], None] | None = None,
+    link_alias: str | None = None,
+    **kwargs: Any,
+) -> Any:
+    """
+    Uses key for link_alias by default if not explicitly provided,
+    enabling deeplink copying on long click.
+    """
+    link_alias = key if link_alias is None else link_alias
+    return BaseSelector(
+        key=key,
+        text=text,
+        items=items,
+        default=default,
+        icon=icon,
+        on_change=on_change,
+        on_long_click=on_long_click,
+        link_alias=link_alias,
+        **kwargs,
     )
 
 
@@ -120,6 +149,7 @@ def hide_group_rows(group_key: str, title: str, rows: Sequence[tuple[str, str]])
         Custom(
             item=group_item,
             on_click=lambda view: _toggle_group_expanded(group_key, rows[0][0]),
+            link_alias=group_key,
         )
     ]
 
@@ -136,7 +166,13 @@ def hide_group_rows(group_key: str, title: str, rows: Sequence[tuple[str, str]])
 
                 return on_child_click
 
-            items.append(Custom(item=child_item, on_click=make_on_child_click(key)))
+            items.append(
+                Custom(
+                    item=child_item,
+                    on_click=make_on_child_click(key),
+                    link_alias=key,
+                )
+            )
 
     return items
 

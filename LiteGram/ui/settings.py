@@ -1,6 +1,6 @@
 from typing import Any
 
-from ui.settings import Divider, Header, Selector, Text
+from ui.settings import Divider, Header, Text
 
 from LiteGram.data.constants import GITHUB_URL, Keys
 from LiteGram.i18n.i18n import t
@@ -8,6 +8,7 @@ from LiteGram.main import LiteGramPlugin
 from LiteGram.utils.dex_utils import dex_bridge
 from LiteGram.utils.extera_utils import is_version_at_least, resolve_icon
 from LiteGram.utils.settings_utils import (
+    Selector,
     Switch,
     hide_group_rows,
     open_extera_tab,
@@ -135,6 +136,7 @@ def _chat_elements_settings() -> list[Any]:
 
 def _emoji_settings() -> list[Any]:
     return [
+        Header(text=t("sticker_hide_header")),
         *hide_group_rows("premium_emoji_group", t("premium_emoji_settings_header"), Keys.PREMIUM_EMOJI_ROWS),
         Divider(),
         *hide_group_rows("premium_stickers_group", t("premium_stickers_settings_header"), Keys.PREMIUM_STICKERS_ROWS),
