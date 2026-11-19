@@ -15,8 +15,22 @@ MODERN_ROW_TO_KEY = {
     23: Keys.hide_help_section,
     25: Keys.hide_wallet_row,
 }
-MODERN_HELP_ROW_IDS = {17, 18, 19, 23}
 WALLET_BOT_ID = 1985737506
+
+# Structural UItem view types used by SettingsActivity.fillItems:
+# 0 = asHeader, 7/8 = asShadow separator, -4 = asCustomShadow anchor
+# (wraps topView/versionView and is itself treated as a separator by the
+# section renderer), 28 = asSpace search spacer.
+VIEW_TYPE_HEADER = 0
+VIEW_TYPE_SHADOW = 7
+VIEW_TYPE_SHADOW_TEXT = 8
+VIEW_TYPE_SPACE = 28
+VIEW_TYPE_CUSTOM_SHADOW = -4
+
+_CLASS_HEADER = 0
+_CLASS_SEPARATOR = 1
+_CLASS_ANCHOR = 2
+_CLASS_CONTENT = 3
 
 
 def get_uitem_id(item):
@@ -76,6 +90,53 @@ def is_wallet_item(item) -> bool:
     return bool(attached_bot and getattr(attached_bot, "bot_id", None) == WALLET_BOT_ID)
 
 
+def classify_view_type(view_type) -> int:
+    if view_type == VIEW_TYPE_HEADER:
+        return _CLASS_HEADER
+    if view_type in (VIEW_TYPE_SHADOW, VIEW_TYPE_SHADOW_TEXT):
+        return _CLASS_SEPARATOR
+    if view_type == VIEW_TYPE_CUSTOM_SHADOW:
+        return _CLASS_ANCHOR
+    return _CLASS_CONTENT
+
+
+def compute_layout_removals(class_list, dropped) -> set:
+    removals = set()
+    survivors = [i for i in range(len(class_list)) if i not in dropped]
+
+    # 1. orphaned headers, right-to-left
+    has_content_after = False
+    for index in reversed(survivors):
+        item_class = class_list[index]
+        if item_class == _CLASS_CONTENT:
+            has_content_after = True
+        elif item_class == _CLASS_HEADER:
+            if not has_content_after:
+                removals.add(index)
+            has_content_after = False
+
+    survivors = [i for i in survivors if i not in removals]
+
+    # 2. separator runs
+    position = 0
+    count = len(survivors)
+    while position < count:
+        if class_list[survivors[position]] != _CLASS_SEPARATOR:
+            position += 1
+            continue
+        end = position
+        while end < count and class_list[survivors[end]] == _CLASS_SEPARATOR:
+            end += 1
+        prev_class = class_list[survivors[position - 1]] if position > 0 else None
+        next_class = class_list[survivors[end]] if end < count else None
+        keep_one = prev_class in (_CLASS_HEADER, _CLASS_CONTENT) and next_class in (_CLASS_HEADER, _CLASS_CONTENT)
+        for run_index in range(position + (1 if keep_one else 0), end):
+            removals.add(survivors[run_index])
+        position = end
+
+    return removals
+
+
 class SettingsActivityFillItemsHook(BaseHook):
     def after_hooked_method(self, param):
         items = param.args[0] if param.args else None
@@ -86,41 +147,44 @@ class SettingsActivityFillItemsHook(BaseHook):
             size = items.size()
         except Exception:
             return
+        if size <= 1:
+            return
 
-        hide_help_section = self.plugin.get_setting(Keys.hide_help_section, False)
-        hide_wallet_row = bool(self.plugin.get_setting(Keys.hide_wallet_row, False))
-        indices_to_remove = set()
-        help_row_indices = []
+        # Search mode fills the list with an asSpace + result cells whose
+        # ids are unrelated to settings rows — skip entirely.
+        try:
+            if get_uitem_view_type(items.get(0)) == VIEW_TYPE_SPACE:
+                return
+        except Exception:
+            return
 
+        class_list = []
+        item_ids = []
+        wallet_flags = []
         for index in range(size):
             item = items.get(index)
-            item_id = get_uitem_id(item)
-            setting_key = MODERN_ROW_TO_KEY.get(item_id)
+            class_list.append(classify_view_type(get_uitem_view_type(item)))
+            item_ids.append(get_uitem_id(item))
+            wallet_flags.append(is_wallet_item(item))
 
-            should_remove = False
-            if setting_key:
-                if setting_key == Keys.hide_wallet_row and hide_wallet_row:
-                    should_remove = True
-                elif self.plugin.get_setting(setting_key, False):
-                    should_remove = True
-            if should_remove:
+        setting_enabled = {key: bool(self.plugin.get_setting(key, False)) for key in set(MODERN_ROW_TO_KEY.values())}
+        hide_wallet_row = setting_enabled.get(Keys.hide_wallet_row, False)
+
+        indices_to_remove = set()
+        for index in range(size):
+            if class_list[index] == _CLASS_ANCHOR:
+                continue
+            setting_key = MODERN_ROW_TO_KEY.get(item_ids[index])
+            if setting_key and setting_enabled.get(setting_key, False):
                 indices_to_remove.add(index)
-                if item_id == 25 and index + 1 < size and get_uitem_view_type(items.get(index + 1)) in (0, 7):
-                    indices_to_remove.add(index + 1)
-
-            if hide_help_section and item_id in MODERN_HELP_ROW_IDS:
-                help_row_indices.append(index)
-
-            if hide_wallet_row and is_wallet_item(item):
+                continue
+            if hide_wallet_row and wallet_flags[index]:
                 indices_to_remove.add(index)
-                if item_id == 25 and index + 1 < size and get_uitem_view_type(items.get(index + 1)) in (0, 7):
-                    indices_to_remove.add(index + 1)
 
-        if hide_help_section and help_row_indices:
-            header_index = min(help_row_indices) - 1
-            while header_index >= 0 and get_uitem_view_type(items.get(header_index)) in (0, 7):
-                indices_to_remove.add(header_index)
-                header_index -= 1
+        if not indices_to_remove:
+            return
+
+        indices_to_remove |= compute_layout_removals(class_list, indices_to_remove)
 
         for index in sorted(indices_to_remove, reverse=True):
             try:
